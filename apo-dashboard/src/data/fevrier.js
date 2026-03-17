@@ -1,11 +1,53 @@
 // ============================================================
 // APO — DONNÉES FÉVRIER 2026
-// Source : fichiers Excel APO (production, caisse, fournisseurs)
-// Règles de calcul : voir src/lib/kpiEngine.js
+// ── SOURCES EXCEL ──────────────────────────────────────────
+//  Compta   : C:\Users\BDLIT-2\Dropbox\APO\Compta\2026\
+//   ├─ CAISSE GRAINES 2026.xlsx           (sheet: CAISSE GRAINE FEVRIER)
+//   ├─ CAISSE APO 2026.xlsx               (sheet: CAISSE APO)
+//   ├─ CAISSE 2 APO 2026.xlsx             (sheet: CAISSE 2 APO)
+//   ├─ VENTE D'HUILE APO SARCI 2026.xlsx  (sheet: VENTE D'HUILE 2026)
+//   ├─ VENTE NOIX DE PALMISTE 2026.xlsx   (sheet: VEMTE NOIX DE PALMISTE FEVRIER)
+//   └─ VENTE DE BASSIN DE LAGUNAGE.xlsx   (sheet: VENTE BASSIN FEVRIER)
+//  Production: C:\Users\BDLIT-2\Dropbox\APO\Rapport de Production\Rapport des production 2026\
+//   └─ Tableau de production APO 2026.xlsx (sheet: FEVRIER 2026)
+// NB : PEPINIERE A HUILE non active en février (activité saisonnière janvier)
+// NB : VENTE DE FLORENTIN 2026.xlsx — aucune livraison florentin en février
+// ── DOCS ───────────────────────────────────────────────────
+// Cartographie ETL complète : voir src/data/etlSources.js
+// Règles de calcul         : voir src/lib/kpiEngine.js
 // ============================================================
 
 export const febData = {
+
+  // ── MÉTADONNÉES ETL ───────────────────────────────────────
+  _etl: {
+    mois:    'février',
+    annee:   2026,
+    sources: [
+      'CAISSE GRAINE',
+      'CAISSE APO',
+      'CAISSE APO 2',
+      "VENTE D'HUILE",
+      'TABLEAU DE PRODUCTION',
+      'VENTE FLORENTIN',
+      'VENTE PALMISTE',
+    ],
+    noteStock: 'Régimes traités inclus le stock de 1 401 T reporté de janvier (TABLEAU DE PRODUCTION)',
+    // Origine de chaque section
+    sectionSources: {
+      kpis:         ['CAISSE GRAINE', 'CAISSE APO', 'CAISSE APO 2', "VENTE D'HUILE", 'TABLEAU DE PRODUCTION', 'VENTE PALMISTE'],
+      pnl:          ['CAISSE GRAINE', 'CAISSE APO', 'CAISSE APO 2', "VENTE D'HUILE", 'VENTE PALMISTE'],
+      production:   ['TABLEAU DE PRODUCTION', 'CAISSE GRAINE'],
+      revenus:      ["VENTE D'HUILE", 'VENTE PALMISTE', 'CAISSE APO'],
+      charges:      ['CAISSE APO 2'],
+      fournisseurs: ['CAISSE GRAINE'],
+    },
+  },
+
   // ── KPIs PRINCIPAUX ──────────────────────────────────────
+  // Sources : CAISSE GRAINE (coût MP, fournisseurs) · CAISSE APO (CA, encaissements)
+  //           CAISSE APO 2 (charges) · VENTE D'HUILE (CA huile, prix 720→675 F/kg dès 04/02)
+  //           TABLEAU PRODUCTION (régimes traités incl. 1 401 T stock janv.) · VENTE PALMISTE
   kpis: {
     caTotalFCFA:       2129728200,
     caHuileFCFA:       2016088200,
@@ -33,7 +75,9 @@ export const febData = {
   },
 
   // ── COMPTE DE RÉSULTAT PAR TONNE ─────────────────────────
-  // Base : 2 866 T d'huile produites (2 865 783 kg)
+  // Sources : CAISSE GRAINE (Coût MP) · CAISSE APO (CA) · CAISSE APO 2 (charges) ·
+  //           VENTE D'HUILE · VENTE PALMISTE
+  // Règle 4 kpiEngine.js — calculPnL() · Dénominateur = 2 866 T PRODUITES
   pnl: {
     baseLabel: "2 866 tonnes d'huile produites",
     status: 'Résultat Exceptionnel',
@@ -88,6 +132,10 @@ export const febData = {
   },
 
   // ── PRODUCTION ───────────────────────────────────────────
+  // Sources : TABLEAU DE PRODUCTION (livraisons journalières, taux extraction, stérilisateurs)
+  //           CAISSE GRAINE (réconciliation poids fournisseurs → 209 fournisseurs ce mois)
+  // NB : régimesTraitesT = 15 071 T = 14 798 reçus + 1 401 T stock reporté de janvier
+  // Règle 2 kpiEngine.js — calculTauxExtraction()
   production: {
     grainesDailyLabels: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16a','16b','17','18','19','20','21','22a','22b','23','24','25','26','27','28'],
     grainesDailyKg: [439380,488520,385380,304760,344740,554420,422920,469060,484940,464720,573400,547400,551240,802740,504280,813860,675440,779380,814800,995240,983740,796660,184580,151620,137580,148220,447420,531960],
@@ -111,6 +159,11 @@ export const febData = {
   },
 
   // ── REVENUS ──────────────────────────────────────────────
+  // Sources : VENTE D'HUILE (prix 720 F/kg → 675 F/kg à partir du 04/02, quantités livrées)
+  //           VENTE PALMISTE (noix, 60 F/kg)
+  //           CAISSE APO (encaissements journaliers — confirmation)
+  // NB : Bassin de lagunage (8,06 T livrées le 11/02) non facturé — à régulariser
+  // Règle 3 kpiEngine.js — calculRevenusHuile()
   revenus: {
     caJoursLabels: ['01','02','03','04','05','06','07','09','10','11','12','14','15','16','17','18','19','20','21','22','23','24','25','28'],
     caJoursVals: [147571200,60192000,89208000,28350000,83079000,27162000,84375000,109431000,55647000,81513000,82930500,83308500,83619000,82080000,56511000,28566000,82863000,83835000,82849500,83619000,83349000,27229500,84105000,112036500],
@@ -123,6 +176,8 @@ export const febData = {
   },
 
   // ── CHARGES ──────────────────────────────────────────────
+  // Source : CAISSE APO 2 (toutes les sorties de caisse du mois)
+  // Top 15 dépenses triées par montant décroissant — libellé et montant exacts du fichier
   charges: {
     topDepenses: [
       { date: '28/02', lib: 'Paie personnels APO — Février',                mt: 14800000 },
@@ -144,6 +199,9 @@ export const febData = {
   },
 
   // ── FOURNISSEURS ─────────────────────────────────────────
+  // Source : CAISSE GRAINE (poids par fournisseur, prix d'achat, montant payé)
+  // 209 fournisseurs actifs ce mois — top 10 affichés dans le dashboard
+  // Règle 1 kpiEngine.js — calculCoutMP() : prix moyen 112,50 F/kg × 15 071 T traités
   fournisseurs: {
     totalPoidsKg: 14798400,
     liste: [

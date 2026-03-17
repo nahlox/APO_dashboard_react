@@ -1,11 +1,53 @@
 // ============================================================
 // APO — DONNÉES JANVIER 2026
-// Source : fichiers Excel APO (production, caisse, fournisseurs)
-// Règles de calcul : voir src/lib/kpiEngine.js
+// ── SOURCES EXCEL ──────────────────────────────────────────
+//  Compta   : C:\Users\BDLIT-2\Dropbox\APO\Compta\2026\
+//   ├─ CAISSE GRAINES 2026.xlsx           (sheet: CAISSE GRAINE JANVIER)
+//   ├─ CAISSE APO 2026.xlsx               (sheet: CAISSE APO)
+//   ├─ CAISSE 2 APO 2026.xlsx             (sheet: CAISSE 2 APO)
+//   ├─ VENTE D'HUILE APO SARCI 2026.xlsx  (sheet: VENTE D'HUILE 2026)
+//   ├─ VENTE DE FLORENTIN 2026.xlsx       (sheet: VENTE FLORENTIN JANVIER)
+//   ├─ VENTE NOIX DE PALMISTE 2026.xlsx   (sheet: VENTE NOIX PALMISTE JANVIER)
+//   └─ CLIENTS PEPINIERE PALMIER A HUILE.xlsx (sheet: Feuil1)
+//  Production: C:\Users\BDLIT-2\Dropbox\APO\Rapport de Production\Rapport des production 2026\
+//   └─ Tableau de production APO 2026.xlsx (sheet: JANVIER 2026)
+// ── DOCS ───────────────────────────────────────────────────
+// Cartographie ETL complète : voir src/data/etlSources.js
+// Règles de calcul         : voir src/lib/kpiEngine.js
 // ============================================================
 
 export const janData = {
+
+  // ── MÉTADONNÉES ETL ───────────────────────────────────────
+  _etl: {
+    mois:    'janvier',
+    annee:   2026,
+    sources: [
+      'CAISSE GRAINE',
+      'CAISSE APO',
+      'CAISSE APO 2',
+      "VENTE D'HUILE",
+      'TABLEAU DE PRODUCTION',
+      'VENTE FLORENTIN',
+      'VENTE PALMISTE',
+      'PEPINIERE A HUILE',
+    ],
+    // Origine de chaque section
+    sectionSources: {
+      kpis:         ['CAISSE GRAINE', 'CAISSE APO', 'CAISSE APO 2', "VENTE D'HUILE", 'TABLEAU DE PRODUCTION', 'VENTE FLORENTIN', 'VENTE PALMISTE'],
+      pnl:          ['CAISSE GRAINE', 'CAISSE APO', 'CAISSE APO 2', "VENTE D'HUILE", 'VENTE PALMISTE', 'VENTE FLORENTIN'],
+      production:   ['TABLEAU DE PRODUCTION', 'CAISSE GRAINE'],
+      revenus:      ["VENTE D'HUILE", 'VENTE PALMISTE', 'VENTE FLORENTIN', 'CAISSE APO'],
+      charges:      ['CAISSE APO 2'],
+      fournisseurs: ['CAISSE GRAINE'],
+      pepiniere:    ['PEPINIERE A HUILE'],
+    },
+  },
+
   // ── KPIs PRINCIPAUX ──────────────────────────────────────
+  // Sources : CAISSE GRAINE (coût MP, fournisseurs) · CAISSE APO (CA, encaissements)
+  //           CAISSE APO 2 (charges) · VENTE D'HUILE (CA huile) · TABLEAU PRODUCTION (production)
+  //           VENTE FLORENTIN (CA florentin) · VENTE PALMISTE (CA palmiste)
   kpis: {
     caTotalFCFA:       1336263200,
     caHuileFCFA:       1269504000,
@@ -35,7 +77,9 @@ export const janData = {
   },
 
   // ── COMPTE DE RÉSULTAT PAR TONNE ─────────────────────────
-  // Base : 1 956 T d'huile produites
+  // Sources : CAISSE GRAINE (Coût MP) · CAISSE APO (CA) · CAISSE APO 2 (charges) ·
+  //           VENTE D'HUILE · VENTE PALMISTE · VENTE FLORENTIN
+  // Règle 4 kpiEngine.js — calculPnL() · Dénominateur = 1 956 T PRODUITES
   pnl: {
     baseLabel: "1 956 tonnes d'huile produites",
     status: 'Excédent Mensuel',
@@ -89,8 +133,11 @@ export const janData = {
   },
 
   // ── PRODUCTION ───────────────────────────────────────────
+  // Sources : TABLEAU DE PRODUCTION (livraisons journalières, taux extraction, stock)
+  //           CAISSE GRAINE (réconciliation poids fournisseurs)
+  // Règle 2 kpiEngine.js — calculTauxExtraction()
   production: {
-    // Livraisons journalières FFB (kg) — extraites sheet production
+    // Livraisons journalières FFB (kg) — extraites TABLEAU DE PRODUCTION
     grainesDailyLabels: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31'],
     grainesDailyKg: [
       152640,343560,242880,222920,226960,392840,232040,311940,300380,
@@ -120,6 +167,11 @@ export const janData = {
   },
 
   // ── REVENUS ──────────────────────────────────────────────
+  // Sources : VENTE D'HUILE (quantités livrées, prix/kg, CA journalier)
+  //           VENTE PALMISTE (noix, 60 F/kg)
+  //           VENTE FLORENTIN (huile florentin, 500 F/kg)
+  //           CAISSE APO (encaissements journaliers de confirmation)
+  // Règle 3 kpiEngine.js — calculRevenusHuile()
   revenus: {
     // CA journalier huile (FCFA)
     caJoursLabels: ['02','03','05','07','08','09','10','12','13','14','15','17','19','20','21','22','23','24','25','26','28','29','30','31'],
@@ -139,6 +191,8 @@ export const janData = {
   },
 
   // ── CHARGES ──────────────────────────────────────────────
+  // Source : CAISSE APO 2 (toutes les sorties de caisse du mois)
+  // Top 15 dépenses triées par montant décroissant — libellé et montant exacts du fichier
   charges: {
     topDepenses: [
       { date: '28/01', lib: 'Paie personnels APO — Janvier',              mt: 13950545 },
@@ -160,6 +214,8 @@ export const janData = {
   },
 
   // ── FOURNISSEURS ─────────────────────────────────────────
+  // Source : CAISSE GRAINE (poids par fournisseur, prix d'achat, montant payé)
+  // Règle 1 kpiEngine.js — calculCoutMP() : prix moyen pondéré × régimes traités
   fournisseurs: {
     totalPoidsKg: 11170660,
     liste: [
@@ -177,6 +233,9 @@ export const janData = {
   },
 
   // ── PÉPINIÈRE ────────────────────────────────────────────
+  // Source : PEPINIERE A HUILE (contrats clients, superficies, encaissements)
+  // Disponible uniquement en JANVIER (activité saisonnière de distribution de plants)
+  // pepResteaFCFA = pepContratsFCFA − pepEncaisséFCFA
   pepiniere: {
     superficieDistrib: {
       labels: ['1 ha', '2-3 ha', '4-6 ha', '10-13 ha', '100 ha'],

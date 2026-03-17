@@ -45,9 +45,9 @@ export default function Revenus({ data, month }) {
       <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {isJan ? 'Janvier' : 'Février'} 2026</div>
 
       <div className="kpi-grid">
-        <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency) + ' M'}  valueColor="green" sub={currency} accent="accent-green" />
-        <KPICard label="CA Huile de Palme"  value={fmt.kpiValue(kpis.caHuileFCFA, currency) + ' M'}  valueColor="gold"  sub={`${currency} · ${(kpis.caHuileFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
-        <KPICard label="CA Noix Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency) + ' M'}   sub={`${currency} · ${(kpis.caNoisFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
+        <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency)}  valueColor="green" sub={currency} accent="accent-green" />
+        <KPICard label="CA Huile de Palme"  value={fmt.kpiValue(kpis.caHuileFCFA, currency)}  valueColor="gold"  sub={`${currency} · ${(kpis.caHuileFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
+        <KPICard label="CA Noix Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency)}   sub={`${currency} · ${(kpis.caNoisFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
         <KPICard label="Huile Vendue"       value={fmt.tonnes(kpis.huileVendueT)}                     sub="tonnes livrées" />
       </div>
 

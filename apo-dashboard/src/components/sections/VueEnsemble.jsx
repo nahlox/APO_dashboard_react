@@ -80,11 +80,11 @@ export default function VueEnsemble({ data, month }) {
 
       {/* KPIs */}
       <div className="kpi-grid">
-        <KPICard label="Chiffre d'Affaires Total"  value={fmt.kpiValue(kpis.caTotalFCFA, currency) + ' M'}   valueColor="gold"  sub={`${currency} · tous produits confondus`} />
-        <KPICard label="CA Huile de Palme"         value={fmt.kpiValue(kpis.caHuileFCFA, currency) + ' M'}   valueColor="green" sub={`${currency} · ${kpis.caHuileDetail}`} accent="accent-green" />
-        <KPICard label="CA Noix de Palmiste"       value={fmt.kpiValue(kpis.caNoisFCFA, currency) + ' M'}    sub={`${currency} · sous-produit`} />
-        <KPICard label="Coût Matière Première"     value={fmt.kpiValue(kpis.coutMPFCFA, currency) + ' M'}    valueColor="green" sub={`${currency} · ${kpis.coutMPDetail}`} accent="accent-green" />
-        <KPICard label="Résultat Net Estimé"       value={'+ ' + fmt.kpiValue(kpis.resultatNetFCFA, currency) + ' M'} valueColor="green" sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent="accent-green" />
+        <KPICard label="Chiffre d'Affaires Total"  value={fmt.kpiValue(kpis.caTotalFCFA, currency)}   valueColor="gold"  sub={`${currency} · tous produits confondus`} />
+        <KPICard label="CA Huile de Palme"         value={fmt.kpiValue(kpis.caHuileFCFA, currency)}   valueColor="green" sub={`${currency} · ${kpis.caHuileDetail}`} accent="accent-green" />
+        <KPICard label="CA Noix de Palmiste"       value={fmt.kpiValue(kpis.caNoisFCFA, currency)}    sub={`${currency} · sous-produit`} />
+        <KPICard label="Coût Matière Première"     value={fmt.kpiValue(kpis.coutMPFCFA, currency)}    valueColor="green" sub={`${currency} · ${kpis.coutMPDetail}`} accent="accent-green" />
+        <KPICard label="Résultat Net Estimé"       value={'+ ' + fmt.kpiValue(kpis.resultatNetFCFA, currency)} valueColor="green" sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent="accent-green" />
         <KPICard label="Taux d'Extraction"         value={fmt.pct(kpis.tauxExtraction)}                      valueColor="green" sub="huile produite ÷ régimes traités" accent="accent-green" />
       </div>
 

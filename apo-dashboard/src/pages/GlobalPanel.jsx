@@ -172,9 +172,9 @@ export default function GlobalPanel() {
 
       {/* KPIs évolution cumulée */}
       <div className="kpi-grid">
-        <KPICard label="CA Cumulé Jan–Fév"             value={fmt.kpiValue(global.caCumule, currency) + ' M'}           valueColor="gold"  sub={currency + ' · Jan + Fév'} />
+        <KPICard label="CA Cumulé Jan–Fév"             value={fmt.kpiValue(global.caCumule, currency)}           valueColor="gold"  sub={currency + ' · Jan + Fév'} />
         <KPICard label="Évolution CA Fév/Jan"           value={'+'  + global.evolutionCA.toFixed(1) + '%'}                valueColor="green" sub="2 129,7 M vs 1 336 M FCFA" accent="accent-green" />
-        <KPICard label="Résultat Cumulé"                value={'+ ' + fmt.kpiValue(global.resultatCumule, currency) + ' M'} valueColor="green" sub={currency + ' · 27,9 M + 329,0 M'} accent="accent-green" />
+        <KPICard label="Résultat Cumulé"                value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={currency + ' · 27,9 M + 329,0 M'} accent="accent-green" />
         <KPICard label="Évolution Résultat Fév/Jan"     value={'×' + global.evolutionResultat.toFixed(1)}                  valueColor="green" sub="+329 M vs +27,9 M FCFA" accent="accent-green" />
         <KPICard label="Huile Produite Cumulée"         value={fmt.tonnes(global.huileProduiteTotal)}                       valueColor="gold"  sub="1 956 T + 2 866 T" />
         <KPICard label="Évolution Production Fév/Jan"   value={'+' + global.evolutionProduction.toFixed(1) + '%'}           valueColor="green" sub="2 866 T vs 1 956 T" accent="accent-green" />

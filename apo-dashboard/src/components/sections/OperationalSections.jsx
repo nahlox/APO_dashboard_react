@@ -100,17 +100,17 @@ export function Pepiniere({ data, month }) {
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">
           <div className="kpi-label">Contrats Totaux</div>
-          <div className="kpi-value gold">{fmt.millions(kpis.pepContratsFCFA)} M</div>
+          <div className="kpi-value gold">{fmt.millions(kpis.pepContratsFCFA)}</div>
           <div className="kpi-sub">FCFA · {pepiniere.clients.length} clients</div>
         </div>
         <div className="kpi-card accent-green">
           <div className="kpi-label">Encaissé</div>
-          <div className="kpi-value green">{fmt.millions(kpis.pepEncaisséFCFA)} M</div>
+          <div className="kpi-value green">{fmt.millions(kpis.pepEncaisséFCFA)}</div>
           <div className="kpi-sub">FCFA · {(kpis.pepEncaisséFCFA / kpis.pepContratsFCFA * 100).toFixed(0)}% collecté</div>
         </div>
         <div className="kpi-card accent-red">
           <div className="kpi-label">Reste à Percevoir</div>
-          <div className="kpi-value red">{fmt.millions(kpis.pepResteaFCFA)} M</div>
+          <div className="kpi-value red">{fmt.millions(kpis.pepResteaFCFA)}</div>
           <div className="kpi-sub">FCFA · créances à recouvrer</div>
         </div>
       </div>
