@@ -128,7 +128,7 @@ export const EXCEL_SOURCES = {
       'Somme charges exploitation hors MP et amortissement → kpis.chargesExplFCFA',
       'Top 15 dépenses triées par montant → tableau charges dashboard',
     ],
-    champsData: ['charges.topDepenses', 'kpis.chargesExplFCFA', 'pnl.charges (hors coût MP et amortissement)'],
+    champsData: ['charges.topDepenses', 'kpis.chargesExplFCFA', 'pnl.chargesExploitation'],
     regle:      null,
   },
 

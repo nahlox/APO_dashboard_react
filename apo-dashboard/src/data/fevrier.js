@@ -81,32 +81,60 @@ export const febData = {
   pnl: {
     baseLabel: "2 866 tonnes d'huile produites",
     status: 'Résultat Exceptionnel',
+
+    // ── I. CHIFFRE D'AFFAIRES ─────────────────────────────
     produits: [
       { label: 'Huile de palme CPO (681 F/kg moy × 2 959 T livrées)', pertonne: 703000, total:  2016088200 },
       { label: 'Noix de palmiste (60 F/kg × 1 894 T)',                 pertonne:  40000, total:   113640000 },
       { label: 'Bassin de lagunage (8 060 kg — non facturé)',          pertonne:      0, total:           0 },
     ],
-    charges: [
-      { label: 'Coût MP (112,50 F/kg × 15 071 T traités)',            pertonne: 592000, total: -1695469933 },
-      { label: 'Salaires & charges sociales',                          pertonne:  10000, total:   -30052695 },
-      { label: 'Matériels & équipements',                              pertonne:   5000, total:   -13608500 },
-      { label: 'Véhicules & location engins',                          pertonne:   4000, total:   -10926500 },
-      { label: 'Frais divers & administratifs',                        pertonne:   5000, total:   -14696000 },
-      { label: 'Carburant',                                            pertonne:   3000, total:    -7583250 },
-      { label: "Main d'œuvre externe",                                 pertonne:   1000, total:    -4046000 },
-      { label: 'Eau & électricité',                                    pertonne:   1000, total:    -4111475 },
-      { label: 'Amortissement prêt bancaire & intérêts',               pertonne:   7000, total:   -20191988 },
-    ],
     totalProduitsTotal:  2129728200,
-    totalProduitsTonne:  743000,
-    totalChargesTotal:  -1800686341,
-    totalChargesTonne:  -628000,
-    resultatTotal:        329041859,
-    resultatTonne:         115000,
+    totalProduitsTonne:   743000,
+
+    // ── II. COÛT MATIÈRE PREMIÈRE ─────────────────────────
+    coutMP: { label: 'Régimes traités (112,50 F/kg × 15 071 T)', pertonne: 592000, total: -1695469933 },
+
+    // ── MARGE BRUTE (I − II) ──────────────────────────────
+    margeBruteTotal:  434258267,   // 2 129 728 200 − 1 695 469 933
+    margeBruteTonne:   151000,
+    margeBrutePct:       20.4,
+
+    // ── III. CHARGES D'EXPLOITATION ──────────────────────
+    chargesExploitation: [
+      { label: 'Salaires & charges sociales',   pertonne: 10000, total:  -30052695 },
+      { label: 'Carburant',                     pertonne:  3000, total:   -7583250 },
+      { label: 'Matériels & équipements',       pertonne:  5000, total:  -13608500 },
+      { label: "Main d'œuvre externe",          pertonne:  1000, total:   -4046000 },
+      { label: 'Véhicules & location engins',   pertonne:  4000, total:  -10926500 },
+      { label: 'Eau & électricité',             pertonne:  1000, total:   -4111475 },
+      { label: 'Frais divers & administratifs', pertonne:  5000, total:  -14696000 },
+    ],
+    totalChargesExpTotal: -85024420,
+    totalChargesExpTonne:  -29000,
+
+    // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
+    ebitdaTotal:   349233847,   // 434 258 267 − 85 024 420
+    ebitdaTonne:     122000,
+    ebitdaPct:         16.4,
+
+    // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
+    amortissements: [
+      { label: 'Amortissement prêt bancaire & intérêts', pertonne: 7000, total: -20191988 },
+    ],
+    totalAmortTotal: -20191988,
+    totalAmortTonne:   -7000,
+
+    // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
+    totalChargesTotal:  -1800686341,   // conservé pour compatibilité
+    totalChargesTonne:   -628000,
+    resultatTotal:         329041859,
+    resultatTonne:           115000,
+
     notes: [
-      { label: 'Marge nette', value: '15,4%', color: 'green' },
-      { label: 'Prix vente moy. huile', value: '681 F/kg (720→675 à partir du 4 fév)', color: 'gold' },
-      { label: 'Stock régimes fin mois', value: '1 128 T', color: 'gold' },
+      { label: 'Marge brute',  value: '20,4%', color: 'gold' },
+      { label: 'EBITDA',       value: '16,4%', color: 'gold' },
+      { label: 'Marge nette',  value: '15,4%', color: 'green' },
+      { label: 'Prix huile moy.', value: '681 F/kg (720→675 dès 04/02)', color: 'gold' },
     ],
   },
 

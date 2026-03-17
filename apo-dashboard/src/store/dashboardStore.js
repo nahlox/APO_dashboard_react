@@ -7,6 +7,7 @@ export const useDashboardStore = create((set) => ({
 
   // UI
   sidebarCollapsed: false,
+  sidebarOpen: false,       // mobile drawer state
   theme: 'dark',                  // 'dark' | 'light'
   currency: 'FCFA',               // 'FCFA' | 'USD'
   USD_RATE: 563,                  // 1 USD = 563 FCFA
@@ -17,6 +18,8 @@ export const useDashboardStore = create((set) => ({
     activeTab: { ...s.activeTab, [month]: tab }
   })),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  toggleMobileMenu: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  closeMobileMenu: () => set({ sidebarOpen: false }),
   toggleTheme: () => set((s) => {
     const next = s.theme === 'dark' ? 'light' : 'dark'
     document.body.classList.toggle('light', next === 'light')

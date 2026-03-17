@@ -72,10 +72,15 @@ export function calculRevenusHuile(mouvements) {
  * Résultat/tonne = (Total produits - Total charges) / huile produite (T)
  */
 export function calculPnL(data) {
-  const totalProduits = data.pnl.produits.reduce((s, r) => s + r.total, 0)
-  const totalCharges  = data.pnl.charges.reduce((s, r) => s + r.total, 0)
-  const resultat      = totalProduits + totalCharges // charges sont négatives
-  const margePct      = (resultat / totalProduits) * 100
+  const pnl = data.pnl
+  const totalProduits = pnl.produits.reduce((s, r) => s + r.total, 0)
+  // Charges = coût MP + charges exploitation + amortissements
+  const totalCharges =
+    pnl.coutMP.total +
+    pnl.chargesExploitation.reduce((s, r) => s + r.total, 0) +
+    pnl.amortissements.reduce((s, r) => s + r.total, 0)
+  const resultat  = totalProduits + totalCharges
+  const margePct  = (resultat / totalProduits) * 100
   return { totalProduits, totalCharges, resultat, margePct }
 }
 

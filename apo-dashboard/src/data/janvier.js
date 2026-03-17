@@ -83,31 +83,60 @@ export const janData = {
   pnl: {
     baseLabel: "1 956 tonnes d'huile produites",
     status: 'Excédent Mensuel',
+
+    // ── I. CHIFFRE D'AFFAIRES ─────────────────────────────
     produits: [
-      { label: 'Huile de palme (720 F/kg × 1 763 T livrées)',   pertonne: 649000,  total:  1269504000 },
-      { label: 'Noix de palmiste (60 F/kg × 970 T)',            pertonne:  30000,  total:    58171200 },
-      { label: 'Huile florentin (500 F/kg × 20,6 T)',           pertonne:   4000,  total:     8588000 },
-    ],
-    charges: [
-      { label: 'Coût matière (122,73 F/kg × 9 998 T traités)',  pertonne: 627000,  total: -1227091010 },
-      { label: 'Salaires & charges sociales',                   pertonne:  14000,  total:   -27338274 },
-      { label: 'Matériels & équipements',                       pertonne:   4000,  total:    -7524800 },
-      { label: "Main d'œuvre externe",                          pertonne:   3000,  total:    -5932500 },
-      { label: 'Frais divers',                                  pertonne:   3000,  total:    -5045500 },
-      { label: 'Carburant',                                     pertonne:   3000,  total:    -4894732 },
-      { label: 'Véhicules & location engins',                   pertonne:   2000,  total:    -4270000 },
-      { label: 'Eau & divers',                                  pertonne:   3000,  total:    -6107875 },
-      { label: 'Amortissement prêt bancaire',                   pertonne:  10000,  total:   -20191988 },
+      { label: 'Huile de palme CPO (720 F/kg × 1 763 T livrées)', pertonne: 649000, total:  1269504000 },
+      { label: 'Noix de palmiste (60 F/kg × 970 T)',               pertonne:  30000, total:    58171200 },
+      { label: 'Huile florentin (500 F/kg × 20,6 T)',              pertonne:   4000, total:     8588000 },
     ],
     totalProduitsTotal:  1336263200,
-    totalProduitsTonne:  683000,
-    totalChargesTotal:  -1308396679,
-    totalChargesTonne:  -669000,
-    resultatTotal:        27866521,
-    resultatTonne:         14000,
+    totalProduitsTonne:   683000,
+
+    // ── II. COÛT MATIÈRE PREMIÈRE ─────────────────────────
+    coutMP: { label: 'Régimes traités (122,73 F/kg × 9 998 T)', pertonne: 627000, total: -1227091010 },
+
+    // ── MARGE BRUTE (I − II) ──────────────────────────────
+    margeBruteTotal:  109172190,   // 1 336 263 200 − 1 227 091 010
+    margeBruteTonne:    56000,
+    margeBrutePct:        8.2,
+
+    // ── III. CHARGES D'EXPLOITATION ──────────────────────
+    chargesExploitation: [
+      { label: 'Salaires & charges sociales',  pertonne: 14000, total:  -27338274 },
+      { label: 'Carburant',                    pertonne:  3000, total:   -4894732 },
+      { label: 'Matériels & équipements',      pertonne:  4000, total:   -7524800 },
+      { label: "Main d'œuvre externe",         pertonne:  3000, total:   -5932500 },
+      { label: 'Véhicules & location engins',  pertonne:  2000, total:   -4270000 },
+      { label: 'Eau & divers',                 pertonne:  3000, total:   -6107875 },
+      { label: 'Frais divers & administratifs',pertonne:  3000, total:   -5045500 },
+    ],
+    totalChargesExpTotal: -61113681,
+    totalChargesExpTonne:  -32000,
+
+    // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
+    ebitdaTotal:   48058509,   // 109 172 190 − 61 113 681
+    ebitdaTonne:     24000,
+    ebitdaPct:         3.6,
+
+    // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
+    amortissements: [
+      { label: 'Amortissement prêt bancaire', pertonne: 10000, total: -20191988 },
+    ],
+    totalAmortTotal: -20191988,
+    totalAmortTonne:  -10000,
+
+    // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
+    totalChargesTotal:  -1308396679,   // conservé pour compatibilité
+    totalChargesTonne:   -669000,
+    resultatTotal:         27866521,
+    resultatTonne:           14000,
+
     notes: [
-      { label: 'Marge nette', value: '2,1%', color: 'green' },
-      { label: 'Stock régimes fin mois', value: '1 401 T (≈ 143,9 M FCFA différés sur février)', color: 'gold' },
+      { label: 'Marge brute',  value: '8,2%',  color: 'gold' },
+      { label: 'EBITDA',       value: '3,6%',  color: 'gold' },
+      { label: 'Marge nette',  value: '2,1%',  color: 'green' },
+      { label: 'Stock fin mois', value: '1 401 T → valorisés en fév.', color: 'gold' },
     ],
   },
 
