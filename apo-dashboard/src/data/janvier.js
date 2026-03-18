@@ -248,7 +248,6 @@ export const janData = {
   fournisseurs: {
     totalPoidsKg: 11170660,
     liste: [
-      { name: 'SARCI',            poids: 2450000, prix: 126, montant: 308700000 },
       { name: 'COULIBALY BAKARY', poids: 1850000, prix: 124, montant: 229400000 },
       { name: 'KONAN JEAN',       poids: 1420000, prix: 122, montant: 173240000 },
       { name: 'KOUAME KOFFI',     poids: 1180000, prix: 121, montant: 142780000 },

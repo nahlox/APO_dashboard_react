@@ -234,7 +234,6 @@ export const febData = {
     totalPoidsKg: 14798400,
     liste: [
       { name: 'GTPPNV',           poids: 1712000, prix: 115, montant: 196880000 },
-      { name: 'SARCI',            poids: 1580000, prix: 113, montant: 178540000 },
       { name: 'COULIBALY BAKARY', poids: 1420000, prix: 112, montant: 159040000 },
       { name: 'KONAN JEAN',       poids: 1180000, prix: 111, montant: 130980000 },
       { name: 'KOUAME KOFFI',     poids:  980000, prix: 110, montant: 107800000 },
