@@ -1,12 +1,39 @@
 import { useEffect, useRef } from 'react'
-import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js'
+import { Chart, ArcElement, DoughnutController, PieController, Tooltip, Legend } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import KPICard from '../kpi/KPICard'
 import AlertBox from '../kpi/AlertBox'
 import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
+import janData from '../../data/janvier'
+import fevData from '../../data/fevrier'
 
-Chart.register(ArcElement, DoughnutController, Tooltip, Legend)
+Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend, ChartDataLabels)
+
+// Charges combinées Jan + Fév, hors MP
+const CHARGE_COLORS = [
+  'rgba(200,150,62,0.92)',
+  'rgba(224,92,92,0.85)',
+  'rgba(76,175,122,0.85)',
+  'rgba(160,120,220,0.80)',
+  'rgba(255,165,80,0.80)',
+  'rgba(138,154,142,0.80)',
+  'rgba(126,200,164,0.85)',
+  'rgba(90,160,210,0.80)',
+]
+
+function buildCombinedCharges() {
+  const merged = {}
+  for (const d of [janData, fevData]) {
+    d.charts.charges.labels.forEach((lbl, i) => {
+      merged[lbl] = (merged[lbl] || 0) + d.charts.charges.values[i]
+    })
+  }
+  return { labels: Object.keys(merged), values: Object.values(merged) }
+}
+
+const combinedCharges = buildCombinedCharges()
 
 export default function VueEnsemble({ data, month }) {
   const { currency } = useDashboardStore()
@@ -18,11 +45,12 @@ export default function VueEnsemble({ data, month }) {
   const chartCharges = useRef(null)
 
   useEffect(() => {
-    // Détruire les instances précédentes si elles existent
     if (chartCA.current)      { chartCA.current.destroy();      chartCA.current = null }
     if (chartCharges.current) { chartCharges.current.destroy(); chartCharges.current = null }
 
-    // CA Mix doughnut
+    const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
+
+    // CA Mix — doughnut (inchangé)
     chartCA.current = new Chart(refCA.current, {
       type: 'doughnut',
       data: {
@@ -36,31 +64,43 @@ export default function VueEnsemble({ data, month }) {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right', labels: { padding: 16, font: { size: 12 } } },
+          legend: { position: 'right', labels: { padding: 16, font: { size: 12 }, color: '#c8c8c8' } },
           tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
+          datalabels: { display: false },
         },
       },
     })
 
-    // Charges doughnut
+    // Charges — pie avec étiquettes Jan+Fév combinés, hors MP
     chartCharges.current = new Chart(refCharges.current, {
-      type: 'doughnut',
+      type: 'pie',
       data: {
-        labels: charts.charges.labels,
+        labels: combinedCharges.labels,
         datasets: [{
-          data: charts.charges.values,
-          backgroundColor: [
-            'rgba(200,150,62,0.9)', 'rgba(224,92,92,0.8)', 'rgba(76,175,122,0.8)', 'rgba(200,150,62,0.5)',
-            'rgba(224,92,92,0.5)', 'rgba(138,154,142,0.7)', 'rgba(76,175,122,0.4)', 'rgba(126,200,164,0.8)',
-          ],
+          data: combinedCharges.values,
+          backgroundColor: CHARGE_COLORS,
           borderColor: '#161A18', borderWidth: 2, hoverOffset: 6,
         }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        layout: { padding: 20 },
         plugins: {
-          legend: { position: 'right', labels: { padding: 12, font: { size: 11 } } },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA` } },
+          legend: { display: false },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+          datalabels: {
+            display: true,
+            color: '#fff',
+            font: { size: 11, weight: 'bold' },
+            formatter: (value, ctx) => {
+              const pct = (value / totalCharges * 100)
+              if (pct < 5) return ''
+              return `${pct.toFixed(0)}%\n${ctx.chart.data.labels[ctx.dataIndex].split(' ')[0]}`
+            },
+            textAlign: 'center',
+            textShadowBlur: 4,
+            textShadowColor: 'rgba(0,0,0,0.8)',
+          },
         },
       },
     })
@@ -107,10 +147,23 @@ export default function VueEnsemble({ data, month }) {
           </div>
         </div>
         <div className="chart-card">
-          <div className="chart-title">Structure des Charges</div>
-          <div className="chart-subtitle">Répartition opérationnelle (hors graines)</div>
-          <div className="chart-container" style={{ height: 260 }}>
+          <div className="chart-title">Structure des Charges Opérationnelles</div>
+          <div className="chart-subtitle">Jan + Fév 2026 combinés — hors matières premières</div>
+          <div className="chart-container" style={{ height: 280 }}>
             <canvas ref={refCharges} />
+          </div>
+          {/* Légende manuelle sous le pie */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {combinedCharges.labels.map((lbl, i) => {
+              const total = combinedCharges.values.reduce((a, b) => a + b, 0)
+              const pct = (combinedCharges.values[i] / total * 100).toFixed(1)
+              return (
+                <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#b0b8b4' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: CHARGE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
+                  {lbl} <span style={{ color: '#e8d5a0', fontWeight: 600 }}>{pct}%</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
