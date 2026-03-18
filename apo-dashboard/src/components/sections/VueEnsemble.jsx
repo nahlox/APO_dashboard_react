@@ -89,7 +89,7 @@ export default function VueEnsemble({ data, month }) {
           legend: { display: false },
           tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
           datalabels: {
-            display: true,
+            display: false,
             color: '#fff',
             font: { size: 11, weight: 'bold' },
             formatter: (value, ctx) => {
