@@ -33,11 +33,12 @@ export default function GlobalPanel() {
         datasets: [
           { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / 1e6, febData.kpis.caHuileFCFA / 1e6], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
           { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA / 1e6, febData.kpis.caNoisFCFA / 1e6], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
+          
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.millions(c.raw * 1e6) + ' FCFA' } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.millions(c.raw * 1e6) + ' FCFA' } },datalabels: { display: false } },
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
       },
     })
@@ -56,7 +57,7 @@ export default function GlobalPanel() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => '+' + fmt.millions(c.raw * 1e6) + ' FCFA' } } },
+        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => '+' + fmt.millions(c.raw * 1e6) + ' FCFA' },  }, datalabels: { display: false } },
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
       },
     })
@@ -73,7 +74,7 @@ export default function GlobalPanel() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } }, datalabels: { display: false } },
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + 'T' } } },
       },
     })
@@ -90,7 +91,7 @@ export default function GlobalPanel() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw.toFixed(1) + ' M FCFA' } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw.toFixed(1) + ' M FCFA' } },datalabels: { display: false }},
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
       },
     })
