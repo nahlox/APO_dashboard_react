@@ -131,12 +131,6 @@ export default function VueEnsemble({ data, month }) {
       {/* P&L */}
       <PnLTable pnl={pnl} />
 
-      {/* Alertes */}
-      <div style={{ marginBottom: 24 }}>
-        <div className="chart-title" style={{ marginBottom: 12 }}>Alertes & Points d'Attention</div>
-        {alertes.map((a, i) => <AlertBox key={i} {...a} />)}
-      </div>
-
       {/* Charts */}
       <div className="charts-grid">
         <div className="chart-card">
@@ -166,6 +160,12 @@ export default function VueEnsemble({ data, month }) {
             })}
           </div>
         </div>
+      </div>
+
+      {/* Alertes — en bas */}
+      <div style={{ marginTop: 24 }}>
+        <div className="chart-title" style={{ marginBottom: 12 }}>Alertes & Points d'Attention</div>
+        {alertes.map((a, i) => <AlertBox key={i} {...a} />)}
       </div>
     </section>
   )
