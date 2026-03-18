@@ -7,7 +7,7 @@ import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { janData } from '../../data/janvier'
-import { fevData } from '../../data/fevrier'
+import { febData as fevData } from '../../data/fevrier'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend, ChartDataLabels)
 
