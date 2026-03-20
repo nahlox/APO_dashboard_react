@@ -29,10 +29,9 @@ export const fmt = {
   money: (v, currency = 'FCFA') => {
     if (currency === 'USD') {
       const usd = v / USD_RATE
-      if (usd < 1000) return '$' + usd.toFixed(0) + ' K'
-      return '$' + (usd / 1e3).toFixed(1) + ' K USD' // shouldn't reach here for large values
+      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
+      return '$' + (usd / 1e6).toFixed(2) + ' M'
     }
-    // USD path uses K for < 1M FCFA equivalent
     if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
     return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
   },
@@ -41,19 +40,19 @@ export const fmt = {
   currency: (v, currency = 'FCFA') => {
     if (currency === 'USD') {
       const usd = v / USD_RATE
-      if (usd < 1000) return '$' + Math.round(usd).toLocaleString('fr-FR')
-      return '$' + (usd / 1e3).toFixed(1) + ' K'
+      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
+      return '$' + (usd / 1e6).toFixed(2) + ' M'
     }
     if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
     return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
   },
 
-  /** Pour les KPI cards (nombre seul, sans suffixe devise dans la valeur) */
+  /** Pour les KPI cards */
   kpiValue: (v, currency = 'FCFA') => {
     if (currency === 'USD') {
       const usd = v / USD_RATE
-      if (usd < 1000) return '$' + Math.round(usd).toLocaleString('fr-FR')
-      return '$' + (usd / 1e3).toFixed(1) + ' K'
+      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
+      return '$' + (usd / 1e6).toFixed(2) + ' M'
     }
     if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K'
     return (v / 1e6).toFixed(1).replace('.', ',') + ' M'
