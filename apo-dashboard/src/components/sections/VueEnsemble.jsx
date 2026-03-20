@@ -47,9 +47,10 @@ export default function VueEnsemble({ data, month }) {
     if (chartCA.current)      { chartCA.current.destroy();      chartCA.current = null }
     if (chartCharges.current) { chartCharges.current.destroy(); chartCharges.current = null }
 
+    const cur = currency
     const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
 
-    // CA Mix — doughnut (inchangé)
+    // CA Mix — doughnut
     chartCA.current = new Chart(refCA.current, {
       type: 'doughnut',
       data: {
@@ -64,12 +65,12 @@ export default function VueEnsemble({ data, month }) {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { position: 'right', labels: { padding: 16, font: { size: 12 }, color: '#c8c8c8' } },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
         },
       },
     })
 
-    // Charges — pie avec étiquettes Jan+Fév combinés, hors MP
+    // Charges — pie Jan+Fév combinés, hors MP
     chartCharges.current = new Chart(refCharges.current, {
       type: 'pie',
       data: {
@@ -85,7 +86,7 @@ export default function VueEnsemble({ data, month }) {
         layout: { padding: 20 },
         plugins: {
           legend: { display: false },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
         },
       },
     })
@@ -94,7 +95,7 @@ export default function VueEnsemble({ data, month }) {
       chartCA.current?.destroy()
       chartCharges.current?.destroy()
     }
-  }, [month])
+  }, [month, currency])
 
   const isJan = month === 'jan'
 

@@ -43,21 +43,24 @@ export default function GlobalPanel() {
     Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = {}
 
+    const cur = currency
+    const div = cur === 'USD' ? (1e6 / fmt.toUSD(1e6)) : 1e6 // scale factor for chart axes
+    const axisLabel = cur === 'USD' ? ' K$' : ' M'
+
     // CA par mois
     charts.current.ca = new Chart(refCA.current, {
       type: 'bar',
       data: {
         labels: ['Janvier 2026', 'Février 2026'],
         datasets: [
-          { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / 1e6, febData.kpis.caHuileFCFA / 1e6], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
-          { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA / 1e6, febData.kpis.caNoisFCFA / 1e6], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
-          
+          { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / div, febData.kpis.caHuileFCFA / div], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
+          { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA  / div, febData.kpis.caNoisFCFA  / div], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.millions(c.raw * 1e6) + ' FCFA' } },datalabels: { display: false } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
 
@@ -68,19 +71,19 @@ export default function GlobalPanel() {
         labels: ['Janvier 2026', 'Février 2026'],
         datasets: [{
           label: 'Résultat Net',
-          data: [janData.kpis.resultatNetFCFA / 1e6, febData.kpis.resultatNetFCFA / 1e6],
+          data: [janData.kpis.resultatNetFCFA / div, febData.kpis.resultatNetFCFA / div],
           backgroundColor: [chartColors.goldAlpha, chartColors.greenAlpha],
           borderRadius: 4,
         }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => '+' + fmt.millions(c.raw * 1e6) + ' FCFA' },  }, datalabels: { display: false } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
+        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
 
-    // Production
+    // Production (pas de devise — en tonnes)
     charts.current.prod = new Chart(refProd.current, {
       type: 'bar',
       data: {
@@ -92,12 +95,12 @@ export default function GlobalPanel() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } }, datalabels: { display: false } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + 'T' } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' T' } } },
       },
     })
 
-    // Coûts top 5
+    // Dépenses pie
     const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
     charts.current.costs = new Chart(refCosts.current, {
       type: 'pie',
@@ -114,13 +117,13 @@ export default function GlobalPanel() {
         layout: { padding: 10 },
         plugins: {
           legend: { display: false },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${(c.raw / 1e6).toFixed(1)} M FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
         },
       },
     })
 
     return () => Object.values(charts.current).forEach(c => c?.destroy())
-  }, [])
+  }, [currency])
 
   return (
     <div>
@@ -137,10 +140,10 @@ export default function GlobalPanel() {
             <span className="month-badge badge-jan">Janvier</span>2026
           </div>
           {[
-            ['Chiffre d\'Affaires',   fmt.millions(janData.kpis.caTotalFCFA) + ' FCFA', 'var(--gold)'],
-            ['Coût Matière Première', fmt.millions(janData.kpis.coutMPFCFA) + ' FCFA',  'var(--red)'],
-            ['Charges Exploitation',  fmt.millions(janData.kpis.chargesExplFCFA) + ' FCFA', 'var(--red)'],
-            ['Résultat Net',          '+ ' + fmt.millions(janData.kpis.resultatNetFCFA) + ' FCFA', 'var(--green)'],
+            ['Chiffre d\'Affaires',   fmt.currency(janData.kpis.caTotalFCFA, currency),       'var(--gold)'],
+            ['Coût Matière Première', fmt.currency(janData.kpis.coutMPFCFA, currency),         'var(--red)'],
+            ['Charges Exploitation',  fmt.currency(janData.kpis.chargesExplFCFA, currency),    'var(--red)'],
+            ['Résultat Net',          '+ ' + fmt.currency(janData.kpis.resultatNetFCFA, currency), 'var(--green)'],
             ['Marge Nette',           janData.kpis.margeNette + '%', 'var(--green)'],
             ['Régimes Traités',       fmt.tonnes(janData.kpis.regimesTraitesT), null],
             ['Huile Produite',        fmt.tonnes(janData.kpis.huileProduiteT), null],
@@ -168,10 +171,10 @@ export default function GlobalPanel() {
             <span className="month-badge badge-feb">Février</span>2026
           </div>
           {[
-            ['Chiffre d\'Affaires',   fmt.millions(febData.kpis.caTotalFCFA) + ' FCFA', 'var(--gold)'],
-            ['Coût Matière Première', fmt.millions(febData.kpis.coutMPFCFA) + ' FCFA',  'var(--red)'],
-            ['Charges Exploitation',  fmt.millions(febData.kpis.chargesExplFCFA) + ' FCFA', 'var(--red)'],
-            ['Résultat Net',          '+ ' + fmt.millions(febData.kpis.resultatNetFCFA) + ' FCFA', 'var(--green)'],
+            ['Chiffre d\'Affaires',   fmt.currency(febData.kpis.caTotalFCFA, currency),       'var(--gold)'],
+            ['Coût Matière Première', fmt.currency(febData.kpis.coutMPFCFA, currency),         'var(--red)'],
+            ['Charges Exploitation',  fmt.currency(febData.kpis.chargesExplFCFA, currency),    'var(--red)'],
+            ['Résultat Net',          '+ ' + fmt.currency(febData.kpis.resultatNetFCFA, currency), 'var(--green)'],
             ['Marge Nette',           febData.kpis.margeNette + '%', 'var(--green)'],
             ['Régimes Traités',       fmt.tonnes(febData.kpis.regimesTraitesT), null],
             ['Huile Produite',        fmt.tonnes(febData.kpis.huileProduiteT), null],
@@ -197,9 +200,9 @@ export default function GlobalPanel() {
       {/* KPIs évolution cumulée */}
       <div className="kpi-grid">
         <KPICard label="CA Cumulé Jan–Fév"             value={fmt.kpiValue(global.caCumule, currency)}           valueColor="gold"  sub={currency + ' · Jan + Fév'} />
-        <KPICard label="Évolution CA Fév/Jan"           value={'+'  + global.evolutionCA.toFixed(1) + '%'}                valueColor="green" sub="2 129,7 M vs 1 336 M FCFA" accent="accent-green" />
-        <KPICard label="Résultat Cumulé"                value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={currency + ' · 27,9 M + 329,0 M'} accent="accent-green" />
-        <KPICard label="Évolution Résultat Fév/Jan"     value={'×' + global.evolutionResultat.toFixed(1)}                  valueColor="green" sub="+329 M vs +27,9 M FCFA" accent="accent-green" />
+        <KPICard label="Évolution CA Fév/Jan"           value={'+'  + global.evolutionCA.toFixed(1) + '%'}                valueColor="green" sub={`${fmt.currency(febData.kpis.caTotalFCFA, currency)} vs ${fmt.currency(janData.kpis.caTotalFCFA, currency)}`} accent="accent-green" />
+        <KPICard label="Résultat Cumulé"                value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={`${currency} · Jan + Fév`} accent="accent-green" />
+        <KPICard label="Évolution Résultat Fév/Jan"     value={'×' + global.evolutionResultat.toFixed(1)}                  valueColor="green" sub={`${fmt.currency(febData.kpis.resultatNetFCFA, currency)} vs ${fmt.currency(janData.kpis.resultatNetFCFA, currency)}`} accent="accent-green" />
         <KPICard label="Huile Produite Cumulée"         value={fmt.tonnes(global.huileProduiteTotal)}                       valueColor="gold"  sub="1 956 T + 2 866 T" />
         <KPICard label="Évolution Production Fév/Jan"   value={'+' + global.evolutionProduction.toFixed(1) + '%'}           valueColor="green" sub="2 866 T vs 1 956 T" accent="accent-green" />
       </div>
@@ -208,14 +211,14 @@ export default function GlobalPanel() {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Évolution du CA</div>
-          <div className="chart-subtitle">Chiffre d'affaires mensuel par produit (M FCFA)</div>
+          <div className="chart-subtitle">Chiffre d'affaires mensuel par produit ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">Évolution du Résultat</div>
-          <div className="chart-subtitle">Résultat net mensuel (M FCFA)</div>
+          <div className="chart-subtitle">Résultat net mensuel ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refResult} />
           </div>

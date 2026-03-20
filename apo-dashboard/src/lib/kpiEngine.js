@@ -21,19 +21,49 @@ export const fmt = {
   /** 1956 → "1 956 T" */
   tonnes: (v) => Math.round(v).toLocaleString('fr-FR') + ' T',
 
-  /** Formatte selon devise active */
-  currency: (v, currency = 'FCFA') => {
+  /**
+   * Formatteur intelligent M/K selon la devise active.
+   * < 1 000 000 FCFA → affiche en milliers (K)
+   * ≥ 1 000 000 FCFA → affiche en millions (M)
+   */
+  money: (v, currency = 'FCFA') => {
     if (currency === 'USD') {
-      return '$' + (v / USD_RATE / 1e6).toFixed(2) + ' M'
+      const usd = v / USD_RATE
+      if (usd < 1000) return '$' + usd.toFixed(0) + ' K'
+      return '$' + (usd / 1e3).toFixed(1) + ' K USD' // shouldn't reach here for large values
     }
-    return fmt.millions(v) + ' FCFA'
+    // USD path uses K for < 1M FCFA equivalent
+    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
+    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
   },
 
-  /** Pour les KPI cards (sans "M FCFA") */
+  /** Formatte selon devise active — avec suffixe devise */
+  currency: (v, currency = 'FCFA') => {
+    if (currency === 'USD') {
+      const usd = v / USD_RATE
+      if (usd < 1000) return '$' + Math.round(usd).toLocaleString('fr-FR')
+      return '$' + (usd / 1e3).toFixed(1) + ' K'
+    }
+    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
+    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
+  },
+
+  /** Pour les KPI cards (nombre seul, sans suffixe devise dans la valeur) */
   kpiValue: (v, currency = 'FCFA') => {
-    if (currency === 'USD') return '$' + (v / USD_RATE / 1e6).toFixed(2) + ' M'
+    if (currency === 'USD') {
+      const usd = v / USD_RATE
+      if (usd < 1000) return '$' + Math.round(usd).toLocaleString('fr-FR')
+      return '$' + (usd / 1e3).toFixed(1) + ' K'
+    }
+    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K'
     return (v / 1e6).toFixed(1).replace('.', ',') + ' M'
   },
+
+  /** Suffixe de devise pour les en-têtes de colonnes */
+  currencyLabel: (currency = 'FCFA') => currency === 'USD' ? 'USD' : 'FCFA',
+
+  /** Conversion brute vers USD */
+  toUSD: (v) => v / USD_RATE,
 }
 
 // ── RÈGLES DE CALCUL OFFICIELLES ────────────────────────────

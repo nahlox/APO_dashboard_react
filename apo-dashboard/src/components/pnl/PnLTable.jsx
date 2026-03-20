@@ -4,11 +4,12 @@ import { useDashboardStore } from '../../store/dashboardStore'
 // ── Helpers ──────────────────────────────────────────────────
 
 function ColHeaders() {
+  const { currency } = useDashboardStore()
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '0 14px 10px', borderBottom: '1px solid rgba(200,150,62,0.12)', marginBottom: 6 }}>
       <span style={styles.dimLabel}>Libellé</span>
       <span style={{ ...styles.dimLabel, textAlign: 'right' }}>F / tonne</span>
-      <span style={{ ...styles.dimLabel, textAlign: 'right' }}>Total FCFA</span>
+      <span style={{ ...styles.dimLabel, textAlign: 'right' }}>Total {currency}</span>
     </div>
   )
 }

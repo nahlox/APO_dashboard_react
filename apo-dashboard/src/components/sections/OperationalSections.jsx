@@ -1,7 +1,9 @@
 import { fmt } from '../../lib/kpiEngine'
+import { useDashboardStore } from '../../store/dashboardStore'
 
 // ── CHARGES ──────────────────────────────────────────────────
 export function Charges({ data, month }) {
+  const { currency } = useDashboardStore()
   const { charges } = data
   const isJan = month === 'jan'
   return (
@@ -17,7 +19,7 @@ export function Charges({ data, month }) {
               <th>#</th>
               <th>Libellé</th>
               <th>Date</th>
-              <th style={{ textAlign: 'right' }}>Montant FCFA</th>
+              <th style={{ textAlign: 'right' }}>Montant {currency}</th>
             </tr>
           </thead>
           <tbody>
@@ -26,7 +28,7 @@ export function Charges({ data, month }) {
                 <td className="rank">{i + 1}</td>
                 <td>{r.lib}</td>
                 <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>{r.date}</td>
-                <td className="num" style={{ color: 'var(--red)' }}>– {fmt.full(r.mt)}</td>
+                <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency)}</td>
               </tr>
             ))}
           </tbody>
@@ -38,6 +40,7 @@ export function Charges({ data, month }) {
 
 // ── FOURNISSEURS ──────────────────────────────────────────────
 export function Fournisseurs({ data, month }) {
+  const { currency } = useDashboardStore()
   const { fournisseurs } = data
   const isJan = month === 'jan'
   return (
@@ -54,7 +57,7 @@ export function Fournisseurs({ data, month }) {
               <th>Fournisseur</th>
               <th style={{ textAlign: 'right' }}>Poids (kg)</th>
               <th style={{ textAlign: 'right' }}>Prix F/kg</th>
-              <th style={{ textAlign: 'right' }}>Montant FCFA</th>
+              <th style={{ textAlign: 'right' }}>Montant {currency}</th>
               <th>Part</th>
             </tr>
           </thead>
@@ -67,7 +70,7 @@ export function Fournisseurs({ data, month }) {
                   <td>{f.name}</td>
                   <td className="num">{fmt.full(f.poids)}</td>
                   <td className="num">{f.prix} F/kg</td>
-                  <td className="num" style={{ color: 'var(--gold)' }}>{fmt.full(f.montant)}</td>
+                  <td className="num" style={{ color: 'var(--gold)' }}>{fmt.currency(f.montant, currency)}</td>
                   <td>
                     <div className="mini-bar-wrap" style={{ minWidth: 120 }}>
                       <div className="mini-bar">
@@ -88,6 +91,7 @@ export function Fournisseurs({ data, month }) {
 
 // ── PÉPINIÈRE ─────────────────────────────────────────────────
 export function Pepiniere({ data, month }) {
+  const { currency } = useDashboardStore()
   const { kpis, pepiniere } = data
   if (!pepiniere) return null
   const isJan = month === 'jan'
@@ -100,18 +104,18 @@ export function Pepiniere({ data, month }) {
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">
           <div className="kpi-label">Contrats Totaux</div>
-          <div className="kpi-value gold">{fmt.millions(kpis.pepContratsFCFA)}</div>
-          <div className="kpi-sub">FCFA · {pepiniere.clients.length} clients</div>
+          <div className="kpi-value gold">{fmt.kpiValue(kpis.pepContratsFCFA, currency)}</div>
+          <div className="kpi-sub">{currency} · {pepiniere.clients.length} clients</div>
         </div>
         <div className="kpi-card accent-green">
           <div className="kpi-label">Encaissé</div>
-          <div className="kpi-value green">{fmt.millions(kpis.pepEncaisséFCFA)}</div>
-          <div className="kpi-sub">FCFA · {(kpis.pepEncaisséFCFA / kpis.pepContratsFCFA * 100).toFixed(0)}% collecté</div>
+          <div className="kpi-value green">{fmt.kpiValue(kpis.pepEncaisséFCFA, currency)}</div>
+          <div className="kpi-sub">{currency} · {(kpis.pepEncaisséFCFA / kpis.pepContratsFCFA * 100).toFixed(0)}% collecté</div>
         </div>
         <div className="kpi-card accent-red">
           <div className="kpi-label">Reste à Percevoir</div>
-          <div className="kpi-value red">{fmt.millions(kpis.pepResteaFCFA)}</div>
-          <div className="kpi-sub">FCFA · créances à recouvrer</div>
+          <div className="kpi-value red">{fmt.kpiValue(kpis.pepResteaFCFA, currency)}</div>
+          <div className="kpi-sub">{currency} · créances à recouvrer</div>
         </div>
       </div>
 
@@ -125,7 +129,7 @@ export function Pepiniere({ data, month }) {
               <th>Nom Client</th>
               <th>Localité</th>
               <th style={{ textAlign: 'right' }}>Ha</th>
-              <th style={{ textAlign: 'right' }}>Total FCFA</th>
+              <th style={{ textAlign: 'right' }}>Total {currency}</th>
               <th style={{ textAlign: 'right' }}>Encaissé</th>
               <th style={{ textAlign: 'right' }}>Reste</th>
               <th>Statut</th>
@@ -140,10 +144,10 @@ export function Pepiniere({ data, month }) {
                   <td>{r.nom}</td>
                   <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{r.loc}</td>
                   <td className="num">{r.ha} ha</td>
-                  <td className="num">{fmt.full(r.total)}</td>
-                  <td className="num" style={{ color: 'var(--green)' }}>{fmt.full(r.enc)}</td>
+                  <td className="num">{fmt.currency(r.total, currency)}</td>
+                  <td className="num" style={{ color: 'var(--green)' }}>{fmt.currency(r.enc, currency)}</td>
                   <td className="num" style={{ color: reste > 0 ? 'var(--red)' : 'var(--text-dim)' }}>
-                    {reste > 0 ? '–' + fmt.full(reste) : '0'}
+                    {reste > 0 ? '–' + fmt.currency(reste, currency) : '0'}
                   </td>
                   <td>
                     <span className={`kpi-badge ${reste === 0 ? 'badge-up' : 'badge-down'}`}>
