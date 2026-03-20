@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Chart, ArcElement, DoughnutController, PieController, Tooltip, Legend } from 'chart.js'
-import ChartDataLabels from 'chartjs-plugin-datalabels'
 import KPICard from '../kpi/KPICard'
 import AlertBox from '../kpi/AlertBox'
 import PnLTable from '../pnl/PnLTable'
@@ -9,7 +8,7 @@ import { useDashboardStore } from '../../store/dashboardStore'
 import { janData } from '../../data/janvier'
 import { febData as fevData } from '../../data/fevrier'
 
-Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend, ChartDataLabels)
+Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
 
 // Charges combinées Jan + Fév, hors MP
 const CHARGE_COLORS = [
@@ -66,7 +65,6 @@ export default function VueEnsemble({ data, month }) {
         plugins: {
           legend: { position: 'right', labels: { padding: 16, font: { size: 12 }, color: '#c8c8c8' } },
           tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
-          datalabels: { display: false },
         },
       },
     })
@@ -88,19 +86,6 @@ export default function VueEnsemble({ data, month }) {
         plugins: {
           legend: { display: false },
           tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.millions(c.raw)} FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
-          datalabels: {
-            display: false,
-            color: '#fff',
-            font: { size: 11, weight: 'bold' },
-            formatter: (value, ctx) => {
-              const pct = (value / totalCharges * 100)
-              if (pct < 5) return ''
-              return `${pct.toFixed(0)}%\n${ctx.chart.data.labels[ctx.dataIndex].split(' ')[0]}`
-            },
-            textAlign: 'center',
-            textShadowBlur: 4,
-            textShadowColor: 'rgba(0,0,0,0.8)',
-          },
         },
       },
     })
