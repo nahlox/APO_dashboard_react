@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import {
   Chart, BarElement, BarController, LineElement, LineController,
-  PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler
+  PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler,
+  ArcElement, PieController
 } from 'chart.js'
 import KPICard from '../components/kpi/KPICard'
 import { fmt, buildGlobalKPIs, chartColors, defaultTooltip } from '../lib/kpiEngine'
@@ -9,7 +10,24 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { janData } from '../data/janvier'
 import { febData } from '../data/fevrier'
 
-Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
+Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController)
+
+const PIE_COLORS = [
+  'rgba(200,150,62,0.92)', 'rgba(224,92,92,0.85)', 'rgba(76,175,122,0.85)',
+  'rgba(160,120,220,0.80)', 'rgba(255,165,80,0.80)', 'rgba(138,154,142,0.80)',
+  'rgba(126,200,164,0.85)', 'rgba(90,160,210,0.80)',
+]
+
+function buildCombinedCharges() {
+  const merged = {}
+  for (const d of [janData, febData]) {
+    d.charts.charges.labels.forEach((lbl, i) => {
+      merged[lbl] = (merged[lbl] || 0) + d.charts.charges.values[i]
+    })
+  }
+  return { labels: Object.keys(merged), values: Object.values(merged) }
+}
+const combinedCharges = buildCombinedCharges()
 
 export default function GlobalPanel() {
   const { setActiveMonth, currency } = useDashboardStore()
@@ -80,19 +98,24 @@ export default function GlobalPanel() {
     })
 
     // Coûts top 5
+    const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
     charts.current.costs = new Chart(refCosts.current, {
-      type: 'bar',
+      type: 'pie',
       data: {
-        labels: ['Mat. Première', 'Salaires', 'Amort. bancaire', 'Matériels', 'Carburant'],
-        datasets: [
-          { label: 'Janvier', data: [janData.kpis.coutMPFCFA / 1e6, 27.3, 20.2, 7.5, 4.9], backgroundColor: chartColors.goldAlpha, borderRadius: 3 },
-          { label: 'Février', data: [febData.kpis.coutMPFCFA / 1e6, 30.1, 20.2, 13.6, 7.6], backgroundColor: chartColors.greenAlpha, borderRadius: 3 },
-        ],
+        labels: combinedCharges.labels,
+        datasets: [{
+          data: combinedCharges.values,
+          backgroundColor: PIE_COLORS,
+          borderColor: '#161A18', borderWidth: 2, hoverOffset: 6,
+        }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw.toFixed(1) + ' M FCFA' } },datalabels: { display: false }},
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' M' } } },
+        layout: { padding: 10 },
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${(c.raw / 1e6).toFixed(1)} M FCFA (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+        },
       },
     })
 
@@ -208,10 +231,22 @@ export default function GlobalPanel() {
           </div>
         </div>
         <div className="chart-card">
-          <div className="chart-title">Structure de Coûts</div>
-          <div className="chart-subtitle">Top 5 postes de dépenses (M FCFA)</div>
+          <div className="chart-title">Structure des Dépenses</div>
+          <div className="chart-subtitle">Jan + Fév 2026 — hors matières premières</div>
           <div className="chart-container" style={{ height: 240 }}>
             <canvas ref={refCosts} />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 12px', marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {combinedCharges.labels.map((lbl, i) => {
+              const total = combinedCharges.values.reduce((a, b) => a + b, 0)
+              const pct = (combinedCharges.values[i] / total * 100).toFixed(1)
+              return (
+                <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#b0b8b4' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
+                  {lbl} <span style={{ color: '#e8d5a0', fontWeight: 600 }}>{pct}%</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
