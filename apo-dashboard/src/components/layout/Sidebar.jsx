@@ -64,6 +64,15 @@ export default function Sidebar() {
           >
             📅 Février 2026
           </div>
+
+          <div className="sidebar-divider" />
+
+          <div
+            className={`sidebar-month-btn${activeMonth === 'mar' ? ' active' : ''}`}
+            onClick={() => navigate('mar')}
+          >
+            📅 Mars 2026
+          </div>
         </div>
 
         <div className="sidebar-currency">

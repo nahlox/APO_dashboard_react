@@ -121,28 +121,34 @@ export function calculMarge(resultatNet, caTotal) {
   return (resultatNet / caTotal) * 100
 }
 
-// ── DONNÉES GLOBALES (agrégation Jan + Fév) ──────────────────
+// ── DONNÉES GLOBALES (agrégation Jan + Fév + Mars) ───────────
 
-export function buildGlobalKPIs(janData, febData) {
+export function buildGlobalKPIs(janData, febData, marsData) {
   const jan = janData.kpis
   const feb = febData.kpis
+  const mar = marsData.kpis
+
+  const caCumule        = jan.caTotalFCFA    + feb.caTotalFCFA    + mar.caTotalFCFA
+  const resultatCumule  = jan.resultatNetFCFA + feb.resultatNetFCFA + mar.resultatNetFCFA
+  const huileTotal      = jan.huileProduiteT  + feb.huileProduiteT  + mar.huileProduiteT
 
   return {
     // CA
-    caCumule:          jan.caTotalFCFA + feb.caTotalFCFA,
-    evolutionCA:       ((feb.caTotalFCFA - jan.caTotalFCFA) / jan.caTotalFCFA) * 100,
+    caCumule,
+    evolutionCA_FevJan:  ((feb.caTotalFCFA - jan.caTotalFCFA) / jan.caTotalFCFA) * 100,
+    evolutionCA_MarFev:  ((mar.caTotalFCFA - feb.caTotalFCFA) / feb.caTotalFCFA) * 100,
 
     // Résultat
-    resultatCumule:    jan.resultatNetFCFA + feb.resultatNetFCFA,
-    evolutionResultat: feb.resultatNetFCFA / jan.resultatNetFCFA,  // multiplicateur ×11,8
+    resultatCumule,
+    evolutionResultat:   feb.resultatNetFCFA / jan.resultatNetFCFA,  // multiplicateur Jan→Fév
 
     // Production
-    huileProduiteTotal: jan.huileProduiteT + feb.huileProduiteT,
+    huileProduiteTotal:  huileTotal,
     evolutionProduction: ((feb.huileProduiteT - jan.huileProduiteT) / jan.huileProduiteT) * 100,
 
     // Coûts
-    coutMPCumule:      jan.coutMPFCFA + feb.coutMPFCFA,
-    chargesExplCumul:  jan.chargesExplFCFA + feb.chargesExplFCFA,
+    coutMPCumule:        jan.coutMPFCFA    + feb.coutMPFCFA    + mar.coutMPFCFA,
+    chargesExplCumul:    jan.chargesExplFCFA + feb.chargesExplFCFA + mar.chargesExplFCFA,
   }
 }
 

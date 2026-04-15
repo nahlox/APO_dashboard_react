@@ -9,6 +9,7 @@ import { fmt, buildGlobalKPIs, chartColors, defaultTooltip } from '../lib/kpiEng
 import { useDashboardStore } from '../store/dashboardStore'
 import { janData } from '../data/janvier'
 import { febData } from '../data/fevrier'
+import { marsData } from '../data/mars'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController)
 
@@ -20,7 +21,7 @@ const PIE_COLORS = [
 
 function buildCombinedCharges() {
   const merged = {}
-  for (const d of [janData, febData]) {
+  for (const d of [janData, febData, marsData]) {
     d.charts.charges.labels.forEach((lbl, i) => {
       merged[lbl] = (merged[lbl] || 0) + d.charts.charges.values[i]
     })
@@ -31,7 +32,7 @@ const combinedCharges = buildCombinedCharges()
 
 export default function GlobalPanel() {
   const { setActiveMonth, currency } = useDashboardStore()
-  const global = buildGlobalKPIs(janData, febData)
+  const global = buildGlobalKPIs(janData, febData, marsData)
 
   const refCA     = useRef(null)
   const refResult = useRef(null)
@@ -51,10 +52,10 @@ export default function GlobalPanel() {
     charts.current.ca = new Chart(refCA.current, {
       type: 'bar',
       data: {
-        labels: ['Janvier 2026', 'Février 2026'],
+        labels: ['Janvier 2026', 'Février 2026', 'Mars 2026'],
         datasets: [
-          { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / div, febData.kpis.caHuileFCFA / div], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
-          { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA  / div, febData.kpis.caNoisFCFA  / div], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
+          { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / div, febData.kpis.caHuileFCFA / div, marsData.kpis.caHuileFCFA / div], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
+          { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA  / div, febData.kpis.caNoisFCFA  / div, marsData.kpis.caNoisFCFA  / div], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
         ],
       },
       options: {
@@ -68,11 +69,11 @@ export default function GlobalPanel() {
     charts.current.result = new Chart(refResult.current, {
       type: 'bar',
       data: {
-        labels: ['Janvier 2026', 'Février 2026'],
+        labels: ['Janvier 2026', 'Février 2026', 'Mars 2026'],
         datasets: [{
           label: 'Résultat Net',
-          data: [janData.kpis.resultatNetFCFA / div, febData.kpis.resultatNetFCFA / div],
-          backgroundColor: [chartColors.goldAlpha, chartColors.greenAlpha],
+          data: [janData.kpis.resultatNetFCFA / div, febData.kpis.resultatNetFCFA / div, marsData.kpis.resultatNetFCFA / div],
+          backgroundColor: [chartColors.goldAlpha, chartColors.greenAlpha, 'rgba(126,200,164,0.7)'],
           borderRadius: 4,
         }],
       },
@@ -91,6 +92,7 @@ export default function GlobalPanel() {
         datasets: [
           { label: 'Janvier', data: [janData.kpis.regimesRecusT, janData.kpis.regimesTraitesT, janData.kpis.huileProduiteT, janData.kpis.huileVendueT], backgroundColor: chartColors.goldAlpha, borderRadius: 3 },
           { label: 'Février', data: [febData.kpis.regimesRecusT, febData.kpis.regimesTraitesT, febData.kpis.huileProduiteT, febData.kpis.huileVendueT], backgroundColor: chartColors.greenAlpha, borderRadius: 3 },
+          { label: 'Mars',    data: [marsData.kpis.regimesRecusT, marsData.kpis.regimesTraitesT, marsData.kpis.huileProduiteT, marsData.kpis.huileVendueT], backgroundColor: 'rgba(126,200,164,0.7)', borderRadius: 3 },
         ],
       },
       options: {
@@ -129,10 +131,10 @@ export default function GlobalPanel() {
     <div>
       <div className="section-title">Vue Globale — Performance Annuelle</div>
       <div className="section-subtitle">
-        Comparaison mensuelle Janvier vs Février 2026 &nbsp;·&nbsp; Cliquez sur un mois pour accéder au détail complet
+        Comparaison mensuelle Janvier · Février · Mars 2026 &nbsp;·&nbsp; Cliquez sur un mois pour accéder au détail complet
       </div>
 
-      {/* Cartes résumé Jan / Fév */}
+      {/* Cartes résumé Jan / Fév / Mars */}
       <div className="global-compare-grid">
         {/* Janvier */}
         <div className="month-summary-card jan">
@@ -195,30 +197,61 @@ export default function GlobalPanel() {
             </button>
           </div>
         </div>
+
+        {/* Mars */}
+        <div className="month-summary-card mar">
+          <div className="month-summary-title">
+            <span className="month-badge badge-mar">Mars</span>2026
+          </div>
+          {[
+            ['Chiffre d\'Affaires',   fmt.currency(marsData.kpis.caTotalFCFA, currency),        'var(--gold)'],
+            ['Coût Matière Première', fmt.currency(marsData.kpis.coutMPFCFA, currency),          'var(--red)'],
+            ['Charges Exploitation',  fmt.currency(marsData.kpis.chargesExplFCFA, currency),     'var(--red)'],
+            ['Résultat Net',          '+ ' + fmt.currency(marsData.kpis.resultatNetFCFA, currency), 'var(--green)'],
+            ['Marge Nette',           marsData.kpis.margeNette + '%', 'var(--green)'],
+            ['Régimes Traités',       fmt.tonnes(marsData.kpis.regimesTraitesT), null],
+            ['Huile Produite',        fmt.tonnes(marsData.kpis.huileProduiteT), null],
+            ['Huile Vendue',          fmt.tonnes(marsData.kpis.huileVendueT), null],
+            ["Taux d'Extraction",     fmt.pct(marsData.kpis.tauxExtraction), null],
+          ].map(([label, val, color], i) => (
+            <div className="compare-row" key={i}>
+              <span className="compare-label">{label}</span>
+              <span className="compare-val" style={color ? { color } : {}}>{val}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={() => setActiveMonth('mar')}
+              style={{ background: 'rgba(126,200,164,0.15)', border: '1px solid rgba(126,200,164,0.4)', color: 'var(--accent)', padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
+            >
+              Voir détail Mars →
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* KPIs évolution cumulée */}
       <div className="kpi-grid">
-        <KPICard label="CA Cumulé Jan–Fév"             value={fmt.kpiValue(global.caCumule, currency)}           valueColor="gold"  sub={currency + ' · Jan + Fév'} />
-        <KPICard label="Évolution CA Fév/Jan"           value={'+'  + global.evolutionCA.toFixed(1) + '%'}                valueColor="green" sub={`${fmt.currency(febData.kpis.caTotalFCFA, currency)} vs ${fmt.currency(janData.kpis.caTotalFCFA, currency)}`} accent="accent-green" />
-        <KPICard label="Résultat Cumulé"                value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={`${currency} · Jan + Fév`} accent="accent-green" />
-        <KPICard label="Évolution Résultat Fév/Jan"     value={'×' + global.evolutionResultat.toFixed(1)}                  valueColor="green" sub={`${fmt.currency(febData.kpis.resultatNetFCFA, currency)} vs ${fmt.currency(janData.kpis.resultatNetFCFA, currency)}`} accent="accent-green" />
-        <KPICard label="Huile Produite Cumulée"         value={fmt.tonnes(global.huileProduiteTotal)}                       valueColor="gold"  sub="1 956 T + 2 866 T" />
-        <KPICard label="Évolution Production Fév/Jan"   value={'+' + global.evolutionProduction.toFixed(1) + '%'}           valueColor="green" sub="2 866 T vs 1 956 T" accent="accent-green" />
+        <KPICard label="CA Cumulé Jan–Mar"              value={fmt.kpiValue(global.caCumule, currency)}              valueColor="gold"  sub={currency + ' · Jan + Fév + Mars'} />
+        <KPICard label="Évolution CA Mar/Fév"           value={(global.evolutionCA_MarFev > 0 ? '+' : '') + global.evolutionCA_MarFev.toFixed(1) + '%'} valueColor="gold" sub={`${fmt.currency(marsData.kpis.caTotalFCFA, currency)} vs ${fmt.currency(febData.kpis.caTotalFCFA, currency)}`} />
+        <KPICard label="Résultat Cumulé Jan–Mar"        value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)}  valueColor="green" sub={`${currency} · Jan + Fév + Mars`} accent="accent-green" />
+        <KPICard label="Évolution Résultat Fév/Jan"     value={'×' + global.evolutionResultat.toFixed(1)}              valueColor="green" sub={`${fmt.currency(febData.kpis.resultatNetFCFA, currency)} vs ${fmt.currency(janData.kpis.resultatNetFCFA, currency)}`} accent="accent-green" />
+        <KPICard label="Huile Produite Cumulée"         value={fmt.tonnes(global.huileProduiteTotal)}                  valueColor="gold"  sub="1 956 T + 2 866 T + 2 538 T" />
+        <KPICard label="Évolution Production Mar/Fév"   value={(((marsData.kpis.huileProduiteT - febData.kpis.huileProduiteT) / febData.kpis.huileProduiteT) * 100).toFixed(1) + '%'} valueColor="gold" sub="2 538 T vs 2 866 T" />
       </div>
 
       {/* Charts comparaison */}
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Évolution du CA</div>
-          <div className="chart-subtitle">Chiffre d'affaires mensuel par produit ({currency})</div>
+          <div className="chart-subtitle">CA mensuel par produit Jan–Mars 2026 ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">Évolution du Résultat</div>
-          <div className="chart-subtitle">Résultat net mensuel ({currency})</div>
+          <div className="chart-subtitle">Résultat net mensuel Jan–Mars 2026 ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refResult} />
           </div>
@@ -235,7 +268,7 @@ export default function GlobalPanel() {
         </div>
         <div className="chart-card">
           <div className="chart-title">Structure des Dépenses</div>
-          <div className="chart-subtitle">Jan + Fév 2026 — hors matières premières</div>
+          <div className="chart-subtitle">Jan + Fév + Mars 2026 — hors matières premières</div>
           <div className="chart-container" style={{ height: 240 }}>
             <canvas ref={refCosts} />
           </div>

@@ -7,6 +7,7 @@ import GlobalPanel from './pages/GlobalPanel'
 import MonthPanel from './pages/MonthPanel'
 import { janData } from './data/janvier'
 import { febData } from './data/fevrier'
+import { marsData } from './data/mars'
 
 // Enregistrement global Chart.js
 import { Chart, CategoryScale, LinearScale, BarElement, BarController, LineElement, LineController, PointElement, ArcElement, DoughnutController, Tooltip, Legend, Filler } from 'chart.js'
@@ -34,8 +35,9 @@ export default function App() {
         <div className="content-area">
           <main>
             {activeMonth === 'global' && <GlobalPanel />}
-            {activeMonth === 'jan'    && <MonthPanel data={janData} month="jan" />}
-            {activeMonth === 'feb'    && <MonthPanel data={febData} month="feb" />}
+            {activeMonth === 'jan'    && <MonthPanel data={janData}  month="jan" />}
+            {activeMonth === 'feb'    && <MonthPanel data={febData}  month="feb" />}
+            {activeMonth === 'mar'    && <MonthPanel data={marsData} month="mar" />}
           </main>
         </div>
       </div>
