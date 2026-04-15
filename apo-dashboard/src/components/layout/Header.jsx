@@ -22,7 +22,6 @@ export default function Header() {
         </div>
       </div>
       <div className="header-right">
-        <div className="period">Janvier – Février 2026</div>
         <div className="updated">Données comptables consolidées</div>
       </div>
     </header>
