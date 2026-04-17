@@ -6,7 +6,7 @@ import { useDashboardStore } from '../../store/dashboardStore'
 function ColHeaders() {
   const { currency } = useDashboardStore()
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '0 14px 10px', borderBottom: '1px solid rgba(200,150,62,0.12)', marginBottom: 6 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '0 14px 10px', borderBottom: '1px solid rgba(242,140,40,0.12)', marginBottom: 6 }}>
       <span style={styles.dimLabel}>Libellé</span>
       <span style={{ ...styles.dimLabel, textAlign: 'right' }}>F / tonne</span>
       <span style={{ ...styles.dimLabel, textAlign: 'right' }}>Total {currency}</span>
@@ -92,7 +92,7 @@ export default function PnLTable({ pnl }) {
       </div>
 
       {/* ── II. COÛT MATIÈRE PREMIÈRE ──────────────────────── */}
-      <div style={{ background: 'rgba(200,150,62,0.04)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(200,150,62,0.12)' }}>
+      <div style={{ background: 'rgba(242,140,40,0.04)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(242,140,40,0.12)' }}>
         <SectionHeader title="II. Coût matière première" color="var(--gold)" />
         <DataRow label={pnl.coutMP.label} pertonne={pnl.coutMP.pertonne} total={pnl.coutMP.total} color="var(--gold)" indent />
       </div>
@@ -104,8 +104,8 @@ export default function PnLTable({ pnl }) {
         total={pnl.margeBruteTotal}
         pct={pnl.margeBrutePct}
         color="var(--gold)"
-        bg="rgba(200,150,62,0.08)"
-        borderColor="rgba(200,150,62,0.25)"
+        bg="rgba(242,140,40,0.08)"
+        borderColor="rgba(242,140,40,0.25)"
       />
 
       {/* ── III. CHARGES D'EXPLOITATION ────────────────────── */}

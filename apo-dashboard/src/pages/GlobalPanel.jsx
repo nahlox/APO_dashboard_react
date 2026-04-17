@@ -7,32 +7,43 @@ import {
 import KPICard from '../components/kpi/KPICard'
 import { fmt, buildGlobalKPIs, chartColors, defaultTooltip } from '../lib/kpiEngine'
 import { useDashboardStore } from '../store/dashboardStore'
-import { janData } from '../data/janvier'
-import { febData } from '../data/fevrier'
-import { marsData } from '../data/mars'
+import { MONTH_DATA as MONTH_DATA_STATIC } from '../data/index'
+import { monthLabel, monthFull, monthShort, rangeLabel, sumLabel } from '../lib/monthUtils'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController)
 
 const PIE_COLORS = [
-  'rgba(200,150,62,0.92)', 'rgba(224,92,92,0.85)', 'rgba(76,175,122,0.85)',
+  'rgba(242,140,40,0.92)', 'rgba(224,92,92,0.85)', 'rgba(63,163,77,0.85)',
   'rgba(160,120,220,0.80)', 'rgba(255,165,80,0.80)', 'rgba(138,154,142,0.80)',
-  'rgba(126,200,164,0.85)', 'rgba(90,160,210,0.80)',
+  'rgba(107,201,122,0.85)', 'rgba(90,160,210,0.80)',
 ]
 
-function buildCombinedCharges() {
+// Bar colors cycle for multi-month charts
+const BAR_COLORS = [
+  chartColors.goldAlpha,
+  chartColors.greenAlpha,
+  'rgba(107,201,122,0.7)',
+  'rgba(160,120,220,0.7)',
+  'rgba(90,160,210,0.7)',
+]
+
+function buildCombinedCharges(monthData) {
   const merged = {}
-  for (const d of [janData, febData, marsData]) {
-    d.charts.charges.labels.forEach((lbl, i) => {
-      merged[lbl] = (merged[lbl] || 0) + d.charts.charges.values[i]
+  for (const { data } of monthData) {
+    data.charts.charges.labels.forEach((lbl, i) => {
+      merged[lbl] = (merged[lbl] || 0) + data.charts.charges.values[i]
     })
   }
   return { labels: Object.keys(merged), values: Object.values(merged) }
 }
-const combinedCharges = buildCombinedCharges()
 
-export default function GlobalPanel() {
+export default function GlobalPanel({ moisData = [] }) {
+  // Jan/Fév/Mar = données statiques exactes ; moisData = mois supplémentaires Supabase (avr+)
+  const MONTH_DATA = [...MONTH_DATA_STATIC, ...moisData]
   const { setActiveMonth, currency } = useDashboardStore()
-  const global = buildGlobalKPIs(janData, febData, marsData)
+
+  const combinedCharges = buildCombinedCharges(MONTH_DATA)
+  const global = buildGlobalKPIs(...MONTH_DATA.map(m => m.data))
 
   const refCA     = useRef(null)
   const refResult = useRef(null)
@@ -40,28 +51,44 @@ export default function GlobalPanel() {
   const refCosts  = useRef(null)
   const charts    = useRef({})
 
+  // Derived labels (re-computed whenever MONTH_DATA changes)
+  const monthLabels   = MONTH_DATA.map(m => monthFull(m.data))
+  const shortLabels   = MONTH_DATA.map(m => monthLabel(m.data))
+  const range         = rangeLabel(MONTH_DATA)
+  const sum           = sumLabel(MONTH_DATA)
+  const year          = MONTH_DATA[0]?.data._etl.annee ?? ''
+  const sectionSub    = `Comparaison mensuelle ${shortLabels.join(' · ')} ${year} · Cliquez sur un mois pour accéder au détail complet`
+
   useEffect(() => {
     Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = {}
 
     const cur = currency
-    const div = cur === 'USD' ? (1e6 / fmt.toUSD(1e6)) : 1e6 // scale factor for chart axes
+    const div = cur === 'USD' ? (1e6 / fmt.toUSD(1e6)) : 1e6
     const axisLabel = cur === 'USD' ? ' K$' : ' M'
 
     // CA par mois
     charts.current.ca = new Chart(refCA.current, {
       type: 'bar',
       data: {
-        labels: ['Janvier 2026', 'Février 2026', 'Mars 2026'],
+        labels: monthLabels,
         datasets: [
-          { label: 'Huile CPO',     data: [janData.kpis.caHuileFCFA / div, febData.kpis.caHuileFCFA / div, marsData.kpis.caHuileFCFA / div], backgroundColor: chartColors.goldAlpha, borderRadius: 4 },
-          { label: 'Noix Palmiste', data: [janData.kpis.caNoisFCFA  / div, febData.kpis.caNoisFCFA  / div, marsData.kpis.caNoisFCFA  / div], backgroundColor: chartColors.greenAlpha, borderRadius: 4 },
+          {
+            label: 'Huile CPO',
+            data: MONTH_DATA.map(m => m.data.kpis.caHuileFCFA / div),
+            backgroundColor: chartColors.goldAlpha, borderRadius: 4,
+          },
+          {
+            label: 'Noix Palmiste',
+            data: MONTH_DATA.map(m => m.data.kpis.caNoisFCFA / div),
+            backgroundColor: chartColors.greenAlpha, borderRadius: 4,
+          },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
 
@@ -69,36 +96,37 @@ export default function GlobalPanel() {
     charts.current.result = new Chart(refResult.current, {
       type: 'bar',
       data: {
-        labels: ['Janvier 2026', 'Février 2026', 'Mars 2026'],
+        labels: monthLabels,
         datasets: [{
           label: 'Résultat Net',
-          data: [janData.kpis.resultatNetFCFA / div, febData.kpis.resultatNetFCFA / div, marsData.kpis.resultatNetFCFA / div],
-          backgroundColor: [chartColors.goldAlpha, chartColors.greenAlpha, 'rgba(126,200,164,0.7)'],
+          data: MONTH_DATA.map(m => m.data.kpis.resultatNetFCFA / div),
+          backgroundColor: MONTH_DATA.map((_, i) => BAR_COLORS[i] ?? chartColors.dim),
           borderRadius: 4,
         }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
 
-    // Production (pas de devise — en tonnes)
+    // Production volumes
     charts.current.prod = new Chart(refProd.current, {
       type: 'bar',
       data: {
         labels: ['Régimes Reçus', 'Régimes Traités', 'Huile Produite', 'Huile Vendue'],
-        datasets: [
-          { label: 'Janvier', data: [janData.kpis.regimesRecusT, janData.kpis.regimesTraitesT, janData.kpis.huileProduiteT, janData.kpis.huileVendueT], backgroundColor: chartColors.goldAlpha, borderRadius: 3 },
-          { label: 'Février', data: [febData.kpis.regimesRecusT, febData.kpis.regimesTraitesT, febData.kpis.huileProduiteT, febData.kpis.huileVendueT], backgroundColor: chartColors.greenAlpha, borderRadius: 3 },
-          { label: 'Mars',    data: [marsData.kpis.regimesRecusT, marsData.kpis.regimesTraitesT, marsData.kpis.huileProduiteT, marsData.kpis.huileVendueT], backgroundColor: 'rgba(126,200,164,0.7)', borderRadius: 3 },
-        ],
+        datasets: MONTH_DATA.map(({ data }, i) => ({
+          label: monthLabel(data),
+          data: [data.kpis.regimesRecusT, data.kpis.regimesTraitesT, data.kpis.huileProduiteT, data.kpis.huileVendueT],
+          backgroundColor: BAR_COLORS[i] ?? chartColors.dim,
+          borderRadius: 3,
+        })),
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => v + ' T' } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + ' T' } } },
       },
     })
 
@@ -111,7 +139,7 @@ export default function GlobalPanel() {
         datasets: [{
           data: combinedCharges.values,
           backgroundColor: PIE_COLORS,
-          borderColor: '#161A18', borderWidth: 2, hoverOffset: 6,
+          borderColor: '#132519', borderWidth: 2, hoverOffset: 6,
         }],
       },
       options: {
@@ -130,127 +158,77 @@ export default function GlobalPanel() {
   return (
     <div>
       <div className="section-title">Vue Globale — Performance Annuelle</div>
-      <div className="section-subtitle">
-        Comparaison mensuelle Janvier · Février · Mars 2026 &nbsp;·&nbsp; Cliquez sur un mois pour accéder au détail complet
-      </div>
+      <div className="section-subtitle">{sectionSub}</div>
 
-      {/* Cartes résumé Jan / Fév / Mars */}
+      {/* Cartes résumé — une par mois enregistré */}
       <div className="global-compare-grid">
-        {/* Janvier */}
-        <div className="month-summary-card jan">
-          <div className="month-summary-title">
-            <span className="month-badge badge-jan">Janvier</span>2026
-          </div>
-          {[
-            ['Chiffre d\'Affaires',   fmt.currency(janData.kpis.caTotalFCFA, currency),       'var(--gold)'],
-            ['Coût Matière Première', fmt.currency(janData.kpis.coutMPFCFA, currency),         'var(--red)'],
-            ['Charges Exploitation',  fmt.currency(janData.kpis.chargesExplFCFA, currency),    'var(--red)'],
-            ['Résultat Net',          '+ ' + fmt.currency(janData.kpis.resultatNetFCFA, currency), 'var(--green)'],
-            ['Marge Nette',           janData.kpis.margeNette + '%', 'var(--green)'],
-            ['Régimes Traités',       fmt.tonnes(janData.kpis.regimesTraitesT), null],
-            ['Huile Produite',        fmt.tonnes(janData.kpis.huileProduiteT), null],
-            ['Huile Vendue',          fmt.tonnes(janData.kpis.huileVendueT), null],
-            ["Taux d'Extraction",     fmt.pct(janData.kpis.tauxExtraction), null],
-          ].map(([label, val, color], i) => (
-            <div className="compare-row" key={i}>
-              <span className="compare-label">{label}</span>
-              <span className="compare-val" style={color ? { color } : {}}>{val}</span>
+        {MONTH_DATA.map(({ key, data, accent, rgba }) => (
+          <div key={key} className="month-summary-card" style={{ borderTop: `3px solid ${accent}` }}>
+            <div className="month-summary-title">
+              <span className="month-badge" style={{ background: `${rgba}0.2)`, color: accent, marginRight: 8 }}>
+                {monthLabel(data)}
+              </span>
+              {data._etl.annee}
             </div>
-          ))}
-          <div style={{ marginTop: 16 }}>
-            <button
-              onClick={() => setActiveMonth('jan')}
-              style={{ background: 'rgba(200,150,62,0.15)', border: '1px solid rgba(200,150,62,0.4)', color: 'var(--gold)', padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
-            >
-              Voir détail Janvier →
-            </button>
-          </div>
-        </div>
-
-        {/* Février */}
-        <div className="month-summary-card feb">
-          <div className="month-summary-title">
-            <span className="month-badge badge-feb">Février</span>2026
-          </div>
-          {[
-            ['Chiffre d\'Affaires',   fmt.currency(febData.kpis.caTotalFCFA, currency),       'var(--gold)'],
-            ['Coût Matière Première', fmt.currency(febData.kpis.coutMPFCFA, currency),         'var(--red)'],
-            ['Charges Exploitation',  fmt.currency(febData.kpis.chargesExplFCFA, currency),    'var(--red)'],
-            ['Résultat Net',          '+ ' + fmt.currency(febData.kpis.resultatNetFCFA, currency), 'var(--green)'],
-            ['Marge Nette',           febData.kpis.margeNette + '%', 'var(--green)'],
-            ['Régimes Traités',       fmt.tonnes(febData.kpis.regimesTraitesT), null],
-            ['Huile Produite',        fmt.tonnes(febData.kpis.huileProduiteT), null],
-            ['Huile Vendue',          fmt.tonnes(febData.kpis.huileVendueT), null],
-            ["Taux d'Extraction",     fmt.pct(febData.kpis.tauxExtraction), null],
-          ].map(([label, val, color], i) => (
-            <div className="compare-row" key={i}>
-              <span className="compare-label">{label}</span>
-              <span className="compare-val" style={color ? { color } : {}}>{val}</span>
+            {[
+              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency),                        'var(--gold)'],
+              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency),                          'var(--red)'],
+              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency),                     'var(--red)'],
+              ['Résultat Net',          '+ ' + fmt.currency(data.kpis.resultatNetFCFA, currency),              'var(--green)'],
+              ['Marge Nette',           data.kpis.margeNette + '%',                                            'var(--green)'],
+              ['Régimes Traités',       fmt.tonnes(data.kpis.regimesTraitesT),                                 null],
+              ['Huile Produite',        fmt.tonnes(data.kpis.huileProduiteT),                                  null],
+              ['Huile Vendue',          fmt.tonnes(data.kpis.huileVendueT),                                    null],
+              ["Taux d'Extraction",     fmt.pct(data.kpis.tauxExtraction),                                     null],
+            ].map(([label, val, color], i) => (
+              <div className="compare-row" key={i}>
+                <span className="compare-label">{label}</span>
+                <span className="compare-val" style={color ? { color } : {}}>{val}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 16 }}>
+              <button
+                onClick={() => setActiveMonth(key)}
+                style={{ background: `${rgba}0.15)`, border: `1px solid ${rgba}0.4)`, color: accent, padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
+              >
+                Voir détail {monthLabel(data)} →
+              </button>
             </div>
-          ))}
-          <div style={{ marginTop: 16 }}>
-            <button
-              onClick={() => setActiveMonth('feb')}
-              style={{ background: 'rgba(76,175,122,0.15)', border: '1px solid rgba(76,175,122,0.4)', color: 'var(--green)', padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
-            >
-              Voir détail Février →
-            </button>
           </div>
-        </div>
-
-        {/* Mars */}
-        <div className="month-summary-card mar">
-          <div className="month-summary-title">
-            <span className="month-badge badge-mar">Mars</span>2026
-          </div>
-          {[
-            ['Chiffre d\'Affaires',   fmt.currency(marsData.kpis.caTotalFCFA, currency),        'var(--gold)'],
-            ['Coût Matière Première', fmt.currency(marsData.kpis.coutMPFCFA, currency),          'var(--red)'],
-            ['Charges Exploitation',  fmt.currency(marsData.kpis.chargesExplFCFA, currency),     'var(--red)'],
-            ['Résultat Net',          '+ ' + fmt.currency(marsData.kpis.resultatNetFCFA, currency), 'var(--green)'],
-            ['Marge Nette',           marsData.kpis.margeNette + '%', 'var(--green)'],
-            ['Régimes Traités',       fmt.tonnes(marsData.kpis.regimesTraitesT), null],
-            ['Huile Produite',        fmt.tonnes(marsData.kpis.huileProduiteT), null],
-            ['Huile Vendue',          fmt.tonnes(marsData.kpis.huileVendueT), null],
-            ["Taux d'Extraction",     fmt.pct(marsData.kpis.tauxExtraction), null],
-          ].map(([label, val, color], i) => (
-            <div className="compare-row" key={i}>
-              <span className="compare-label">{label}</span>
-              <span className="compare-val" style={color ? { color } : {}}>{val}</span>
-            </div>
-          ))}
-          <div style={{ marginTop: 16 }}>
-            <button
-              onClick={() => setActiveMonth('mar')}
-              style={{ background: 'rgba(126,200,164,0.15)', border: '1px solid rgba(126,200,164,0.4)', color: 'var(--accent)', padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
-            >
-              Voir détail Mars →
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* KPIs évolution cumulée */}
+      {/* KPIs cumulés */}
       <div className="kpi-grid">
-        <KPICard label="CA Cumulé Jan–Mar"              value={fmt.kpiValue(global.caCumule, currency)}              valueColor="gold"  sub={currency + ' · Jan + Fév + Mars'} />
-        <KPICard label="Évolution CA Mar/Fév"           value={(global.evolutionCA_MarFev > 0 ? '+' : '') + global.evolutionCA_MarFev.toFixed(1) + '%'} valueColor="gold" sub={`${fmt.currency(marsData.kpis.caTotalFCFA, currency)} vs ${fmt.currency(febData.kpis.caTotalFCFA, currency)}`} />
-        <KPICard label="Résultat Cumulé Jan–Mar"        value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)}  valueColor="green" sub={`${currency} · Jan + Fév + Mars`} accent="accent-green" />
-        <KPICard label="Huile Produite Cumulée"         value={fmt.tonnes(global.huileProduiteTotal)}                  valueColor="gold"  sub="1 956 T + 2 866 T + 2 538 T" />
-        <KPICard label="Évolution Production Mar/Fév"   value={(((marsData.kpis.huileProduiteT - febData.kpis.huileProduiteT) / febData.kpis.huileProduiteT) * 100).toFixed(1) + '%'} valueColor="gold" sub="2 538 T vs 2 866 T" />
+        <KPICard label={`CA Cumulé ${range}`}            value={fmt.kpiValue(global.caCumule, currency)}             valueColor="gold"  sub={`${currency} · ${sum}`} />
+        {MONTH_DATA.length >= 2 && (
+          <KPICard label={`Évolution CA ${monthShort(MONTH_DATA.at(-1).data)}/${monthShort(MONTH_DATA.at(-2).data)}`}
+                   value={(global.evolutionCA_MarFev > 0 ? '+' : '') + global.evolutionCA_MarFev.toFixed(1) + '%'}
+                   valueColor="gold"
+                   sub={`${fmt.currency(MONTH_DATA.at(-1).data.kpis.caTotalFCFA, currency)} vs ${fmt.currency(MONTH_DATA.at(-2).data.kpis.caTotalFCFA, currency)}`} />
+        )}
+        <KPICard label={`Résultat Cumulé ${range}`}      value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={`${currency} · ${sum}`} accent="accent-green" />
+        <KPICard label="Huile Produite Cumulée"          value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold"  sub={MONTH_DATA.map(m => fmt.tonnes(m.data.kpis.huileProduiteT)).join(' + ')} />
+        {MONTH_DATA.length >= 2 && (
+          <KPICard label={`Évolution Production ${monthShort(MONTH_DATA.at(-1).data)}/${monthShort(MONTH_DATA.at(-2).data)}`}
+                   value={(((MONTH_DATA.at(-1).data.kpis.huileProduiteT - MONTH_DATA.at(-2).data.kpis.huileProduiteT) / (MONTH_DATA.at(-2).data.kpis.huileProduiteT || 1)) * 100).toFixed(1) + '%'}
+                   valueColor="gold"
+                   sub={`${fmt.tonnes(MONTH_DATA.at(-1).data.kpis.huileProduiteT)} vs ${fmt.tonnes(MONTH_DATA.at(-2).data.kpis.huileProduiteT)}`} />
+        )}
       </div>
 
-      {/* Charts comparaison */}
+      {/* Charts */}
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Évolution du CA</div>
-          <div className="chart-subtitle">CA mensuel par produit Jan–Mars 2026 ({currency})</div>
+          <div className="chart-subtitle">CA mensuel par produit {range} {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">Évolution du Résultat</div>
-          <div className="chart-subtitle">Résultat net mensuel Jan–Mars 2026 ({currency})</div>
+          <div className="chart-subtitle">Résultat net mensuel {range} {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refResult} />
           </div>
@@ -267,7 +245,7 @@ export default function GlobalPanel() {
         </div>
         <div className="chart-card">
           <div className="chart-title">Structure des Dépenses</div>
-          <div className="chart-subtitle">Jan + Fév + Mars 2026 — hors matières premières</div>
+          <div className="chart-subtitle">{sum} {year} — hors matières premières</div>
           <div className="chart-container" style={{ height: 240 }}>
             <canvas ref={refCosts} />
           </div>

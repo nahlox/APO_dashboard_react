@@ -3,13 +3,13 @@ import { Chart, BarElement, BarController, LineElement, LineController, PointEle
 import KPICard from '../kpi/KPICard'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { monthFull } from '../../lib/monthUtils'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 export default function Revenus({ data, month }) {
   const { currency } = useDashboardStore()
   const { kpis, revenus } = data
-  const isJan = month === 'jan'
   const refCA = useRef(null)
   const chartRef = useRef(null)
 
@@ -24,7 +24,7 @@ export default function Revenus({ data, month }) {
           data: currency === 'USD'
             ? revenus.caJoursVals.map(v => fmt.toUSD(v))
             : revenus.caJoursVals,
-          borderColor: chartColors.gold, backgroundColor: 'rgba(200,150,62,0.08)',
+          borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
           fill: true, tension: 0.4,
           pointBackgroundColor: chartColors.gold, pointRadius: 4,
         }],
@@ -34,7 +34,7 @@ export default function Revenus({ data, month }) {
         plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(currency === 'USD' ? c.raw * 563 : c.raw, currency) } } },
         scales: {
           x: { grid: { display: false } },
-          y: { grid: { color: 'rgba(200,150,62,0.06)' }, ticks: { callback: v => fmt.money(currency === 'USD' ? v * 563 : v, currency) } },
+          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => fmt.money(currency === 'USD' ? v * 563 : v, currency) } },
         },
       },
     })
@@ -44,7 +44,7 @@ export default function Revenus({ data, month }) {
   return (
     <section>
       <div className="section-title">Revenus & Ventes</div>
-      <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {isJan ? 'Janvier' : 'Février'} 2026</div>
+      <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {monthFull(data)}</div>
 
       <div className="kpi-grid">
         <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency)}  valueColor="green" sub={currency} accent="accent-green" />
@@ -64,7 +64,7 @@ export default function Revenus({ data, month }) {
       {/* Tableau produits */}
       <div className="chart-card">
         <div className="chart-title">Détail des Ventes par Produit</div>
-        <div className="chart-subtitle">Récapitulatif {isJan ? 'Janvier' : 'Février'} 2026</div>
+        <div className="chart-subtitle">Récapitulatif {monthFull(data)}</div>
         <table className="data-table">
           <thead>
             <tr>

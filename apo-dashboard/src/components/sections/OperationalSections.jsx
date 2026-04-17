@@ -1,15 +1,15 @@
 import { fmt } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { monthFull } from '../../lib/monthUtils'
 
 // ── CHARGES ──────────────────────────────────────────────────
 export function Charges({ data, month }) {
   const { currency } = useDashboardStore()
   const { charges } = data
-  const isJan = month === 'jan'
   return (
     <section>
       <div className="section-title">Charges & Coûts</div>
-      <div className="section-subtitle">Top dépenses opérationnelles — {isJan ? 'Janvier' : 'Février'} 2026</div>
+      <div className="section-subtitle">Top dépenses opérationnelles — {monthFull(data)}</div>
       <div className="chart-card">
         <div className="chart-title">Top 15 Dépenses du Mois</div>
         <div className="chart-subtitle">Classées par montant décroissant (hors achats graines)</div>
@@ -42,11 +42,10 @@ export function Charges({ data, month }) {
 export function Fournisseurs({ data, month }) {
   const { currency } = useDashboardStore()
   const { fournisseurs } = data
-  const isJan = month === 'jan'
   return (
     <section>
       <div className="section-title">Fournisseurs</div>
-      <div className="section-subtitle">Classement et volumes d'achat — {isJan ? 'Janvier' : 'Février'} 2026</div>
+      <div className="section-subtitle">Classement et volumes d'achat — {monthFull(data)}</div>
       <div className="chart-card">
         <div className="chart-title">Top Fournisseurs par Volume</div>
         <div className="chart-subtitle">Poids (kg), prix unitaire et montant total payé</div>
@@ -94,12 +93,11 @@ export function Pepiniere({ data, month }) {
   const { currency } = useDashboardStore()
   const { kpis, pepiniere } = data
   if (!pepiniere) return null
-  const isJan = month === 'jan'
 
   return (
     <section>
       <div className="section-title">Pépinière</div>
-      <div className="section-subtitle">Suivi des ventes de plants et encaissements — {isJan ? 'Janvier' : 'Février'} 2026</div>
+      <div className="section-subtitle">Suivi des ventes de plants et encaissements — {monthFull(data)}</div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">

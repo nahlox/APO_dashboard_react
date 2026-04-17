@@ -5,39 +5,63 @@ import Header from './components/layout/Header'
 import Sidebar from './components/layout/Sidebar'
 import GlobalPanel from './pages/GlobalPanel'
 import MonthPanel from './pages/MonthPanel'
-import { janData } from './data/janvier'
-import { febData } from './data/fevrier'
-import { marsData } from './data/mars'
+import { MONTH_DATA } from './data/index'          // Jan/Fév/Mar — données statiques exactes
+import { useMoisDB } from './hooks/useMoisDB'       // Avr+ depuis Supabase
 
-// Enregistrement global Chart.js
-import { Chart, CategoryScale, LinearScale, BarElement, BarController, LineElement, LineController, PointElement, ArcElement, DoughnutController, Tooltip, Legend, Filler } from 'chart.js'
-Chart.register(CategoryScale, LinearScale, BarElement, BarController, LineElement, LineController, PointElement, ArcElement, DoughnutController, Tooltip, Legend, Filler)
-
-// Defaults globaux Chart.js APO
-Chart.defaults.color = '#8A9A8E'
-Chart.defaults.borderColor = 'rgba(200,150,62,0.1)'
+import {
+  Chart, CategoryScale, LinearScale,
+  BarElement, BarController,
+  LineElement, LineController, PointElement,
+  ArcElement, DoughnutController,
+  Tooltip, Legend, Filler,
+} from 'chart.js'
+Chart.register(
+  CategoryScale, LinearScale,
+  BarElement, BarController,
+  LineElement, LineController, PointElement,
+  ArcElement, DoughnutController,
+  Tooltip, Legend, Filler,
+)
+Chart.defaults.color       = '#8A9A84'
+Chart.defaults.borderColor = 'rgba(242,140,40,0.1)'
 Chart.defaults.font.family = "'DM Sans', sans-serif"
-Chart.defaults.font.size = 13
+Chart.defaults.font.size   = 13
 
 export default function App() {
-  const { activeMonth, theme } = useDashboardStore()
+  const { activeMonth, theme, setMoisData } = useDashboardStore()
 
-  // Sync class body avec le theme store
+  // Mois supplémentaires depuis Supabase (Avril et au-delà uniquement)
+  const { moisData: moisSupp } = useMoisDB()
+
+  // Pousse les mois Supabase dans le store pour que VueEnsemble y accède
+  useEffect(() => {
+    setMoisData(moisSupp)
+  }, [moisSupp, setMoisData])
+
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light')
   }, [theme])
+
+  // Tous les mois : statiques + Supabase (sans doublons)
+  const staticKeys = new Set(MONTH_DATA.map(m => m.key))
+  const allMois = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]
 
   return (
     <>
       <Header />
       <div className="app-layout">
-        <Sidebar />
+        <Sidebar allMois={allMois} />
         <div className="content-area">
           <main>
-            {activeMonth === 'global' && <GlobalPanel />}
-            {activeMonth === 'jan'    && <MonthPanel data={janData}  month="jan" />}
-            {activeMonth === 'feb'    && <MonthPanel data={febData}  month="feb" />}
-            {activeMonth === 'mar'    && <MonthPanel data={marsData} month="mar" />}
+            {activeMonth === 'global' && (
+              <GlobalPanel moisData={moisSupp.filter(m => !staticKeys.has(m.key))} />
+            )}
+
+            {allMois.map(({ key, data }) =>
+              activeMonth === key && (
+                <MonthPanel key={key} data={data} month={key} />
+              )
+            )}
           </main>
         </div>
       </div>

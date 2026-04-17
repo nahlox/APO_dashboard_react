@@ -5,38 +5,44 @@ import AlertBox from '../kpi/AlertBox'
 import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { janData } from '../../data/janvier'
-import { febData as fevData } from '../../data/fevrier'
+import { MONTH_DATA as MONTH_DATA_STATIC } from '../../data/index'
+import { monthFull, monthShort, sumLabel } from '../../lib/monthUtils'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
 
-// Charges combinées Jan + Fév, hors MP
 const CHARGE_COLORS = [
-  'rgba(200,150,62,0.92)',
+  'rgba(242,140,40,0.92)',
   'rgba(224,92,92,0.85)',
-  'rgba(76,175,122,0.85)',
+  'rgba(63,163,77,0.85)',
   'rgba(160,120,220,0.80)',
   'rgba(255,165,80,0.80)',
   'rgba(138,154,142,0.80)',
-  'rgba(126,200,164,0.85)',
+  'rgba(107,201,122,0.85)',
   'rgba(90,160,210,0.80)',
 ]
 
-function buildCombinedCharges() {
+function buildCombinedCharges(monthKey, MONTH_DATA) {
+  const idx = MONTH_DATA.findIndex(m => m.key === monthKey)
+  const slice = idx >= 0 ? MONTH_DATA.slice(0, idx + 1) : MONTH_DATA
   const merged = {}
-  for (const d of [janData, fevData]) {
-    d.charts.charges.labels.forEach((lbl, i) => {
-      merged[lbl] = (merged[lbl] || 0) + d.charts.charges.values[i]
+  for (const { data } of slice) {
+    data.charts.charges.labels.forEach((lbl, i) => {
+      merged[lbl] = (merged[lbl] || 0) + data.charts.charges.values[i]
     })
   }
   return { labels: Object.keys(merged), values: Object.values(merged) }
 }
 
-const combinedCharges = buildCombinedCharges()
-
 export default function VueEnsemble({ data, month }) {
-  const { currency } = useDashboardStore()
+  const { currency, moisData } = useDashboardStore()
   const { kpis, pnl, alertes, charts } = data
+
+  // Jan/Fév/Mar statique + mois Supabase (avr+)
+  const allMois = [...MONTH_DATA_STATIC, ...moisData]
+  const combinedCharges = buildCombinedCharges(month, allMois)
+  const monthIdx    = allMois.findIndex(m => m.key === month)
+  const chargesSlice = allMois.slice(0, monthIdx + 1)
+  const chargesSubtitle = `${sumLabel(chargesSlice)} ${data._etl.annee} cumulés — hors matières premières`
 
   const refCA      = useRef(null)
   const refCharges = useRef(null)
@@ -48,6 +54,8 @@ export default function VueEnsemble({ data, month }) {
     if (chartCharges.current) { chartCharges.current.destroy(); chartCharges.current = null }
 
     const cur = currency
+    const allMois = [...MONTH_DATA_STATIC, ...moisData]
+    const combinedCharges = buildCombinedCharges(month, allMois)
     const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
 
     // CA Mix — doughnut
@@ -97,12 +105,10 @@ export default function VueEnsemble({ data, month }) {
     }
   }, [month, currency])
 
-  const isJan = month === 'jan'
-
   return (
     <section>
       <div className="section-title">Vue d'Ensemble</div>
-      <div className="section-subtitle">Synthèse stratégique — {isJan ? 'Janvier' : 'Février'} 2026</div>
+      <div className="section-subtitle">Synthèse stratégique — {monthFull(data)}</div>
 
       {/* KPIs */}
       <div className="kpi-grid">
@@ -121,14 +127,14 @@ export default function VueEnsemble({ data, month }) {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Répartition du Chiffre d'Affaires</div>
-          <div className="chart-subtitle">Par produit — {isJan ? 'Janvier' : 'Février'} 2026</div>
+          <div className="chart-subtitle">Par produit — {monthFull(data)}</div>
           <div className="chart-container" style={{ height: 260 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">Structure des Charges Opérationnelles</div>
-          <div className="chart-subtitle">Jan + Fév 2026 combinés — hors matières premières</div>
+          <div className="chart-subtitle">{chargesSubtitle}</div>
           <div className="chart-container" style={{ height: 280 }}>
             <canvas ref={refCharges} />
           </div>

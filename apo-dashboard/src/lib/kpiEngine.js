@@ -121,56 +121,49 @@ export function calculMarge(resultatNet, caTotal) {
   return (resultatNet / caTotal) * 100
 }
 
-// ── DONNÉES GLOBALES (agrégation Jan + Fév + Mars) ───────────
+// ── DONNÉES GLOBALES (agrégation tous les mois enregistrés) ──
 
-export function buildGlobalKPIs(janData, febData, marsData) {
-  const jan = janData.kpis
-  const feb = febData.kpis
-  const mar = marsData.kpis
+export function buildGlobalKPIs(...monthDatas) {
+  const kpis = monthDatas.map(d => d.kpis)
+  const last = kpis.at(-1)
+  const prev = kpis.at(-2) ?? kpis.at(-1)
 
-  const caCumule        = jan.caTotalFCFA    + feb.caTotalFCFA    + mar.caTotalFCFA
-  const resultatCumule  = jan.resultatNetFCFA + feb.resultatNetFCFA + mar.resultatNetFCFA
-  const huileTotal      = jan.huileProduiteT  + feb.huileProduiteT  + mar.huileProduiteT
+  const caCumule       = kpis.reduce((s, k) => s + k.caTotalFCFA, 0)
+  const resultatCumule = kpis.reduce((s, k) => s + k.resultatNetFCFA, 0)
+  const huileTotal     = kpis.reduce((s, k) => s + k.huileProduiteT, 0)
 
   return {
-    // CA
     caCumule,
-    evolutionCA_FevJan:  ((feb.caTotalFCFA - jan.caTotalFCFA) / jan.caTotalFCFA) * 100,
-    evolutionCA_MarFev:  ((mar.caTotalFCFA - feb.caTotalFCFA) / feb.caTotalFCFA) * 100,
-
-    // Résultat
+    evolutionCA_FevJan:  kpis.length >= 2 ? ((kpis[1].caTotalFCFA - kpis[0].caTotalFCFA) / kpis[0].caTotalFCFA) * 100 : 0,
+    evolutionCA_MarFev:  prev !== last ? ((last.caTotalFCFA - prev.caTotalFCFA) / (prev.caTotalFCFA || 1)) * 100 : 0,
     resultatCumule,
-    evolutionResultat:   feb.resultatNetFCFA / jan.resultatNetFCFA,  // multiplicateur Jan→Fév
-
-    // Production
+    evolutionResultat:   kpis.length >= 2 ? kpis[1].resultatNetFCFA / (kpis[0].resultatNetFCFA || 1) : 0,
     huileProduiteTotal:  huileTotal,
-    evolutionProduction: ((feb.huileProduiteT - jan.huileProduiteT) / jan.huileProduiteT) * 100,
-
-    // Coûts
-    coutMPCumule:        jan.coutMPFCFA    + feb.coutMPFCFA    + mar.coutMPFCFA,
-    chargesExplCumul:    jan.chargesExplFCFA + feb.chargesExplFCFA + mar.chargesExplFCFA,
+    evolutionProduction: kpis.length >= 2 ? ((kpis[1].huileProduiteT - kpis[0].huileProduiteT) / (kpis[0].huileProduiteT || 1)) * 100 : 0,
+    coutMPCumule:        kpis.reduce((s, k) => s + k.coutMPFCFA, 0),
+    chargesExplCumul:    kpis.reduce((s, k) => s + k.chargesExplFCFA, 0),
   }
 }
 
 // ── CHART DEFAULTS (couleurs APO) ────────────────────────────
 
 export const chartColors = {
-  gold:       'rgba(200,150,62,1)',
-  goldAlpha:  'rgba(200,150,62,0.7)',
-  green:      'rgba(76,175,122,1)',
-  greenAlpha: 'rgba(76,175,122,0.7)',
+  gold:       'rgba(242,140,40,1)',
+  goldAlpha:  'rgba(242,140,40,0.7)',
+  green:      'rgba(63,163,77,1)',
+  greenAlpha: 'rgba(63,163,77,0.7)',
   red:        'rgba(224,92,92,1)',
   redAlpha:   'rgba(224,92,92,0.7)',
-  accent:     'rgba(126,200,164,1)',
-  dim:        'rgba(138,154,142,0.5)',
+  accent:     'rgba(107,201,122,1)',
+  dim:        'rgba(138,154,130,0.5)',
 }
 
 export const defaultTooltip = {
-  backgroundColor: '#1E2421',
-  borderColor:     'rgba(200,150,62,0.3)',
+  backgroundColor: '#1A3323',
+  borderColor:     'rgba(242,140,40,0.3)',
   borderWidth:     1,
-  titleColor:      '#E8EAE6',
-  bodyColor:       '#8A9A8E',
+  titleColor:      '#E8EDE6',
+  bodyColor:       '#8A9A84',
   padding:         12,
 }
 
@@ -183,6 +176,6 @@ export const defaultChartOptions = {
   },
   scales: {
     x: { grid: { display: false } },
-    y: { grid: { color: 'rgba(200,150,62,0.06)' } },
+    y: { grid: { color: 'rgba(242,140,40,0.06)' } },
   },
 }

@@ -1,6 +1,16 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
-export default function Sidebar() {
+function cap(str) {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function moisLabel(data) {
+  // Compatible avec les deux formats : statique (_etl.mois) et Supabase (_etl.mois)
+  return `${cap(data._etl.mois)} ${data._etl.annee}`
+}
+
+export default function Sidebar({ allMois = [] }) {
   const {
     activeMonth, sidebarCollapsed, sidebarOpen,
     theme, currency,
@@ -10,12 +20,11 @@ export default function Sidebar() {
 
   const navigate = (month) => {
     setActiveMonth(month)
-    closeMobileMenu()   // ferme le drawer sur mobile après navigation
+    closeMobileMenu()
   }
 
   return (
     <>
-      {/* Overlay sombre — mobile uniquement */}
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={closeMobileMenu} />
       )}
@@ -47,32 +56,17 @@ export default function Sidebar() {
             🌐 Vue Globale
           </div>
 
-          <div className="sidebar-divider" />
-
-          <div
-            className={`sidebar-month-btn${activeMonth === 'jan' ? ' active' : ''}`}
-            onClick={() => navigate('jan')}
-          >
-            📅 Janvier 2026
-          </div>
-
-          <div className="sidebar-divider" />
-
-          <div
-            className={`sidebar-month-btn${activeMonth === 'feb' ? ' active' : ''}`}
-            onClick={() => navigate('feb')}
-          >
-            📅 Février 2026
-          </div>
-
-          <div className="sidebar-divider" />
-
-          <div
-            className={`sidebar-month-btn${activeMonth === 'mar' ? ' active' : ''}`}
-            onClick={() => navigate('mar')}
-          >
-            📅 Mars 2026
-          </div>
+          {allMois.map(({ key, data }) => (
+            <div key={key}>
+              <div className="sidebar-divider" />
+              <div
+                className={`sidebar-month-btn${activeMonth === key ? ' active' : ''}`}
+                onClick={() => navigate(key)}
+              >
+                📅 {moisLabel(data)}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="sidebar-currency">
