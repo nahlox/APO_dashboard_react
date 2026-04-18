@@ -120,9 +120,6 @@ export default function VueEnsemble({ data, month }) {
         <KPICard label="Taux d'Extraction"         value={fmt.pct(kpis.tauxExtraction)}                      valueColor="green" sub="huile produite ÷ régimes traités" accent="accent-green" />
       </div>
 
-      {/* P&L */}
-      <PnLTable pnl={pnl} />
-
       {/* Charts */}
       <div className="charts-grid">
         <div className="chart-card">
@@ -153,6 +150,9 @@ export default function VueEnsemble({ data, month }) {
           </div>
         </div>
       </div>
+
+      {/* P&L */}
+      <PnLTable pnl={pnl} data={data} />
 
       {/* Alertes — en bas */}
       <div style={{ marginTop: 24 }}>

@@ -1,5 +1,6 @@
 import { fmt } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { generatePnlPdf } from '../../lib/generatePnlPdf'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ function SectionHeader({ title, color }) {
 
 // ── Main Component ────────────────────────────────────────────
 
-export default function PnLTable({ pnl }) {
+export default function PnLTable({ pnl, data }) {
   const { currency } = useDashboardStore()
   const c = (v) => fmt.currency(Math.abs(v), currency)
 
@@ -67,12 +68,40 @@ export default function PnLTable({ pnl }) {
     <div className="pnl-box">
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, gap: 12 }}>
         <div>
           <div className="chart-title">Compte de Résultat — Vue par Tonne d'Huile Produite</div>
           <div className="chart-subtitle">Base : {pnl.baseLabel}</div>
         </div>
-        <span className="kpi-badge badge-up" style={{ fontSize: 11, padding: '4px 12px', whiteSpace: 'nowrap' }}>{pnl.status}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span className="kpi-badge badge-up" style={{ fontSize: 11, padding: '4px 12px', whiteSpace: 'nowrap' }}>{pnl.status}</span>
+          {data && (
+            <button
+              onClick={() => generatePnlPdf(data, currency)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px',
+                background: 'rgba(242,140,40,0.08)',
+                border: '1px solid rgba(242,140,40,0.35)',
+                borderRadius: 8,
+                color: 'var(--gold)',
+                fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'all 0.18s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(242,140,40,0.16)'; e.currentTarget.style.borderColor = 'rgba(242,140,40,0.6)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(242,140,40,0.08)'; e.currentTarget.style.borderColor = 'rgba(242,140,40,0.35)' }}
+              title="Télécharger le compte de résultat en PDF"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Télécharger PDF
+            </button>
+          )}
+        </div>
       </div>
 
       <ColHeaders />

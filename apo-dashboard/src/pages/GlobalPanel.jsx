@@ -160,44 +160,6 @@ export default function GlobalPanel({ moisData = [] }) {
       <div className="section-title">Vue Globale — Performance Annuelle</div>
       <div className="section-subtitle">{sectionSub}</div>
 
-      {/* Cartes résumé — une par mois enregistré */}
-      <div className="global-compare-grid">
-        {MONTH_DATA.map(({ key, data, accent, rgba }) => (
-          <div key={key} className="month-summary-card" style={{ borderTop: `3px solid ${accent}` }}>
-            <div className="month-summary-title">
-              <span className="month-badge" style={{ background: `${rgba}0.2)`, color: accent, marginRight: 8 }}>
-                {monthLabel(data)}
-              </span>
-              {data._etl.annee}
-            </div>
-            {[
-              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency),                        'var(--gold)'],
-              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency),                          'var(--red)'],
-              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency),                     'var(--red)'],
-              ['Résultat Net',          '+ ' + fmt.currency(data.kpis.resultatNetFCFA, currency),              'var(--green)'],
-              ['Marge Nette',           data.kpis.margeNette + '%',                                            'var(--green)'],
-              ['Régimes Traités',       fmt.tonnes(data.kpis.regimesTraitesT),                                 null],
-              ['Huile Produite',        fmt.tonnes(data.kpis.huileProduiteT),                                  null],
-              ['Huile Vendue',          fmt.tonnes(data.kpis.huileVendueT),                                    null],
-              ["Taux d'Extraction",     fmt.pct(data.kpis.tauxExtraction),                                     null],
-            ].map(([label, val, color], i) => (
-              <div className="compare-row" key={i}>
-                <span className="compare-label">{label}</span>
-                <span className="compare-val" style={color ? { color } : {}}>{val}</span>
-              </div>
-            ))}
-            <div style={{ marginTop: 16 }}>
-              <button
-                onClick={() => setActiveMonth(key)}
-                style={{ background: `${rgba}0.15)`, border: `1px solid ${rgba}0.4)`, color: accent, padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
-              >
-                Voir détail {monthLabel(data)} →
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* KPIs cumulés */}
       <div className="kpi-grid">
         <KPICard label={`CA Cumulé ${range}`}            value={fmt.kpiValue(global.caCumule, currency)}             valueColor="gold"  sub={`${currency} · ${sum}`} />
@@ -262,6 +224,44 @@ export default function GlobalPanel({ moisData = [] }) {
             })}
           </div>
         </div>
+      </div>
+
+      {/* Cartes résumé — une par mois enregistré */}
+      <div className="global-compare-grid">
+        {MONTH_DATA.map(({ key, data, accent, rgba }) => (
+          <div key={key} className="month-summary-card" style={{ borderTop: `3px solid ${accent}` }}>
+            <div className="month-summary-title">
+              <span className="month-badge" style={{ background: `${rgba}0.2)`, color: accent, marginRight: 8 }}>
+                {monthLabel(data)}
+              </span>
+              {data._etl.annee}
+            </div>
+            {[
+              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency),                        'var(--gold)'],
+              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency),                          'var(--red)'],
+              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency),                     'var(--red)'],
+              ['Résultat Net',          '+ ' + fmt.currency(data.kpis.resultatNetFCFA, currency),              'var(--green)'],
+              ['Marge Nette',           data.kpis.margeNette + '%',                                            'var(--green)'],
+              ['Régimes Traités',       fmt.tonnes(data.kpis.regimesTraitesT),                                 null],
+              ['Huile Produite',        fmt.tonnes(data.kpis.huileProduiteT),                                  null],
+              ['Huile Vendue',          fmt.tonnes(data.kpis.huileVendueT),                                    null],
+              ["Taux d'Extraction",     fmt.pct(data.kpis.tauxExtraction),                                     null],
+            ].map(([label, val, color], i) => (
+              <div className="compare-row" key={i}>
+                <span className="compare-label">{label}</span>
+                <span className="compare-val" style={color ? { color } : {}}>{val}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 16 }}>
+              <button
+                onClick={() => setActiveMonth(key)}
+                style={{ background: `${rgba}0.15)`, border: `1px solid ${rgba}0.4)`, color: accent, padding: '8px 18px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}
+              >
+                Voir détail {monthLabel(data)} →
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
