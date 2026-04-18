@@ -12,7 +12,7 @@ export const useDashboardStore = create((set) => ({
   // UI
   sidebarCollapsed: false,
   sidebarOpen: false,
-  theme: 'dark',
+  theme: 'light',
   currency: 'FCFA',
   USD_RATE: 563,
 
