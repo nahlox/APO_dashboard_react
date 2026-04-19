@@ -71,7 +71,7 @@ export default function GlobalPanel({ moisData = [] }) {
     charts.current.ca = new Chart(refCA.current, {
       type: 'bar',
       data: {
-        labels: monthLabels,
+        labels: shortLabels,
         datasets: [
           {
             label: 'Huile CPO',
@@ -96,7 +96,7 @@ export default function GlobalPanel({ moisData = [] }) {
     charts.current.result = new Chart(refResult.current, {
       type: 'bar',
       data: {
-        labels: monthLabels,
+        labels: shortLabels,
         datasets: [{
           label: 'Résultat Net',
           data: MONTH_DATA.map(m => m.data.kpis.resultatNetFCFA / div),
@@ -153,7 +153,7 @@ export default function GlobalPanel({ moisData = [] }) {
     })
 
     return () => Object.values(charts.current).forEach(c => c?.destroy())
-  }, [currency])
+  }, [currency, moisData.length])
 
   return (
     <div>

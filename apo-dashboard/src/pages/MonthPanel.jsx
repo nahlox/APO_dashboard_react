@@ -21,7 +21,7 @@ export default function MonthPanel({ data, month }) {
   return (
     <div>
       {/* Sub-navigation */}
-      <nav className="nav-tabs" style={{ margin: '0 -40px', padding: '0 40px' }}>
+      <nav className="nav-tabs nav-tabs--top">
         {tabs.map(tab => (
           <div
             key={tab.id}

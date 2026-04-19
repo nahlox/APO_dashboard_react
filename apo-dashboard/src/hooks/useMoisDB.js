@@ -67,24 +67,41 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const teDailyLabels      = prodJour.map(r => r.date_production?.slice(8, 10))
   const teDailyVals        = prodJour.map(r => ((r.taux_extraction || 0) * 100).toFixed(2))
 
-  // Graphique CA journalier huile
-  const caJoursLabels = ventesHuile.map(r => r.date_vente?.slice(8, 10))
-  const caJoursVals   = ventesHuile.map(r => r.montant_fcfa || 0)
+  // Graphique CA journalier huile — une entrée par jour (somme si plusieurs livraisons)
+  const caParJour = {}
+  for (const r of ventesHuile) {
+    const d = r.date_vente || ''
+    caParJour[d] = (caParJour[d] || 0) + (r.montant_fcfa || 0)
+  }
+  const caJoursLabels = Object.keys(caParJour).sort().map(d => d.slice(8, 10))
+  const caJoursVals   = Object.keys(caParJour).sort().map(d => caParJour[d])
 
-  // Top charges
-  const topDepenses = topCharges.map(r => ({
-    libelle:    r.libelle,
-    categorie:  r.categorie,
-    montant:    r.montant_fcfa || 0,
-  }))
+  // Agrégation par jour : somme des charges du jour, libellé = dépense principale
+  const parJour = {}
+  for (const r of topCharges) {
+    const d = r.date_mouvement || ''
+    if (!parJour[d]) parJour[d] = { total: 0, topLib: '', topMt: 0 }
+    parJour[d].total += r.credit_fcfa || 0
+    if ((r.credit_fcfa || 0) > parJour[d].topMt) {
+      parJour[d].topMt  = r.credit_fcfa || 0
+      parJour[d].topLib = r.libelle || ''
+    }
+  }
+  const topDepenses = Object.entries(parJour)
+    .map(([d, v]) => ({
+      lib:  v.topLib,
+      date: d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '',
+      mt:   v.total,
+    }))
+    .sort((a, b) => b.mt - a.mt)
+    .slice(0, 15)
 
-  // Top fournisseurs
+  // Top fournisseurs — format identique aux fichiers statiques
   const fournisseursItems = topFournisseurs.map(r => ({
-    nom:         r.nom || r.reference,
-    poidsKg:     r.poids_total_kg || 0,
-    prixMoyKg:   r.prix_moyen_kg  || 0,
-    montantFCFA: r.montant_total_fcfa || 0,
-    nbCamions:   r.nb_camions || 0,
+    name:    r.nom || r.reference,
+    poids:   r.poids_total_kg     || 0,
+    prix:    Math.round(r.prix_moyen_kg   || 0),
+    montant: r.montant_total_fcfa || 0,
   }))
 
   return {
@@ -139,9 +156,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
       margeBruteTonne:      huileProduiteT ? Math.round(margeBrute / huileProduiteT) : 0,
       margeBrutePct:        caTotal ? +((margeBrute / caTotal) * 100).toFixed(1) : 0,
       chargesExploitation:  topDepenses.slice(0, 7).map(d => ({
-        label:    d.libelle,
-        pertonne: huileProduiteT ? Math.round(d.montant / huileProduiteT) : 0,
-        total:    -d.montant,
+        label:    d.lib,
+        pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
+        total:    -d.mt,
       })),
       totalChargesExpTotal: -charges,
       totalChargesExpTonne: huileProduiteT ? -Math.round(charges / huileProduiteT) : 0,
@@ -166,8 +183,8 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
         values: [caHuile, caPalmiste, caFlorentin, caBassin].filter(v => v > 0),
       },
       charges: {
-        labels: topDepenses.slice(0, 7).map(d => d.libelle),
-        values: topDepenses.slice(0, 7).map(d => d.montant),
+        labels: topDepenses.slice(0, 7).map(d => d.lib),
+        values: topDepenses.slice(0, 7).map(d => d.mt),
       },
     },
     production: {
@@ -181,15 +198,19 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
     },
     revenus: {
       produits: [
-        { label: 'Huile de palme CPO', quantite: huileVendueT * 1000, prixKg: prixHuile, total: caHuile },
-        { label: 'Noix de palmiste',   quantite: palmisteVendT * 1000, prixKg: 60,        total: caPalmiste },
-        { label: 'Huile florentin',    quantite: 0,                    prixKg: 0,          total: caFlorentin },
+        { produit: 'Huile de Palme CPO', quantite: `${huileVendueT.toLocaleString('fr-FR')} T`,  prixUnitaire: `${prixHuile.toFixed(0)} F/kg`, totalFCFA: caHuile    },
+        { produit: 'Noix de Palmiste',   quantite: `${palmisteVendT.toLocaleString('fr-FR')} T`, prixUnitaire: '60 F/kg',                      totalFCFA: caPalmiste },
+        ...(caFlorentin > 0 ? [{ produit: 'Huile Florentin', quantite: '—', prixUnitaire: '—', totalFCFA: caFlorentin }] : []),
+        ...(caBassin    > 0 ? [{ produit: 'Huile Bassin',    quantite: '—', prixUnitaire: '—', totalFCFA: caBassin    }] : []),
       ],
       caJoursLabels,
       caJoursVals,
     },
     charges: { topDepenses },
-    fournisseurs: { items: fournisseursItems },
+    fournisseurs: {
+      totalPoidsKg: fournisseursItems.reduce((s, f) => s + f.poids, 0),
+      liste:        fournisseursItems,
+    },
     pepiniere: { clients: [] },
   }
 }
@@ -234,11 +255,12 @@ export function useMoisDB() {
               .order('date_vente')
               .then(r => r.data || []),
 
-            supabase.from('vue_top_charges')
-              .select('libelle, categorie, montant_fcfa')
-              .eq('annee', periode.annee)
-              .eq('mois', periode.mois)
-              .limit(15)
+            // Toutes les écritures du mois — agrégées par jour côté client
+            supabase.from('caisse_apo2')
+              .select('date_mouvement, libelle, credit_fcfa')
+              .eq('periode_id', periodeId)
+              .gt('credit_fcfa', 0)
+              .order('date_mouvement')
               .then(r => r.data || []),
 
             supabase.from('vue_top_fournisseurs')

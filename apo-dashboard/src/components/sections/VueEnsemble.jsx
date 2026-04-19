@@ -6,7 +6,7 @@ import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { MONTH_DATA as MONTH_DATA_STATIC } from '../../data/index'
-import { monthFull, monthShort, sumLabel } from '../../lib/monthUtils'
+import { monthFull } from '../../lib/monthUtils'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
 
@@ -21,28 +21,21 @@ const CHARGE_COLORS = [
   'rgba(90,160,210,0.80)',
 ]
 
-function buildCombinedCharges(monthKey, MONTH_DATA) {
-  const idx = MONTH_DATA.findIndex(m => m.key === monthKey)
-  const slice = idx >= 0 ? MONTH_DATA.slice(0, idx + 1) : MONTH_DATA
-  const merged = {}
-  for (const { data } of slice) {
-    data.charts.charges.labels.forEach((lbl, i) => {
-      merged[lbl] = (merged[lbl] || 0) + data.charts.charges.values[i]
-    })
-  }
-  return { labels: Object.keys(merged), values: Object.values(merged) }
+function buildMonthCharges(monthKey, MONTH_DATA) {
+  const entry = MONTH_DATA.find(m => m.key === monthKey)
+  if (!entry) return { labels: [], values: [] }
+  const labels = entry.data.charts.charges.labels
+  const values = entry.data.charts.charges.values
+  return { labels, values }
 }
 
 export default function VueEnsemble({ data, month }) {
   const { currency, moisData } = useDashboardStore()
   const { kpis, pnl, alertes, charts } = data
 
-  // Jan/Fév/Mar statique + mois Supabase (avr+)
   const allMois = [...MONTH_DATA_STATIC, ...moisData]
-  const combinedCharges = buildCombinedCharges(month, allMois)
-  const monthIdx    = allMois.findIndex(m => m.key === month)
-  const chargesSlice = allMois.slice(0, monthIdx + 1)
-  const chargesSubtitle = `${sumLabel(chargesSlice)} ${data._etl.annee} cumulés — hors matières premières`
+  const combinedCharges = buildMonthCharges(month, allMois)
+  const chargesSubtitle = `${monthFull(data)} — hors matières premières`
 
   const refCA      = useRef(null)
   const refCharges = useRef(null)
@@ -55,7 +48,7 @@ export default function VueEnsemble({ data, month }) {
 
     const cur = currency
     const allMois = [...MONTH_DATA_STATIC, ...moisData]
-    const combinedCharges = buildCombinedCharges(month, allMois)
+    const combinedCharges = buildMonthCharges(month, allMois)
     const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
 
     // CA Mix — doughnut

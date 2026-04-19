@@ -9,12 +9,21 @@ Usage :
   python etl.py --force      # réimporte tout sans vérifier les dates
 """
 
-import os, json, hashlib, argparse
+import os, json, hashlib, argparse, subprocess
 from datetime import datetime
 from pathlib import Path
 import openpyxl
 from supabase import create_client
 from dotenv import load_dotenv
+
+def _notify(message: str):
+    try:
+        subprocess.run([
+            "osascript", "-e",
+            f'display notification "{message}" with title "APO Dashboard"'
+        ], timeout=5, capture_output=True)
+    except Exception:
+        pass
 
 # ── CONFIG ────────────────────────────────────────────────────
 load_dotenv(Path(__file__).parent / ".env")
@@ -52,6 +61,13 @@ LIBELLES_FR = {
     1: 'janvier', 2: 'février', 3: 'mars',   4: 'avril',
     5: 'mai',     6: 'juin',    7: 'juillet', 8: 'août',
     9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre',
+}
+
+# Sources à onglet unique : même sheet pour tous les mois (filtrage par date dans le parseur)
+SHEETS_PAR_MOIS = {
+    "caisse_apo":  {m: "CAISSE APO"          for m in range(1, 13)},
+    "caisse_apo2": {m: "CAISSE 2 APO"        for m in range(1, 13)},
+    "vente_huile": {m: "VENTE D'HUILE 2026"  for m in range(1, 13)},
 }
 
 def sheet_caisse_graine(mois):
@@ -105,13 +121,16 @@ def lire_sheet(path: Path, sheet_name: str):
     wb.close()
     return lignes
 
+CHUNK_SIZE = 200  # max lignes par requête Supabase (évite les 502 sur grandes tables)
+
 def inserer(table: str, rows: list, periode_id: int | None = None, label: str = ""):
-    """Supprime les anciennes lignes du mois puis insère les nouvelles."""
+    """Supprime les anciennes lignes du mois puis insère les nouvelles par blocs."""
     if not rows:
         return
     if periode_id is not None:
         sb.table(table).delete().eq("periode_id", periode_id).execute()
-    sb.table(table).insert(rows).execute()
+    for i in range(0, len(rows), CHUNK_SIZE):
+        sb.table(table).insert(rows[i:i + CHUNK_SIZE]).execute()
     log(f"  ✅ {table} : {len(rows)} lignes insérées {label}")
 
 def safe_float(val, default=0.0) -> float:
@@ -130,11 +149,12 @@ def safe_int(val, default=0) -> int:
 
 def parse_production_tous_mois(path: Path, periodes: dict):
     """
-    Charge tous les mois de production d'un coup.
-    Vide toute la table d'abord pour éviter les conflits sur la contrainte UNIQUE(date_production).
-    periodes = {mois: periode_id, ...}
+    Charge tous les mois de production.
+    Plusieurs lignes Excel pour la même date sont agrégées :
+      - flux (régimes, huile, livraisons, palmiste, stérilisateurs) → somme
+      - stocks fin de journée (restant, huile, tanks, graines, palmiste) → dernière valeur
+      - taux_extraction → recalculé après agrégation
     """
-    # Vide toute la table production en une seule fois
     sb.table("production_journaliere").delete().gte("id", 0).execute()
     log("  🗑  production_journaliere vidée")
 
@@ -151,34 +171,66 @@ def parse_production_tous_mois(path: Path, periodes: dict):
         for row in lignes[2:]:
             if not row[1] or not isinstance(row[1], datetime):
                 continue
-            if row[1].month != mois:  # ignore lignes de report hors mois
+            if row[1].month != mois:
                 continue
             date_str = row[1].date().isoformat()
-            rows_par_date[date_str] = {
-                "periode_id":             periode_id,
-                "date_production":        date_str,
-                "regime_recu_kg":         safe_float(row[2]),
-                "regime_traite_kg":       safe_float(row[3]),
-                "regime_restant_kg":      safe_float(row[4]),
-                "huile_produite_kg":      safe_float(row[5]),
-                "taux_extraction":        safe_float(row[6]),
-                "livraison_citerne_kg":   safe_float(row[7]),
-                "stock_huile_kg":         safe_float(row[8]),
-                "tank_1000_kg":           safe_float(row[9]),
-                "tank_300_kg":            safe_float(row[10]),
-                "stock_graine_1_kg":      safe_float(row[11]),
-                "stock_graine_2_kg":      safe_float(row[12]),
-                "nb_sterilisateurs":      safe_int(row[13]),
-                "livraison_florentin_kg": safe_float(row[14]),
-                "livraison_bassin_kg":    safe_float(row[15]),
-                "production_palmiste_kg": safe_float(row[16]),
-                "livraison_palmiste_kg":  safe_float(row[17]),
-                "stock_palmiste_kg":      safe_float(row[18]) if len(row) > 18 else 0.0,
-            }
+
+            if date_str not in rows_par_date:
+                rows_par_date[date_str] = {
+                    "periode_id":             periode_id,
+                    "date_production":        date_str,
+                    # Flux journaliers → on somme
+                    "regime_recu_kg":         safe_float(row[2]),
+                    "regime_traite_kg":       safe_float(row[3]),
+                    "huile_produite_kg":      safe_float(row[5]),
+                    "livraison_citerne_kg":   safe_float(row[7]),
+                    "nb_sterilisateurs":      safe_int(row[13]),
+                    "livraison_florentin_kg": safe_float(row[14]),
+                    "livraison_bassin_kg":    safe_float(row[15]),
+                    "production_palmiste_kg": safe_float(row[16]),
+                    "livraison_palmiste_kg":  safe_float(row[17]),
+                    # Stocks fin de journée → dernière valeur lue
+                    "regime_restant_kg":      safe_float(row[4]),
+                    "stock_huile_kg":         safe_float(row[8]),
+                    "tank_1000_kg":           safe_float(row[9]),
+                    "tank_300_kg":            safe_float(row[10]),
+                    "stock_graine_1_kg":      safe_float(row[11]),
+                    "stock_graine_2_kg":      safe_float(row[12]),
+                    "stock_palmiste_kg":      safe_float(row[18]) if len(row) > 18 else 0.0,
+                    # Taux d'extraction recalculé après agrégation
+                    "taux_extraction":        0.0,
+                }
+            else:
+                r = rows_par_date[date_str]
+                # Flux → somme
+                r["regime_recu_kg"]         += safe_float(row[2])
+                r["regime_traite_kg"]       += safe_float(row[3])
+                r["huile_produite_kg"]      += safe_float(row[5])
+                r["livraison_citerne_kg"]   += safe_float(row[7])
+                r["nb_sterilisateurs"]      += safe_int(row[13])
+                r["livraison_florentin_kg"] += safe_float(row[14])
+                r["livraison_bassin_kg"]    += safe_float(row[15])
+                r["production_palmiste_kg"] += safe_float(row[16])
+                r["livraison_palmiste_kg"]  += safe_float(row[17])
+                # Stocks → dernière valeur (fin de journée)
+                r["regime_restant_kg"]       = safe_float(row[4])
+                r["stock_huile_kg"]          = safe_float(row[8])
+                r["tank_1000_kg"]            = safe_float(row[9])
+                r["tank_300_kg"]             = safe_float(row[10])
+                r["stock_graine_1_kg"]       = safe_float(row[11])
+                r["stock_graine_2_kg"]       = safe_float(row[12])
+                if len(row) > 18:
+                    r["stock_palmiste_kg"]   = safe_float(row[18])
+
+        # Recalcule taux_extraction après agrégation complète de la journée
+        for r in rows_par_date.values():
+            traite = r["regime_traite_kg"]
+            r["taux_extraction"] = round(r["huile_produite_kg"] / traite, 4) if traite else 0.0
 
         rows = list(rows_par_date.values())
         if rows:
-            sb.table("production_journaliere").insert(rows).execute()
+            for i in range(0, len(rows), CHUNK_SIZE):
+                sb.table("production_journaliere").insert(rows[i:i + CHUNK_SIZE]).execute()
             log(f"  ✅ production_journaliere : {len(rows)} lignes insérées (mois {mois})")
             total += len(rows)
 
@@ -612,8 +664,10 @@ def run(force: bool = False):
         sauver_etat(etat)
         log("=" * 50)
         log(f"ETL terminé — {len(fichiers_modifies)} fichier(s) importé(s) ✅")
+        _notify(f"APO ETL ✅ — {len(fichiers_modifies)} fichier(s) importé(s)")
     else:
         log("Aucun fichier modifié — rien à faire.")
+        _notify("APO ETL ✅ — Aucun fichier modifié")
 
     log("=" * 50)
 

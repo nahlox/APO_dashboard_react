@@ -2,7 +2,28 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c \"import openpyxl; print\\(''ok''\\)\")",
-      "Bash(python -c \"import openpyxl; print\\(''ok''\\)\")"
+      "Bash(python -c \"import openpyxl; print\\(''ok''\\)\")",
+      "Bash(npm run *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(pip3 install *)",
+      "Bash(python3 etl.py)",
+      "Bash(python3 etl.py --force)",
+      "Bash(python3 -c ' *)",
+      "Bash(chmod +x /Users/rnahle/projects/APO_dashboard_react/apo-dashboard/src/db/etl/run_etl.sh)",
+      "Bash(launchctl unload *)",
+      "Bash(launchctl load *)",
+      "Bash(launchctl list *)",
+      "Bash(pip install *)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/rnahle/.npm-global/bin/**)",
+      "Bash(command -v claude)",
+      "Read(//Users/rnahle/**)",
+      "Bash(claude --print \"ok\")",
+      "Bash(claude --version)",
+      "Bash(python3 etl_cloud.py)",
+      "Bash(python3 etl_cloud.py --dry)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
     ]
   }
 }

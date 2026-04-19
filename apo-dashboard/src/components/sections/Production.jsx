@@ -49,29 +49,66 @@ export default function Production({ data, month }) {
       },
     })
 
-    // Taux d'extraction
+    // Taux d'extraction — axe Y dynamique robuste aux outliers
+    const teRaw = production.teDailyVals.map(v => parseFloat(v))
+    // Percentile 95 sur les valeurs non-nulles pour ignorer les outliers extrêmes
+    const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
+    const p95 = teValides.length
+      ? teValides[Math.floor(teValides.length * 0.95)]
+      : 25
+    const teYMin = Math.max(0, Math.floor(Math.min(...teValides.filter(v => v > 0)) - 1))
+    const teYMax = Math.ceil(Math.max(p95, 23) + 1)  // toujours au moins jusqu'à la cible 22%
+
+    // Valeurs affichées : on plafonne les outliers au teYMax pour préserver l'échelle,
+    // le tooltip affiche toujours la vraie valeur
+    const teAffichees = teRaw.map(v => (v > teYMax ? teYMax : v))
+    const outlierIdx  = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
+
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
       data: {
         labels: production.teDailyLabels,
         datasets: [
           {
-            label: 'TE%', data: production.teDailyVals,
+            label: 'TE%', data: teAffichees,
             borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
             fill: true, tension: 0.3,
-            pointBackgroundColor: production.teDailyVals.map(v => v >= 19.5 ? chartColors.green : v >= 18 ? chartColors.gold : chartColors.red),
-            pointRadius: 4,
+            pointBackgroundColor: teRaw.map((v, i) =>
+              outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
+              : v >= 19.5 ? chartColors.green
+              : v >= 18   ? chartColors.gold
+              : chartColors.red
+            ),
+            pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
+            pointStyle: teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
           },
-          { label: 'Min 18%', data: Array(production.teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)', borderDash: [4, 4], pointRadius: 0, fill: false },
-          { label: 'Cible 22%', data: Array(production.teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)', borderDash: [4, 4], pointRadius: 0, fill: false },
+          { label: 'Min 18%',  data: Array(production.teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+          { label: 'Cible 22%',data: Array(production.teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw.toFixed(2) + '%' } } },
+        plugins: {
+          legend: { labels: { font: { size: 12 } } },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: c => {
+                const real = teRaw[c.dataIndex]
+                const suffix = outlierIdx.has(c.dataIndex) ? ' ⚠ hors plage' : ''
+                return `TE : ${real.toFixed(2)}%${suffix}`
+              },
+            },
+          },
+        },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-          y: { min: 17, max: 23, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
+          y: {
+            min: teYMin,
+            max: teYMax,
+            grid: { color: 'rgba(242,140,40,0.06)' },
+            ticks: { callback: v => v + '%' },
+          },
         },
       },
     })

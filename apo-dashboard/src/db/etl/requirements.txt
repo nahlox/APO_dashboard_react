@@ -2,3 +2,4 @@ openpyxl
 supabase
 python-dotenv
 pandas
+dropbox
