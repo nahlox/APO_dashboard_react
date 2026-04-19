@@ -33,7 +33,7 @@ export default function MonthPanel({ data, month }) {
         ))}
       </nav>
 
-      <div style={{ paddingTop: 24 }}>
+      <div style={{ paddingTop: 16 }}>
         {activeTab === 'vue-ensemble' && <VueEnsemble data={data} month={month} />}
         {activeTab === 'production'   && <Production   data={data} month={month} />}
         {activeTab === 'revenus'      && <Revenus       data={data} month={month} />}

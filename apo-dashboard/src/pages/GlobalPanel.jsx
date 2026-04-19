@@ -156,7 +156,7 @@ export default function GlobalPanel({ moisData = [] }) {
   }, [currency, moisData.length])
 
   return (
-    <div>
+    <div style={{ paddingTop: 'clamp(16px, 2.5vw, 40px)' }}>
       <div className="section-title">Vue Globale — Performance Annuelle</div>
       <div className="section-subtitle">{sectionSub}</div>
 

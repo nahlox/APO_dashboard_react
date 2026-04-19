@@ -78,7 +78,7 @@ body::before {
 main {
   position: relative;
   z-index: 1;
-  padding: clamp(16px, 2.5vw, 40px) clamp(16px, 3vw, 48px);
+  padding: 0 clamp(16px, 3vw, 48px) clamp(16px, 2.5vw, 40px);
   max-width: 1920px;
   margin: 0 auto;
   width: 100%;
@@ -274,20 +274,20 @@ body.light .theme-indicator::before { transform: translateX(18px); }
 
 /* ===== NAVIGATION TABS ===== */
 .nav-tabs {
-  position: relative; z-index: 10;
+  position: sticky;
+  top: 57px;
+  z-index: 50;
   display: flex; gap: 0; padding: 0 40px;
   background: var(--dark2); border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
 
-/* Colle la nav sous le header en annulant le padding top de main */
+/* Étend la nav sur toute la largeur (annule le padding horizontal de main) */
 .nav-tabs--top {
-  margin-top: calc(-1 * clamp(16px, 2.5vw, 40px));
   margin-left: calc(-1 * clamp(16px, 3vw, 48px));
   margin-right: calc(-1 * clamp(16px, 3vw, 48px));
   padding-left: clamp(16px, 3vw, 48px);
   padding-right: clamp(16px, 3vw, 48px);
-  margin-bottom: 0;
 }
 .nav-tab {
   padding: 24px 16px; font-size: 12px; font-weight: 500;
@@ -421,7 +421,7 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
 /* ===== MISC ===== */
 .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 24px 0; }
 .verif-tag { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--green); background: rgba(63,163,77,0.1); padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
-.section-title { font-family: 'Playfair Display', serif; font-size: clamp(22px, 2.5vw, 32px); font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.section-title { font-family: 'Playfair Display', serif; font-size: clamp(22px, 2.5vw, 32px); font-weight: 700; color: var(--text); margin-bottom: 8px; scroll-margin-top: 120px; }
 .section-subtitle { font-size: clamp(13px, 1.1vw, 15px); color: var(--text-dim); margin-bottom: clamp(16px, 2vw, 28px); letter-spacing: 0.5px; }
 
 /* ===== ANIMATIONS ===== */
