@@ -78,7 +78,7 @@ body::before {
 main {
   position: relative;
   z-index: 1;
-  padding: 0 clamp(16px, 3vw, 48px) clamp(16px, 2.5vw, 40px);
+  padding: clamp(16px, 2.5vw, 40px) clamp(16px, 3vw, 48px);
   max-width: 1920px;
   margin: 0 auto;
   width: 100%;
@@ -277,17 +277,9 @@ body.light .theme-indicator::before { transform: translateX(18px); }
   position: sticky;
   top: 57px;
   z-index: 50;
-  display: flex; gap: 0; padding: 0 40px;
+  display: flex; gap: 0; padding: 0 clamp(16px, 3vw, 48px);
   background: var(--dark2); border-bottom: 1px solid var(--border);
   overflow-x: auto;
-}
-
-/* Étend la nav sur toute la largeur (annule le padding horizontal de main) */
-.nav-tabs--top {
-  margin-left: calc(-1 * clamp(16px, 3vw, 48px));
-  margin-right: calc(-1 * clamp(16px, 3vw, 48px));
-  padding-left: clamp(16px, 3vw, 48px);
-  padding-right: clamp(16px, 3vw, 48px);
 }
 .nav-tab {
   padding: 24px 16px; font-size: 12px; font-weight: 500;

@@ -27,13 +27,20 @@ Chart.defaults.borderColor = 'rgba(242,140,40,0.1)'
 Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
-export default function App() {
-  const { activeMonth, theme, setMoisData } = useDashboardStore()
+const MONTH_TABS = [
+  { id: 'vue-ensemble', label: "Vue d'Ensemble" },
+  { id: 'production',   label: 'Production & Graines' },
+  { id: 'revenus',      label: 'Revenus & Ventes' },
+  { id: 'charges',      label: 'Charges & Coûts' },
+  { id: 'fournisseurs', label: 'Fournisseurs' },
+  { id: 'pepiniere',    label: 'Pépinière', janOnly: true },
+]
 
-  // Mois supplémentaires depuis Supabase (Avril et au-delà uniquement)
+export default function App() {
+  const { activeMonth, activeTab, setActiveTab, theme, setMoisData } = useDashboardStore()
+
   const { moisData: moisSupp } = useMoisDB()
 
-  // Pousse les mois Supabase dans le store pour que VueEnsemble y accède
   useEffect(() => {
     setMoisData(moisSupp)
   }, [moisSupp, setMoisData])
@@ -42,13 +49,32 @@ export default function App() {
     document.body.classList.toggle('light', theme === 'light')
   }, [theme])
 
-  // Tous les mois : statiques + Supabase (sans doublons)
   const staticKeys = new Set(MONTH_DATA.map(m => m.key))
-  const allMois = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]
+  const allMois    = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]
+
+  const isMonthActive = activeMonth !== 'global'
+  const currentTab    = activeTab[activeMonth] ?? 'vue-ensemble'
+  const tabs          = MONTH_TABS.filter(t => !t.janOnly || activeMonth === 'jan')
 
   return (
     <>
       <Header />
+
+      {/* Nav tabs — sibling of header, always flush against APO banner */}
+      {isMonthActive && (
+        <nav className="nav-tabs">
+          {tabs.map(tab => (
+            <div
+              key={tab.id}
+              className={`nav-tab${currentTab === tab.id ? ' active' : ''}`}
+              onClick={() => setActiveTab(activeMonth, tab.id)}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </nav>
+      )}
+
       <div className="app-layout">
         <Sidebar allMois={allMois} />
         <div className="content-area">
@@ -56,10 +82,9 @@ export default function App() {
             {activeMonth === 'global' && (
               <GlobalPanel moisData={moisSupp.filter(m => !staticKeys.has(m.key))} />
             )}
-
             {allMois.map(({ key, data }) =>
               activeMonth === key && (
-                <MonthPanel key={key} data={data} month={key} />
+                <MonthPanel key={key} data={data} month={key} activeTab={currentTab} />
               )
             )}
           </main>
