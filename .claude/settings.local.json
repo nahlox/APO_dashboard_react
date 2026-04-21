@@ -23,7 +23,13 @@
       "Bash(claude --version)",
       "Bash(python3 etl_cloud.py)",
       "Bash(python3 etl_cloud.py --dry)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
+      "Bash(cd /Users/rnahle/projects/APO_dashboard_react && git add -A && git commit*)",
+      "Bash(cd /Users/rnahle/projects/APO_dashboard_react && git add -A && git commit* && git push*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
