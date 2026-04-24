@@ -17,7 +17,7 @@ Prérequis (.env) :
   DROPBOX_TOKEN    = sl.xxx...  (token Dropbox App, voir README)
 """
 
-import os, hashlib, argparse, io
+import os, hashlib, argparse, io, time
 from datetime import datetime
 from pathlib import Path
 import openpyxl
@@ -46,10 +46,11 @@ if DROPBOX_REFRESH_TOKEN and DROPBOX_APP_KEY and DROPBOX_APP_SECRET:
         oauth2_refresh_token=DROPBOX_REFRESH_TOKEN,
         app_key=DROPBOX_APP_KEY,
         app_secret=DROPBOX_APP_SECRET,
+        timeout=600,
     )
 elif DROPBOX_TOKEN:
     # ⚠️ Mode temporaire — token court (expire en quelques heures)
-    dbx = dropbox.Dropbox(DROPBOX_TOKEN)
+    dbx = dropbox.Dropbox(DROPBOX_TOKEN, timeout=600)
 else:
     raise EnvironmentError(
         "Aucun token Dropbox trouvé. Configure DROPBOX_REFRESH_TOKEN + DROPBOX_APP_KEY + DROPBOX_APP_SECRET "
@@ -125,15 +126,24 @@ def md5_bytes(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
 
-def telecharger_dropbox(dropbox_path: str) -> bytes | None:
+def telecharger_dropbox(dropbox_path: str, max_retries: int = 3) -> bytes | None:
     """Télécharge un fichier Dropbox en mémoire (bytes). Retourne None si introuvable."""
-    try:
-        _, resp = dbx.files_download(dropbox_path)
-        return resp.content
-    except ApiError as e:
-        log(f"  ⚠️  Fichier Dropbox introuvable : {dropbox_path}")
-        log(f"      Erreur : {e}")
-        return None
+    for attempt in range(1, max_retries + 1):
+        try:
+            _, resp = dbx.files_download(dropbox_path)
+            return resp.content
+        except ApiError as e:
+            log(f"  ⚠️  Fichier Dropbox introuvable : {dropbox_path}")
+            log(f"      Erreur : {e}")
+            return None
+        except Exception as e:
+            if attempt < max_retries:
+                wait = 15 * attempt
+                log(f"  ⚠️  Erreur réseau (tentative {attempt}/{max_retries}), retry dans {wait}s : {e}")
+                time.sleep(wait)
+            else:
+                log(f"  ❌  Échec après {max_retries} tentatives : {dropbox_path}")
+                raise
 
 
 def lire_sheet(content: bytes, sheet_name: str):

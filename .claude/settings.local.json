@@ -29,7 +29,12 @@
       "Skill(update-config)",
       "Skill(update-config:*)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python3 etl_cloud.py --mois 4)",
+      "Skill(schedule)",
+      "Skill(schedule:*)",
+      "mcp__scheduled-tasks__list_scheduled_tasks",
+      "mcp__scheduled-tasks__create_scheduled_task"
     ]
   }
 }
