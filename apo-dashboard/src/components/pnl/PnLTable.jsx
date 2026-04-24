@@ -4,12 +4,15 @@ import { generatePnlPdf } from '../../lib/generatePnlPdf'
 
 // ── Helpers ──────────────────────────────────────────────────
 
+// Grid template: 3-col on desktop, 2-col on mobile (per-tonne hidden via CSS)
+const GRID = '1fr 110px 140px'
+
 function ColHeaders() {
   const { currency } = useDashboardStore()
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '0 14px 10px', borderBottom: '1px solid rgba(242,140,40,0.12)', marginBottom: 6 }}>
+    <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '0 14px 10px', borderBottom: '1px solid rgba(242,140,40,0.12)', marginBottom: 6 }}>
       <span style={styles.dimLabel}>Libellé</span>
-      <span style={{ ...styles.dimLabel, textAlign: 'right' }}>F / tonne</span>
+      <span className="pnl-col-tonne" style={{ ...styles.dimLabel, textAlign: 'right' }}>F / tonne</span>
       <span style={{ ...styles.dimLabel, textAlign: 'right' }}>Total {currency}</span>
     </div>
   )
@@ -19,16 +22,16 @@ function DataRow({ label, pertonne, total, color = 'var(--text-dim)', indent = f
   const { currency } = useDashboardStore()
   const c = (v) => fmt.currency(Math.abs(v), currency)
   if (total === 0 && !showZero) return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '5px 14px', opacity: 0.5 }}>
+    <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '5px 14px', opacity: 0.5 }}>
       <span style={{ ...styles.label, paddingLeft: indent ? 18 : 0, color }}>{label}</span>
-      <span style={{ ...styles.numDim, textAlign: 'right' }}>—</span>
+      <span className="pnl-col-tonne" style={{ ...styles.numDim, textAlign: 'right' }}>—</span>
       <span style={{ ...styles.numDim, textAlign: 'right', fontStyle: 'italic' }}>non facturé</span>
     </div>
   )
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '5px 14px' }} className="pnl-row">
+    <div className="pnl-grid pnl-row" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '5px 14px' }}>
       <span style={{ ...styles.label, paddingLeft: indent ? 18 : 0, color }}>{label}</span>
-      <span style={{ ...styles.num, textAlign: 'right', color }}>{pertonne > 0 ? fmt.full(pertonne) : `– ${fmt.full(Math.abs(pertonne))}`}</span>
+      <span className="pnl-col-tonne" style={{ ...styles.num, textAlign: 'right', color }}>{pertonne > 0 ? fmt.full(pertonne) : `– ${fmt.full(Math.abs(pertonne))}`}</span>
       <span style={{ ...styles.num, textAlign: 'right', color }}>{total >= 0 ? c(total) : `– ${c(total)}`}</span>
     </div>
   )
@@ -39,12 +42,12 @@ function SubtotalRow({ label, pertonne, total, pct, color, bg, borderColor }) {
   const c = (v) => fmt.currency(Math.abs(v), currency)
   const sign = total >= 0 ? '+' : '–'
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '9px 14px', background: bg, borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}`, margin: '4px 0' }}>
+    <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '9px 14px', background: bg, borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}`, margin: '4px 0' }}>
       <span style={{ ...styles.subtotalLabel, color }}>
         {label}
         {pct != null && <span style={{ marginLeft: 10, fontSize: 11, fontWeight: 400, opacity: 0.8 }}>({pct.toFixed(1).replace('.', ',')}%)</span>}
       </span>
-      <span style={{ ...styles.subtotalNum, textAlign: 'right', color }}>{sign} {fmt.full(Math.abs(pertonne))}</span>
+      <span className="pnl-col-tonne" style={{ ...styles.subtotalNum, textAlign: 'right', color }}>{sign} {fmt.full(Math.abs(pertonne))}</span>
       <span style={{ ...styles.subtotalNum, textAlign: 'right', color }}>{sign} {c(total)}</span>
     </div>
   )
@@ -113,9 +116,9 @@ export default function PnLTable({ pnl, data }) {
           <DataRow key={i} label={row.label} pertonne={row.pertonne} total={row.total}
             color={row.total > 0 ? 'var(--text)' : 'var(--text-dim)'} indent />
         ))}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '8px 14px', borderTop: '1px solid rgba(76,175,122,0.2)', background: 'rgba(76,175,122,0.06)' }}>
+        <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(76,175,122,0.2)', background: 'rgba(76,175,122,0.06)' }}>
           <span style={{ ...styles.totalLabel, color: 'var(--green)' }}>Total CA</span>
-          <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--green)' }}>{fmt.full(pnl.totalProduitsTonne)}</span>
+          <span className="pnl-col-tonne" style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--green)' }}>{fmt.full(pnl.totalProduitsTonne)}</span>
           <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--green)' }}>{c(pnl.totalProduitsTotal)}</span>
         </div>
       </div>
@@ -143,9 +146,9 @@ export default function PnLTable({ pnl, data }) {
         {pnl.chargesExploitation.map((row, i) => (
           <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
         ))}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px', padding: '8px 14px', borderTop: '1px solid rgba(224,92,92,0.2)', background: 'rgba(224,92,92,0.05)' }}>
+        <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(224,92,92,0.2)', background: 'rgba(224,92,92,0.05)' }}>
           <span style={{ ...styles.totalLabel, color: 'var(--red)' }}>Total Charges exploitation</span>
-          <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {fmt.full(Math.abs(pnl.totalChargesExpTonne))}</span>
+          <span className="pnl-col-tonne" style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {fmt.full(Math.abs(pnl.totalChargesExpTonne))}</span>
           <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {c(pnl.totalChargesExpTotal)}</span>
         </div>
       </div>
@@ -171,11 +174,11 @@ export default function PnLTable({ pnl, data }) {
 
       {/* ── RÉSULTAT NET ─────────────────────────────────────── */}
       <div style={{ background: pnl.resultatTotal >= 0 ? 'rgba(76,175,122,0.08)' : 'rgba(224,92,92,0.08)', border: `1px solid ${pnl.resultatTotal >= 0 ? 'rgba(76,175,122,0.3)' : 'rgba(224,92,92,0.3)'}`, borderRadius: 8, padding: '12px 14px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 140px' }}>
+        <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID }}>
           <span style={{ ...styles.resultatLabel, color: pnl.resultatTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>
             Résultat Net Estimé
           </span>
-          <span style={{ ...styles.resultatNum, textAlign: 'right', color: pnl.resultatTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>
+          <span className="pnl-col-tonne" style={{ ...styles.resultatNum, textAlign: 'right', color: pnl.resultatTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>
             {pnl.resultatTotal >= 0 ? '+' : '–'} {fmt.full(Math.abs(pnl.resultatTonne))}
           </span>
           <span style={{ ...styles.resultatNum, textAlign: 'right', color: pnl.resultatTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>

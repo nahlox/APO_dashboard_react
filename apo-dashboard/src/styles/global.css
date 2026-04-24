@@ -92,7 +92,11 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px clamp(16px, 3vw, 40px);
+  /* Safe-area: push below Dynamic Island / notch on iPhone */
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-bottom: 10px;
+  padding-left: max(clamp(16px, 3vw, 40px), env(safe-area-inset-left));
+  padding-right: max(clamp(16px, 3vw, 40px), env(safe-area-inset-right));
   border-bottom: 1px solid var(--border);
   background: rgba(15,42,29,0.92);
   backdrop-filter: blur(20px);
@@ -128,10 +132,10 @@ body.light header { background: rgba(245,245,240,0.95); }
   position: sticky;
   top: 0;
   height: calc(100vh - 57px);
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: auto;  /* allows sidebar content to scroll on short screens */
   z-index: 20;
   transition: width 0.3s cubic-bezier(0.4,0,0.2,1), min-width 0.3s cubic-bezier(0.4,0,0.2,1);
-  overflow: hidden;
 }
 body.light .sidebar { background: #FFFFFF; border-right: 1px solid rgba(180,90,10,0.18); }
 
@@ -455,50 +459,6 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   .kpi-value { font-size: 24px; }
 }
 
-@media (max-width: 900px) {
-  header { padding: 12px 16px; }
-  main { padding: 14px; }
-  .app-layout { flex-direction: row; }
-
-  /* Sidebar : drawer overlay depuis la gauche */
-  .sidebar {
-    position: fixed !important;
-    top: 0; left: 0;
-    height: 100vh !important;
-    width: 260px !important;
-    min-width: 260px !important;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
-    box-shadow: none;
-  }
-  .sidebar.open {
-    transform: translateX(0);
-    box-shadow: 4px 0 32px rgba(0,0,0,0.45);
-  }
-  /* Quand sidebar ouverte, cacher la version collapsed */
-  .sidebar.collapsed { transform: translateX(-100%) !important; }
-
-  /* Bouton hamburger flottant en haut à gauche */
-  .mobile-menu-btn {
-    display: flex !important;
-  }
-
-  /* Overlay sombre derrière le drawer */
-  .sidebar-overlay {
-    display: block !important;
-  }
-
-  /* Masquer le hamburger intégré dans la sidebar sur mobile */
-  .sidebar .sidebar-header .hamburger { display: none; }
-  .sidebar .sidebar-brand { opacity: 1; max-width: none; }
-
-  .charts-grid { grid-template-columns: 1fr; }
-  .charts-grid.col3 { grid-template-columns: 1fr; }
-  .chart-card.span2 { grid-column: span 1; }
-  .global-compare-grid { grid-template-columns: 1fr; }
-}
-
 /* Bouton hamburger mobile (caché sur desktop) */
 .mobile-menu-btn {
   display: none;
@@ -530,4 +490,119 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   background: rgba(0,0,0,0.55);
   z-index: 999;
   backdrop-filter: blur(2px);
+}
+
+/* ===== TABLET / LARGE PHONE (≤ 900px) ===== */
+@media (max-width: 900px) {
+  main { padding: 14px; }
+  .app-layout { flex-direction: row; }
+
+  /* Sidebar → drawer overlay */
+  .sidebar {
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100dvh !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    box-shadow: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0,0,0,0.45);
+  }
+  .sidebar.collapsed { transform: translateX(-100%) !important; }
+  .mobile-menu-btn { display: flex !important; }
+  .sidebar-overlay { display: block !important; }
+  .sidebar .sidebar-header .hamburger { display: none; }
+  .sidebar .sidebar-brand { opacity: 1; max-width: none; }
+
+  .charts-grid { grid-template-columns: 1fr; }
+  .charts-grid.col3 { grid-template-columns: 1fr; }
+  .chart-card.span2, .chart-card.span3 { grid-column: span 1; }
+  .global-compare-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+}
+
+/* ===== PHONE (≤ 600px) ===== */
+@media (max-width: 600px) {
+  /* Content padding */
+  main { padding: 10px 12px 24px; }
+
+  /* Nav tabs: slimmer, horizontally scrollable */
+  .nav-tabs { padding: 0 10px; -webkit-overflow-scrolling: touch; }
+  .nav-tab { padding: 13px 11px; font-size: 10px; letter-spacing: 0.6px; }
+
+  /* KPI grid: 2 columns */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .kpi-card { padding: 14px 16px; }
+  .kpi-value { font-size: 20px; }
+  .kpi-label { font-size: 10px; letter-spacing: 1.5px; margin-bottom: 6px; }
+  .kpi-sub { font-size: 11px; }
+
+  /* Charts */
+  .charts-grid { gap: 10px; margin-bottom: 14px; }
+  .chart-card { padding: 12px 14px; }
+  .chart-title { font-size: 11px; }
+  .chart-subtitle { font-size: 11px; margin-bottom: 10px; }
+
+  /* Sections */
+  .section-title { font-size: 20px; margin-bottom: 6px; }
+  .section-subtitle { font-size: 12px; margin-bottom: 12px; }
+
+  /* P&L table */
+  .pnl-box { padding: 14px 12px; }
+  .pnl-col-tonne { display: none !important; }
+  .pnl-grid { grid-template-columns: 1fr 140px !important; }
+
+  /* Data tables */
+  .data-table { font-size: 12px; }
+  .data-table th { padding: 8px 8px; font-size: 10px; }
+  .data-table td { padding: 9px 8px; }
+  .data-table td.num { font-size: 12px; }
+
+  /* Gauges */
+  .gauge-row { gap: 8px; }
+  .gauge-item { min-width: 120px; padding: 12px 14px; }
+  .gauge-value { font-size: 20px; }
+
+  /* Global compare: 1 col */
+  .global-compare-grid { grid-template-columns: 1fr; gap: 12px; }
+  .month-summary-card { padding: 16px 18px; }
+  .month-summary-title { font-size: 17px; margin-bottom: 12px; }
+  .compare-row { padding: 7px 0; font-size: 13px; }
+  .compare-val { font-size: 13px; }
+
+  /* Alerts */
+  .alert-box { padding: 12px 14px; gap: 10px; }
+  .alert-title { font-size: 13px; }
+  .alert-text { font-size: 12px; }
+
+  /* PnL amounts */
+  .pnl-amount.bold { font-size: 18px; }
+
+  /* Bottom safe area for standalone PWA */
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ===== SMALL PHONE (≤ 400px: iPhone SE, Galaxy A14 etc) ===== */
+@media (max-width: 400px) {
+  main { padding: 8px 10px 20px; }
+  .nav-tab { padding: 11px 8px; font-size: 9px; letter-spacing: 0.3px; }
+  .kpi-grid { grid-template-columns: 1fr; gap: 8px; }
+  .kpi-value { font-size: 22px; }
+  .section-title { font-size: 18px; }
+  .chart-card { padding: 10px 12px; }
+  .data-table th { padding: 7px 6px; }
+  .data-table td { padding: 8px 6px; }
+  .pnl-box { padding: 12px 10px; }
+  .month-summary-card { padding: 14px 16px; }
+  .gauge-item { min-width: 100px; }
 }
