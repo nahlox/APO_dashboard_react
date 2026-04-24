@@ -6,19 +6,29 @@ import { monthFull } from '../../lib/monthUtils'
 export function Charges({ data, month }) {
   const { currency } = useDashboardStore()
   const { charges } = data
+
+  // Detect mode: categories (API months, date='') vs transactions (static months, date='dd/mm')
+  const isCategorized = charges.topDepenses.length > 0 && charges.topDepenses[0].date === ''
+  const total = charges.topDepenses.reduce((s, r) => s + r.mt, 0)
+
   return (
     <section>
       <div className="section-title">Charges & Coûts</div>
-      <div className="section-subtitle">Top dépenses opérationnelles — {monthFull(data)}</div>
+      <div className="section-subtitle">Dépenses opérationnelles — {monthFull(data)}</div>
       <div className="chart-card">
-        <div className="chart-title">Top 15 Dépenses du Mois</div>
-        <div className="chart-subtitle">Classées par montant décroissant (hors achats graines)</div>
+        <div className="chart-title">{isCategorized ? 'Répartition par Catégorie' : 'Top Dépenses du Mois'}</div>
+        <div className="chart-subtitle">
+          {isCategorized
+            ? 'Charges d\'exploitation classées par catégorie (hors achats graines)'
+            : 'Classées par montant décroissant (hors achats graines)'}
+        </div>
         <table className="data-table">
           <thead>
             <tr>
               <th>#</th>
-              <th>Libellé</th>
-              <th>Date</th>
+              <th>{isCategorized ? 'Catégorie' : 'Libellé'}</th>
+              {!isCategorized && <th>Date</th>}
+              {isCategorized && <th style={{ textAlign: 'right' }}>Part</th>}
               <th style={{ textAlign: 'right' }}>Montant {currency}</th>
             </tr>
           </thead>
@@ -27,7 +37,14 @@ export function Charges({ data, month }) {
               <tr key={i}>
                 <td className="rank">{i + 1}</td>
                 <td>{r.lib}</td>
-                <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>{r.date}</td>
+                {!isCategorized && (
+                  <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>{r.date}</td>
+                )}
+                {isCategorized && (
+                  <td className="num" style={{ color: 'var(--text-dim)', fontSize: 11 }}>
+                    {total > 0 ? (r.mt / total * 100).toFixed(1) + '%' : '—'}
+                  </td>
+                )}
                 <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency)}</td>
               </tr>
             ))}

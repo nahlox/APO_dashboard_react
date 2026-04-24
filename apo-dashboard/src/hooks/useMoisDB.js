@@ -11,6 +11,47 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
 import { MONTH_DATA as MONTH_DATA_STATIC } from '../data/index'
 
+/**
+ * Catégorise une ligne caisse_apo2 selon les mêmes catégories que Jan/Fév/Mar.
+ * Labels alignés avec ceux des fichiers statiques pour la cohérence du GlobalPanel.
+ * Utilisé en fallback si la colonne `categorie` n'est pas renseignée en base.
+ */
+function categorizeLibelle(libelle = '') {
+  const l = libelle.toUpperCase()
+
+  if (/SALAIRE|PAIE DU|PAIE DES|PRIME POUR|AVANCE SUR SALAIRE|PAIE JOUR|JOUR FERIER|TRAVAILLEURS TEMPORAIRE/.test(l))
+    return 'Salaires'
+
+  if (/CARBURANT|GASOIL|GAZOIL|ESSENCE/.test(l))
+    return 'Carburant'
+
+  if (/MAIN D.O(EUVRE|ŒUVRE)|ACOMPTE SUR MAIN|SOLDE.*MAIN/.test(l))
+    return "Main d'œuvre ext."
+
+  if (/REPARATION|REAPARATION|ENTRETIEN|REBOBINAGE|RECHARGEMENT BOUTEILLE|DEPANNAGE/.test(l))
+    return 'Entretien & Rép.'
+
+  if (/GRAVIER|CHEVRON|SABLE TRAVAUX|BRIQUES|CONTRE PLAQUE|PASSE-ALLURE|BASSIN LAGUNAGE|FORAGE|DALLE|FABRICATION AUVENT|FABRICATION PIQUES|CIMENT/.test(l))
+    return 'Construction'
+
+  if (/LOCATION BULDOZER|LOCATION PORTE-CHAR|VISITE TECHNIQUE|BILLET AVION|LAVAGE PICK|DELAVAGE PICK|PARLLELISME|PARALLISME/.test(l))
+    return 'Véhicules'
+
+  if (/FRAIS DE TRANSPORT|TRANSPORT FOURNISSEUR|LOCATION CAMION/.test(l))
+    return 'Véhicules'
+
+  if (/^ACHAT EAU|^ACHAT EU |^ACHAT EA |EAU POUR|^ACHAT DIVERS/.test(l))
+    return 'Eau/divers'
+
+  if (/FOURNITURES/.test(l))
+    return 'Fournitures'
+
+  if (/^ACHAT/.test(l))
+    return 'Matériels'
+
+  return 'Frais divers'
+}
+
 // Clés des mois déjà couverts par les fichiers statiques
 const STATIC_KEYS = new Set(MONTH_DATA_STATIC.map(m => m.key))
 
@@ -76,25 +117,15 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const caJoursLabels = Object.keys(caParJour).sort().map(d => d.slice(8, 10))
   const caJoursVals   = Object.keys(caParJour).sort().map(d => caParJour[d])
 
-  // Agrégation par jour : somme des charges du jour, libellé = dépense principale
-  const parJour = {}
+  // Agrégation par catégorie (DB ou classification automatique)
+  const parCategorie = {}
   for (const r of topCharges) {
-    const d = r.date_mouvement || ''
-    if (!parJour[d]) parJour[d] = { total: 0, topLib: '', topMt: 0 }
-    parJour[d].total += r.credit_fcfa || 0
-    if ((r.credit_fcfa || 0) > parJour[d].topMt) {
-      parJour[d].topMt  = r.credit_fcfa || 0
-      parJour[d].topLib = r.libelle || ''
-    }
+    const cat = r.categorie || categorizeLibelle(r.libelle || '')
+    parCategorie[cat] = (parCategorie[cat] || 0) + (r.credit_fcfa || 0)
   }
-  const topDepenses = Object.entries(parJour)
-    .map(([d, v]) => ({
-      lib:  v.topLib,
-      date: d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '',
-      mt:   v.total,
-    }))
+  const topDepenses = Object.entries(parCategorie)
+    .map(([lib, mt]) => ({ lib, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
-    .slice(0, 15)
 
   // Top fournisseurs — format identique aux fichiers statiques
   const fournisseursItems = topFournisseurs.map(r => ({
@@ -255,11 +286,12 @@ export function useMoisDB() {
               .order('date_vente')
               .then(r => r.data || []),
 
-            // Toutes les écritures du mois — agrégées par jour côté client
+            // Toutes les écritures du mois — agrégées par catégorie côté client
             supabase.from('caisse_apo2')
-              .select('date_mouvement, libelle, credit_fcfa')
+              .select('date_mouvement, libelle, credit_fcfa, categorie')
               .eq('periode_id', periodeId)
               .gt('credit_fcfa', 0)
+              .not('libelle', 'ilike', 'TRANSFERT%')
               .order('date_mouvement')
               .then(r => r.data || []),
 
