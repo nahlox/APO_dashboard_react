@@ -34,7 +34,8 @@
       "Skill(schedule)",
       "Skill(schedule:*)",
       "mcp__scheduled-tasks__list_scheduled_tasks",
-      "mcp__scheduled-tasks__create_scheduled_task"
+      "mcp__scheduled-tasks__create_scheduled_task",
+      "Bash(kill 58653 58651)"
     ]
   }
 }
