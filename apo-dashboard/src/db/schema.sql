@@ -319,3 +319,17 @@ SELECT
 FROM contrats_pepiniere cp
 JOIN clients cl ON cl.id = cp.client_id
 ORDER BY cp.date_contrat;
+
+
+-- ── AMORTISSEMENT BANCAIRE ────────────────────────────────────
+-- Annuités mensuelles du prêt bancaire APO.
+-- Montant fixe : 20 200 000 FCFA / mois (toutes périodes 2026).
+CREATE TABLE amortissement_bancaire (
+  id           SERIAL PRIMARY KEY,
+  periode_id   INTEGER NOT NULL REFERENCES periodes(id) ON DELETE CASCADE,
+  libelle      TEXT    NOT NULL DEFAULT 'Amortissement prêt bancaire',
+  montant_fcfa BIGINT  NOT NULL,
+  type         TEXT    NOT NULL DEFAULT 'annuite'
+               CHECK (type IN ('annuite', 'principal', 'interet', 'autre'))
+);
+CREATE INDEX idx_amort_periode ON amortissement_bancaire(periode_id);

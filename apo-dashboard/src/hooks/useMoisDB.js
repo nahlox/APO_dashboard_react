@@ -94,7 +94,7 @@ const MOIS_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','
 /**
  * Convertit les lignes Supabase en objet `data` compatible avec les composants React.
  */
-function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFournisseurs) {
+function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFournisseurs, amortRows) {
   const huileProduiteT = Math.round((kpis.huile_produite_kg  || 0) / 1000)
   const huileVendueT   = Math.round((kpis.huile_vendue_kg    || 0) / 1000)
   const regRecusT      = Math.round((kpis.regimes_recus_kg   || 0) / 1000)
@@ -109,7 +109,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const caFlorentin = kpis.ca_florentin_fcfa   || 0
   const caBassin    = kpis.ca_bassin_fcfa      || 0
   const coutMP      = kpis.cout_mp_fcfa        || 0
-  const amort       = kpis.amortissement_fcfa  || 0
+
+  // Amortissement bancaire — table dédiée en priorité, fallback sur kpis_mensuels
+  const amortRows_  = amortRows || []
+  const amort       = amortRows_.length > 0
+    ? amortRows_.reduce((s, r) => s + (r.montant_fcfa || 0), 0)
+    : (kpis.amortissement_fcfa || 0)
 
   // Charges calculées depuis les enregistrements filtrés (caisse 1 + caisse 2, hors transferts)
   const parCategorie = {}
@@ -215,7 +220,15 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
       ebitdaTotal:  ebitda,
       ebitdaTonne:  huileProduiteT ? Math.round(ebitda / huileProduiteT) : 0,
       ebitdaPct:    caTotal ? +((ebitda / caTotal) * 100).toFixed(1) : 0,
-      amortissements: amort > 0 ? [{ label: 'Amortissement', pertonne: huileProduiteT ? Math.round(amort / huileProduiteT) : 0, total: -amort }] : [],
+      amortissements: amortRows_.length > 0
+        ? amortRows_.map(r => ({
+            label:    r.libelle || 'Amortissement prêt bancaire',
+            pertonne: huileProduiteT ? Math.round((r.montant_fcfa || 0) / huileProduiteT) : 0,
+            total:    -(r.montant_fcfa || 0),
+          }))
+        : amort > 0
+          ? [{ label: 'Amortissement prêt bancaire', pertonne: huileProduiteT ? Math.round(amort / huileProduiteT) : 0, total: -amort }]
+          : [],
       totalAmortTotal: -amort,
       totalAmortTonne: huileProduiteT ? -Math.round(amort / huileProduiteT) : 0,
       resultatTotal:  resultat,
@@ -292,7 +305,7 @@ export function useMoisDB() {
           const periodeId = periode.id
 
           // 2. Données journalières en parallèle
-          const [prodJour, ventesHuile, topCharges, topFournisseurs] = await Promise.all([
+          const [prodJour, ventesHuile, topCharges, topFournisseurs, amortRows] = await Promise.all([
             supabase.from('production_journaliere')
               .select('date_production, regime_recu_kg, taux_extraction')
               .eq('periode_id', periodeId)
@@ -331,16 +344,7 @@ export function useMoisDB() {
                 .not('libelle', 'ilike', 'APPRO%')
                 .order('date_mouvement')
                 .then(r => r.data || []),
-            ]).then(([c1, c2]) => {
-              const all = [...c1, ...c2]
-              // DEBUG — à supprimer après diagnostic
-              console.table(
-                [...all].sort((a, b) => (b.credit_fcfa || 0) - (a.credit_fcfa || 0))
-                  .slice(0, 20)
-                  .map(r => ({ libelle: r.libelle, credit_fcfa: r.credit_fcfa, source: c1.includes(r) ? 'caisse1' : 'caisse2' }))
-              )
-              return all
-            }),
+            ]).then(([c1, c2]) => [...c1, ...c2]),
 
             supabase.from('vue_top_fournisseurs')
               .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
@@ -348,12 +352,17 @@ export function useMoisDB() {
               .eq('mois', periode.mois)
               .limit(10)
               .then(r => r.data || []),
+
+            supabase.from('amortissement_bancaire')
+              .select('libelle, montant_fcfa, type')
+              .eq('periode_id', periodeId)
+              .then(r => r.data || []),
           ])
 
           const idx = (periode.mois - 1) % 12
           return {
             key:    MOIS_KEYS[periode.mois - 1],
-            data:   buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFournisseurs),
+            data:   buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFournisseurs, amortRows),
             accent: ACCENTS[idx].accent,
             rgba:   ACCENTS[idx].rgba,
           }
