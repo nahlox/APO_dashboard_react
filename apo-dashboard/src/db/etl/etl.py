@@ -133,6 +133,39 @@ def inserer(table: str, rows: list, periode_id: int | None = None, label: str = 
         sb.table(table).insert(rows[i:i + CHUNK_SIZE]).execute()
     log(f"  ✅ {table} : {len(rows)} lignes insérées {label}")
 
+def categorize_libelle(libelle: str) -> str:
+    """Catégorise une ligne de caisse selon son libellé.
+    Aligné avec categorizeLibelle() dans useMoisDB.js."""
+    l = (libelle or "").upper()
+    if any(k in l for k in ["SALAIRE", "PAIE DU", "PAIE DES", "PRIME POUR",
+                              "AVANCE SUR SALAIRE", "PAIE JOUR", "JOUR FERIER",
+                              "TRAVAILLEURS TEMPORAIRE"]):
+        return "salaires"
+    if any(k in l for k in ["CARBURANT", "GASOIL", "GAZOIL", "ESSENCE"]):
+        return "carburant"
+    if any(k in l for k in ["MAIN D'O", "MAIN D\u2019O", "ACOMPTE SUR MAIN", "SOLDE MAIN"]):
+        return "main_oeuvre"
+    if any(k in l for k in ["REPARATION", "REAPARATION", "ENTRETIEN",
+                              "REBOBINAGE", "RECHARGEMENT BOUTEILLE", "DEPANNAGE"]):
+        return "materiel"
+    if any(k in l for k in ["GRAVIER", "CHEVRON", "SABLE TRAVAUX", "BRIQUES",
+                              "CONTRE PLAQUE", "PASSE-ALLURE", "BASSIN LAGUNAGE",
+                              "FORAGE", "DALLE", "FABRICATION AUVENT",
+                              "FABRICATION PIQUES", "CIMENT"]):
+        return "materiel"
+    if any(k in l for k in ["LOCATION BULDOZER", "LOCATION PORTE-CHAR",
+                              "VISITE TECHNIQUE", "BILLET AVION", "LAVAGE PICK",
+                              "DELAVAGE PICK", "PARLLELISME", "PARALLISME",
+                              "FRAIS DE TRANSPORT", "TRANSPORT FOURNISSEUR",
+                              "LOCATION CAMION"]):
+        return "vehicules"
+    if l.startswith("ACHAT"):
+        return "materiel"
+    if l.startswith("FOURNITURES"):
+        return "materiel"
+    return "frais_divers"
+
+
 def safe_float(val, default=0.0) -> float:
     try:
         return float(val) if val is not None else default
@@ -354,13 +387,15 @@ def parse_caisse_apo(path: Path, mois: int, periode_id: int):
             continue
         if row[1].month != mois:
             continue
+        libelle = str(row[2] or "")
         rows.append({
             "periode_id":     periode_id,
             "date_mouvement": row[1].date().isoformat(),
-            "libelle":        str(row[2] or ""),
+            "libelle":        libelle,
             "debit_fcfa":     safe_float(row[3]),
             "credit_fcfa":    safe_float(row[4]),
             "solde_fcfa":     safe_float(row[5]),
+            "categorie":      categorize_libelle(libelle),
         })
 
     inserer("caisse_apo", rows, periode_id, f"(mois {mois})")
@@ -378,13 +413,15 @@ def parse_caisse_apo2(path: Path, mois: int, periode_id: int):
             continue
         if row[1].month != mois:
             continue
+        libelle = str(row[2] or "")
         rows.append({
             "periode_id":     periode_id,
             "date_mouvement": row[1].date().isoformat(),
-            "libelle":        str(row[2] or ""),
+            "libelle":        libelle,
             "debit_fcfa":     safe_float(row[3]),
             "credit_fcfa":    safe_float(row[4]),
             "solde_fcfa":     safe_float(row[5]),
+            "categorie":      categorize_libelle(libelle),
         })
 
     inserer("caisse_apo2", rows, periode_id, f"(mois {mois})")

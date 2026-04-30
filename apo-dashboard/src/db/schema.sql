@@ -133,7 +133,11 @@ CREATE TABLE caisse_apo (
   debit_fcfa      NUMERIC(14,2) DEFAULT 0,   -- entrées
   credit_fcfa     NUMERIC(14,2) DEFAULT 0,   -- sorties
   solde_fcfa      NUMERIC(14,2),
-  type_mouvement  TEXT          CHECK (type_mouvement IN ('encaissement','decaissement','solde'))
+  type_mouvement  TEXT          CHECK (type_mouvement IN ('encaissement','decaissement','solde')),
+  categorie       TEXT          CHECK (categorie IN (
+                    'salaires','carburant','materiel',
+                    'vehicules','main_oeuvre','frais_divers','autre'
+                  ))
 );
 
 -- ── 11. CAISSE APO 2 — CHARGES EXPLOITATION (source: CAISSE_APO_2)
