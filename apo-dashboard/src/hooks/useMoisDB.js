@@ -290,17 +290,20 @@ export function useMoisDB() {
               .then(r => r.data || []),
 
             // Toutes les écritures du mois — caisse 1 + caisse 2, agrégées par catégorie
+            // caisse_apo  : pas de colonne categorie → select sans
+            // caisse_apo2 : a la colonne categorie
             Promise.all([
               supabase.from('caisse_apo')
-                .select('date_mouvement, libelle, credit_fcfa, categorie')
+                .select('date_mouvement, libelle, credit_fcfa')
                 .eq('periode_id', periodeId)
                 .gt('credit_fcfa', 0)
                 .not('libelle', 'ilike', 'TRANSFERT%')
                 .not('libelle', 'ilike', 'VIREMENT%')
                 .not('libelle', 'ilike', 'VERSEMENT%')
                 .not('libelle', 'ilike', 'DEPOT%')
+                .not('libelle', 'ilike', 'APPRO%')
                 .order('date_mouvement')
-                .then(r => r.data || []),
+                .then(r => (r.data || []).map(row => ({ ...row, categorie: null }))),
               supabase.from('caisse_apo2')
                 .select('date_mouvement, libelle, credit_fcfa, categorie')
                 .eq('periode_id', periodeId)
@@ -309,9 +312,19 @@ export function useMoisDB() {
                 .not('libelle', 'ilike', 'VIREMENT%')
                 .not('libelle', 'ilike', 'VERSEMENT%')
                 .not('libelle', 'ilike', 'DEPOT%')
+                .not('libelle', 'ilike', 'APPRO%')
                 .order('date_mouvement')
                 .then(r => r.data || []),
-            ]).then(([c1, c2]) => [...c1, ...c2]),
+            ]).then(([c1, c2]) => {
+              const all = [...c1, ...c2]
+              // DEBUG — à supprimer après diagnostic
+              console.table(
+                [...all].sort((a, b) => (b.credit_fcfa || 0) - (a.credit_fcfa || 0))
+                  .slice(0, 20)
+                  .map(r => ({ libelle: r.libelle, credit_fcfa: r.credit_fcfa, source: c1.includes(r) ? 'caisse1' : 'caisse2' }))
+              )
+              return all
+            }),
 
             supabase.from('vue_top_fournisseurs')
               .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
