@@ -92,8 +92,16 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const caFlorentin = kpis.ca_florentin_fcfa   || 0
   const caBassin    = kpis.ca_bassin_fcfa      || 0
   const coutMP      = kpis.cout_mp_fcfa        || 0
-  const charges     = kpis.charges_exploitation|| 0
   const amort       = kpis.amortissement_fcfa  || 0
+
+  // Charges calculées depuis les enregistrements filtrés (caisse 1 + caisse 2, hors transferts)
+  // plutôt que depuis kpis.charges_exploitation qui peut inclure des virements inter-caisses
+  const parCategorie = {}
+  for (const r of topCharges) {
+    const cat = r.categorie || categorizeLibelle(r.libelle || '')
+    parCategorie[cat] = (parCategorie[cat] || 0) + (r.credit_fcfa || 0)
+  }
+  const charges = Object.values(parCategorie).reduce((s, v) => s + v, 0)
   const resultat    = caTotal - coutMP - charges - amort
   const margeBrute  = caTotal - coutMP
   const ebitda      = margeBrute - charges
@@ -117,12 +125,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const caJoursLabels = Object.keys(caParJour).sort().map(d => d.slice(8, 10))
   const caJoursVals   = Object.keys(caParJour).sort().map(d => caParJour[d])
 
-  // Agrégation par catégorie (DB ou classification automatique)
-  const parCategorie = {}
-  for (const r of topCharges) {
-    const cat = r.categorie || categorizeLibelle(r.libelle || '')
-    parCategorie[cat] = (parCategorie[cat] || 0) + (r.credit_fcfa || 0)
-  }
+  // Tri des catégories agrégées (calculées en tête de fonction)
   const topDepenses = Object.entries(parCategorie)
     .map(([lib, mt]) => ({ lib, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
@@ -286,14 +289,29 @@ export function useMoisDB() {
               .order('date_vente')
               .then(r => r.data || []),
 
-            // Toutes les écritures du mois — agrégées par catégorie côté client
-            supabase.from('caisse_apo2')
-              .select('date_mouvement, libelle, credit_fcfa, categorie')
-              .eq('periode_id', periodeId)
-              .gt('credit_fcfa', 0)
-              .not('libelle', 'ilike', 'TRANSFERT%')
-              .order('date_mouvement')
-              .then(r => r.data || []),
+            // Toutes les écritures du mois — caisse 1 + caisse 2, agrégées par catégorie
+            Promise.all([
+              supabase.from('caisse_apo')
+                .select('date_mouvement, libelle, credit_fcfa, categorie')
+                .eq('periode_id', periodeId)
+                .gt('credit_fcfa', 0)
+                .not('libelle', 'ilike', 'TRANSFERT%')
+                .not('libelle', 'ilike', 'VIREMENT%')
+                .not('libelle', 'ilike', 'VERSEMENT%')
+                .not('libelle', 'ilike', 'DEPOT%')
+                .order('date_mouvement')
+                .then(r => r.data || []),
+              supabase.from('caisse_apo2')
+                .select('date_mouvement, libelle, credit_fcfa, categorie')
+                .eq('periode_id', periodeId)
+                .gt('credit_fcfa', 0)
+                .not('libelle', 'ilike', 'TRANSFERT%')
+                .not('libelle', 'ilike', 'VIREMENT%')
+                .not('libelle', 'ilike', 'VERSEMENT%')
+                .not('libelle', 'ilike', 'DEPOT%')
+                .order('date_mouvement')
+                .then(r => r.data || []),
+            ]).then(([c1, c2]) => [...c1, ...c2]),
 
             supabase.from('vue_top_fournisseurs')
               .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
