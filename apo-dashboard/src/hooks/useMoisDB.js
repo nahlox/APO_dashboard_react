@@ -294,7 +294,7 @@ export function useMoisDB() {
             // caisse_apo2 : a la colonne categorie
             Promise.all([
               supabase.from('caisse_apo')
-                .select('date_mouvement, libelle, credit_fcfa')   // pas de categorie : colonne absente avant migration
+                .select('date_mouvement, libelle, credit_fcfa, categorie')
                 .eq('periode_id', periodeId)
                 .gt('credit_fcfa', 0)
                 .not('libelle', 'ilike', 'TRANSFERT%')
@@ -303,7 +303,7 @@ export function useMoisDB() {
                 .not('libelle', 'ilike', 'DEPOT%')
                 .not('libelle', 'ilike', 'APPRO%')
                 .order('date_mouvement')
-                .then(r => (r.data || []).map(row => ({ ...row, categorie: null }))),
+                .then(r => r.data || []),
               supabase.from('caisse_apo2')
                 .select('date_mouvement, libelle, credit_fcfa, categorie')
                 .eq('periode_id', periodeId)
