@@ -517,16 +517,28 @@ def recalculer_kpis(mois: int, periode_id: int):
     vp  = sb.table("ventes_palmiste").select("montant_fcfa").eq("periode_id", periode_id).execute()
     vf  = sb.table("ventes_florentin").select("montant_fcfa").eq("periode_id", periode_id).execute()
     vb  = sb.table("ventes_bassin").select("montant_fcfa").eq("periode_id", periode_id).execute()
-    ca2 = sb.table("caisse_apo2").select("credit_fcfa").eq("periode_id", periode_id).execute()
+    ca1 = sb.table("caisse_apo").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
+    ca2 = sb.table("caisse_apo2").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
     ar  = sb.table("achats_regimes").select("poids_kg,montant_total").eq("periode_id", periode_id).execute()
     pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
+
+    # Patterns de transferts inter-caisses à exclure des charges
+    SKIP = ("TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO")
+
+    def is_transfer(libelle: str) -> bool:
+        u = (libelle or "").upper()
+        return any(u.startswith(k) for k in SKIP)
 
     ca_huile     = sum(safe_float(r["montant_fcfa"]) for r in vh.data)
     ca_palmiste  = sum(safe_float(r["montant_fcfa"]) for r in vp.data)
     ca_florentin = sum(safe_float(r["montant_fcfa"]) for r in vf.data)
     ca_bassin    = sum(safe_float(r["montant_fcfa"]) for r in vb.data)
-    charges      = sum(safe_float(r["credit_fcfa"])  for r in ca2.data)
+    # Charges = caisse 1 + caisse 2, hors transferts inter-caisses
+    charges = (
+        sum(safe_float(r["credit_fcfa"]) for r in ca1.data if not is_transfer(r["libelle"]))
+      + sum(safe_float(r["credit_fcfa"]) for r in ca2.data if not is_transfer(r["libelle"]))
+    )
 
     reg_recus   = sum(safe_float(r["regime_recu_kg"])        for r in pj.data)
     reg_traites = sum(safe_float(r["regime_traite_kg"])       for r in pj.data)
