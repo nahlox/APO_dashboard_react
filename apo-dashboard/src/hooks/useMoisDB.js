@@ -11,45 +11,62 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
 import { MONTH_DATA as MONTH_DATA_STATIC } from '../data/index'
 
+// Mapping clé DB → label d'affichage
+export const CAT_LABELS = {
+  salaires:       'Salaires & Primes',
+  carburant:      'Carburant',
+  main_oeuvre:    "Main d'œuvre ext.",
+  entretien:      'Entretien & Réparation',
+  construction:   'Construction & Travaux',
+  vehicules:      'Véhicules & Transport',
+  materiels:      'Matériels & Équipements',
+  eau_fournitures:'Eau & Fournitures',
+  frais_relat:    'Relations institutionnelles',
+  frais_admin:    'Frais administratifs',
+  autre:          'Autres dépenses',
+}
+
 /**
- * Catégorise une ligne caisse_apo2 selon les mêmes catégories que Jan/Fév/Mar.
- * Labels alignés avec ceux des fichiers statiques pour la cohérence du GlobalPanel.
- * Utilisé en fallback si la colonne `categorie` n'est pas renseignée en base.
+ * Catégorise un libellé de caisse en clé DB (fallback si categorie non renseignée).
+ * Aligné exactement avec le SQL de catégorisation appliqué en base.
  */
 function categorizeLibelle(libelle = '') {
   const l = libelle.toUpperCase()
 
-  if (/SALAIRE|PAIE DU|PAIE DES|PRIME POUR|AVANCE SUR SALAIRE|PAIE JOUR|JOUR FERIER|TRAVAILLEURS TEMPORAIRE/.test(l))
-    return 'Salaires'
+  if (/SALAIRE|PAIE DU|PAIE DES|PAIE JOUR|PRIME POUR|PRIME DE PRODUCTION|PRIME MOIS|AVANCE SUR SALAIRE|JOUR FERIER|TRAVAILLEURS TEMPORAIRE|PESONNEL JOUR/.test(l))
+    return 'salaires'
 
   if (/CARBURANT|GASOIL|GAZOIL|ESSENCE/.test(l))
-    return 'Carburant'
+    return 'carburant'
 
-  if (/MAIN D.O(EUVRE|ŒUVRE)|ACOMPTE SUR MAIN|SOLDE.*MAIN/.test(l))
-    return "Main d'œuvre ext."
+  if (/MAIN D.O|MAIN DO|MAIN DOEUVRE|ACOMPTE SUR MAIN|SOLDE MAIN|REBOBINEUR|TOURNEUR|MACONNERIE|VITRIER/.test(l))
+    return 'main_oeuvre'
 
-  if (/REPARATION|REAPARATION|ENTRETIEN|REBOBINAGE|RECHARGEMENT BOUTEILLE|DEPANNAGE/.test(l))
-    return 'Entretien & Rép.'
+  if (/REPARATION|REAPARATION|ENTRETIEN|REBOBINAGE|RECHARGEMENT BOUTEILLE|DEPANNAGE|DETRATAGE|NETTOYAGE|TEFLON|FABRICATION|CERVEAU DE FREIN|TAMPON POUR BENNE|DECANTEUR|FLEXIBLE POUR CHARGEUSE|PIECES DE RECHANGE|FILTRE/.test(l))
+    return 'entretien'
 
-  if (/GRAVIER|CHEVRON|SABLE TRAVAUX|BRIQUES|CONTRE PLAQUE|PASSE-ALLURE|BASSIN LAGUNAGE|FORAGE|DALLE|FABRICATION AUVENT|FABRICATION PIQUES|CIMENT/.test(l))
-    return 'Construction'
+  if (/CIMENT|GRAVIER|SABLE|FORAGE|DALLE|BRIQUES|CONTRE PLAQUE|BASSIN LAGUNAGE|TUYAUX|CONSTRUCTION|GARAGE ENGIN|BUREAU ANNEXE|CERTIFICAT FONCIER|TERRAIN|LEGALISATION/.test(l))
+    return 'construction'
 
-  if (/LOCATION BULDOZER|LOCATION PORTE-CHAR|VISITE TECHNIQUE|BILLET AVION|LAVAGE PICK|DELAVAGE PICK|PARLLELISME|PARALLISME/.test(l))
-    return 'Véhicules'
+  if (/VEHICULE|BULDOZER|BULL|PORTE.CHAR|VISITE TECHNIQUE|TAXE|BILLET AVION|LAVAGE PICK|LOCATION CAMION|FRAIS DE TRANSPORT|TRANSPORT FOURNISSEUR|ACHAT DE MOTO|AFFAIRES MARITIMES|NIVELEUSE|DEPOT DE RAFFE/.test(l))
+    return 'vehicules'
 
-  if (/FRAIS DE TRANSPORT|TRANSPORT FOURNISSEUR|LOCATION CAMION/.test(l))
-    return 'Véhicules'
+  if (/MATERIELS MECANIQUE|MATERIEL MECANIQUE|SOUDURE|CHAUDIERE|ORDINATEUR|INFORMATIQUE|BUREAU.ARMOIRE|MATERIEL ET EQUIPEMENT|REFRIGERATEUR|SPLIT|FRIGO|STARLINK|CABLE.*CABLAGE/.test(l))
+    return 'materiels'
 
-  if (/^ACHAT EAU|^ACHAT EU |^ACHAT EA |EAU POUR|^ACHAT DIVERS/.test(l))
-    return 'Eau/divers'
+  if (/ACHAT EAU|EAU POUR|FOURNITURES|ACHAT DIVERS|ENCRE|FILTRE A EAU/.test(l))
+    return 'eau_fournitures'
 
-  if (/FOURNITURES/.test(l))
-    return 'Fournitures'
+  if (/BAKCHICH|BACKCHICH|BAKHCHICH|FRAIS RELATIONNEL|AIDE FINANCIERE|DON POUR|MOBILE MONEY|RELATIONNEL|ASSISTANCE FUNEBRE|TEE.SHORT|POLOS/.test(l))
+    return 'frais_relat'
+
+  if (/VISA|JURIDIQUE|MEDICAUX|PRET|PRÊT|FRAIS DIVERS/.test(l))
+    return 'frais_admin'
 
   if (/^ACHAT/.test(l))
-    return 'Matériels'
+    return 'materiels'
 
-  return 'Frais divers'
+  return 'autre'
 }
 
 // Clés des mois déjà couverts par les fichiers statiques
@@ -95,11 +112,10 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const amort       = kpis.amortissement_fcfa  || 0
 
   // Charges calculées depuis les enregistrements filtrés (caisse 1 + caisse 2, hors transferts)
-  // plutôt que depuis kpis.charges_exploitation qui peut inclure des virements inter-caisses
   const parCategorie = {}
   for (const r of topCharges) {
-    const cat = r.categorie || categorizeLibelle(r.libelle || '')
-    parCategorie[cat] = (parCategorie[cat] || 0) + (r.credit_fcfa || 0)
+    const catKey = r.categorie || categorizeLibelle(r.libelle || '')
+    parCategorie[catKey] = (parCategorie[catKey] || 0) + (r.credit_fcfa || 0)
   }
   const charges = Object.values(parCategorie).reduce((s, v) => s + v, 0)
   const resultat    = caTotal - coutMP - charges - amort
@@ -125,9 +141,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, topCharges, topFourniss
   const caJoursLabels = Object.keys(caParJour).sort().map(d => d.slice(8, 10))
   const caJoursVals   = Object.keys(caParJour).sort().map(d => caParJour[d])
 
-  // Tri des catégories agrégées (calculées en tête de fonction)
+  // Tri des catégories agrégées — lib = label d'affichage depuis CAT_LABELS
   const topDepenses = Object.entries(parCategorie)
-    .map(([lib, mt]) => ({ lib, mt, date: '' }))
+    .map(([catKey, mt]) => ({ lib: CAT_LABELS[catKey] || catKey, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
 
   // Top fournisseurs — format identique aux fichiers statiques

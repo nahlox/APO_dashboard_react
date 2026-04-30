@@ -115,36 +115,55 @@ def log(msg: str):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 def categorize_libelle(libelle: str) -> str:
-    """Catégorise une ligne de caisse selon son libellé.
-    Aligné avec categorizeLibelle() dans useMoisDB.js."""
+    """Catégorise une ligne de caisse. Aligné avec le SQL en base et categorizeLibelle() JS."""
     l = (libelle or "").upper()
-    if any(k in l for k in ["SALAIRE", "PAIE DU", "PAIE DES", "PRIME POUR",
-                              "AVANCE SUR SALAIRE", "PAIE JOUR", "JOUR FERIER",
-                              "TRAVAILLEURS TEMPORAIRE"]):
+    if any(k in l for k in ["SALAIRE", "PAIE DU", "PAIE DES", "PAIE JOUR", "PRIME POUR",
+                              "PRIME DE PRODUCTION", "PRIME MOIS", "PRIME SUR ACHAT",
+                              "AVANCE SUR SALAIRE", "JOUR FERIER", "TRAVAILLEURS TEMPORAIRE",
+                              "PESONNEL JOUR"]):
         return "salaires"
     if any(k in l for k in ["CARBURANT", "GASOIL", "GAZOIL", "ESSENCE"]):
         return "carburant"
-    if any(k in l for k in ["MAIN D'O", "MAIN D\u2019O", "ACOMPTE SUR MAIN", "SOLDE MAIN"]):
+    if any(k in l for k in ["MAIN D'O", "MAIN DO", "MAIN DOEUVRE",
+                              "ACOMPTE SUR MAIN", "SOLDE MAIN",
+                              "REBOBINEUR", "TOURNEUR", "MACONNERIE", "VITRIER"]):
         return "main_oeuvre"
-    if any(k in l for k in ["REPARATION", "REAPARATION", "ENTRETIEN",
-                              "REBOBINAGE", "RECHARGEMENT BOUTEILLE", "DEPANNAGE"]):
-        return "materiel"
-    if any(k in l for k in ["GRAVIER", "CHEVRON", "SABLE TRAVAUX", "BRIQUES",
-                              "CONTRE PLAQUE", "PASSE-ALLURE", "BASSIN LAGUNAGE",
-                              "FORAGE", "DALLE", "FABRICATION AUVENT",
-                              "FABRICATION PIQUES", "CIMENT"]):
-        return "materiel"
-    if any(k in l for k in ["LOCATION BULDOZER", "LOCATION PORTE-CHAR",
-                              "VISITE TECHNIQUE", "BILLET AVION", "LAVAGE PICK",
-                              "DELAVAGE PICK", "PARLLELISME", "PARALLISME",
-                              "FRAIS DE TRANSPORT", "TRANSPORT FOURNISSEUR",
-                              "LOCATION CAMION"]):
+    if any(k in l for k in ["REPARATION", "REAPARATION", "ENTRETIEN", "REBOBINAGE",
+                              "RECHARGEMENT BOUTEILLE", "DEPANNAGE", "DETRATAGE",
+                              "NETTOYAGE", "TEFLON", "FABRICATION", "CERVEAU DE FREIN",
+                              "TAMPON POUR BENNE", "DECANTEUR", "FLEXIBLE POUR CHARGEUSE",
+                              "PIECES DE RECHANGE", "FILTRE"]):
+        return "entretien"
+    if any(k in l for k in ["CIMENT", "GRAVIER", "SABLE", "FORAGE", "DALLE", "BRIQUES",
+                              "CONTRE PLAQUE", "BASSIN LAGUNAGE", "TUYAUX", "CONSTRUCTION",
+                              "GARAGE ENGIN", "BUREAU ANNEXE", "CERTIFICAT FONCIER",
+                              "TERRAIN", "LEGALISATION"]):
+        return "construction"
+    if any(k in l for k in ["VEHICULE", "BULDOZER", "BULL", "PORTE-CHAR", "PORTE CHAR",
+                              "VISITE TECHNIQUE", "TAXE", "BILLET AVION", "LAVAGE PICK",
+                              "LOCATION CAMION", "FRAIS DE TRANSPORT", "TRANSPORT FOURNISSEUR",
+                              "ACHAT DE MOTO", "AFFAIRES MARITIMES", "NIVELEUSE", "DEPOT DE RAFFE"]):
         return "vehicules"
+    if any(k in l for k in ["MATERIELS MECANIQUE", "MATERIEL MECANIQUE", "SOUDURE",
+                              "CHAUDIERE", "ORDINATEUR", "INFORMATIQUE", "BUREAU+ARMOIRE",
+                              "MATERIEL ET EQUIPEMENT", "REFRIGERATEUR", "SPLIT", "FRIGO",
+                              "STARLINK", "CABLE"]):
+        return "materiels"
+    if l.startswith("ACHAT DE MATERIELS") or l.startswith("ACHAT MATERIELS") \
+       or l.startswith("ACHAT DE MATERIEL") or l.startswith("ACHAT MATERIEL"):
+        return "materiels"
+    if any(k in l for k in ["ACHAT EAU", "EAU POUR", "FOURNITURES", "ACHAT DIVERS",
+                              "ENCRE", "FILTRE A EAU"]):
+        return "eau_fournitures"
+    if any(k in l for k in ["BAKCHICH", "BACKCHICH", "BAKHCHICH", "FRAIS RELATIONNEL",
+                              "AIDE FINANCIERE", "DON POUR", "MOBILE MONEY",
+                              "RELATIONNEL", "ASSISTANCE FUNEBRE", "TEE-SHORT", "POLOS"]):
+        return "frais_relat"
+    if any(k in l for k in ["VISA", "JURIDIQUE", "MEDICAUX", "PRET", "FRAIS DIVERS"]):
+        return "frais_admin"
     if l.startswith("ACHAT"):
-        return "materiel"
-    if l.startswith("FOURNITURES"):
-        return "materiel"
-    return "frais_divers"
+        return "materiels"
+    return "autre"
 
 
 def safe_float(val, default=0.0) -> float:

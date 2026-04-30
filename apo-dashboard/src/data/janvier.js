@@ -224,21 +224,12 @@ export const janData = {
   // Top 15 dépenses triées par montant décroissant — libellé et montant exacts du fichier
   charges: {
     topDepenses: [
-      { date: '28/01', lib: 'Paie personnels APO — Janvier',              mt: 13950545 },
-      { date: '28/01', lib: 'Salaire M. RAMY — Janvier',                  mt:  5000000 },
-      { date: '28/01', lib: 'Salaire M. RAYAN — Janvier',                 mt:  4500000 },
-      { date: '27/01', lib: "Acompte achat véhicule",                     mt:  2900000 },
-      { date: '21/01', lib: 'MO Maçonnerie bureau annexe',                mt:  2200000 },
-      { date: '07/01', lib: 'Acompte matériels soudure (TM & Frères)',    mt:  2000000 },
-      { date: '07/01', lib: 'Achat matériels détartrage chaudière 10T',   mt:  1840000 },
-      { date: '28/01', lib: 'Salaires personnels déclarés',               mt:  1893025 },
-      { date: '28/01', lib: 'Salaire M. MAHDI — Janvier',                 mt:  1200000 },
-      { date: '29/01', lib: "Acompte main d'œuvre vitrier",               mt:  1000000 },
-      { date: '28/01', lib: 'Achat carburant (fin mois)',                  mt:  1096875 },
-      { date: '22/01', lib: 'Achat ordinateurs HP Core i5',               mt:   970000 },
-      { date: '22/01', lib: 'Achat carburant',                            mt:   928125 },
-      { date: '22/01', lib: 'Achat moto chef maintenance',                mt:   850000 },
-      { date: '23/01', lib: 'Frais rebobinage 2 moteurs',                 mt:   550000 },
+      { lib: 'Salaires & Primes',            mt: 22543570, date: '' },
+      { lib: 'Matériels & Équipements',      mt:  5840000, date: '' },
+      { lib: 'Carburant',                    mt:  2025000, date: '' },
+      { lib: "Main d'œuvre ext.",            mt:  3200000, date: '' },
+      { lib: 'Véhicules & Transport',        mt:  2900000, date: '' },
+      { lib: 'Entretien & Réparation',       mt:   550000, date: '' },
     ],
   },
 

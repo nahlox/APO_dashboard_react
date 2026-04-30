@@ -208,21 +208,13 @@ export const febData = {
   // Top 15 dépenses triées par montant décroissant — libellé et montant exacts du fichier
   charges: {
     topDepenses: [
-      { date: '28/02', lib: 'Paie personnels APO — Février',                mt: 14800000 },
-      { date: '28/02', lib: 'Salaire M. RAMY — Février',                    mt:  5000000 },
-      { date: '28/02', lib: 'Salaire M. RAYAN — Février',                   mt:  4500000 },
-      { date: '15/02', lib: 'Achat pièces moteur broyeur',                  mt:  3200000 },
-      { date: '10/02', lib: 'Réparation groupe électrogène',                mt:  2800000 },
-      { date: '20/02', lib: "Location engin chantier",                      mt:  2500000 },
-      { date: '05/02', lib: 'Achat carburant (lot)',                        mt:  2100000 },
-      { date: '28/02', lib: 'Salaires personnels déclarés',                 mt:  1952695 },
-      { date: '28/02', lib: 'Salaire M. MAHDI — Février',                   mt:  1300000 },
-      { date: '18/02', lib: 'Travaux maintenance tuyauteries',              mt:  1200000 },
-      { date: '25/02', lib: 'Achat carburant (fin mois)',                   mt:  1100000 },
-      { date: '12/02', lib: 'Frais déplacement & réceptions',              mt:   980000 },
-      { date: '08/02', lib: 'Achat produits chimiques traitement',          mt:   850000 },
-      { date: '22/02', lib: 'Réparation véhicule livraison',                mt:   750000 },
-      { date: '14/02', lib: 'Achat matières consommables atelier',         mt:   600000 },
+      { lib: 'Salaires & Primes',            mt: 27552695, date: '' },
+      { lib: 'Entretien & Réparation',       mt:  7800000, date: '' },
+      { lib: 'Véhicules & Transport',        mt:  2500000, date: '' },
+      { lib: 'Carburant',                    mt:  3200000, date: '' },
+      { lib: "Main d'œuvre ext.",            mt:  1200000, date: '' },
+      { lib: 'Matériels & Équipements',      mt:  1450000, date: '' },
+      { lib: 'Relations institutionnelles',  mt:   980000, date: '' },
     ],
   },
 
