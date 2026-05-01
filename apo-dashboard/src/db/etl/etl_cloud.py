@@ -228,8 +228,8 @@ def inserer(table: str, rows: list, periode_id: int | None = None, label: str = 
 
 
 def get_periode_id(annee: int, mois: int) -> int | None:
-    r = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois).single().execute()
-    return r.data["id"] if r.data else None
+    r = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois).execute()
+    return r.data[0]["id"] if r.data else None
 
 
 def assurer_periodes() -> dict:
