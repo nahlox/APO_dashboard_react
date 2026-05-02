@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
 import Header from './components/layout/Header'
@@ -37,6 +38,9 @@ const MONTH_TABS = [
 ]
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false)
+  const handleSplashDone = useCallback(() => setSplashDone(true), [])
+
   const { activeMonth, activeTab, setActiveTab, theme, setMoisData } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
@@ -58,6 +62,7 @@ export default function App() {
 
   return (
     <>
+      {!splashDone && <SplashScreen onDone={handleSplashDone} />}
       <Header />
 
       {/* Nav tabs — sibling of header, always flush against APO banner */}
