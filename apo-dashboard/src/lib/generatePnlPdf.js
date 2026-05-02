@@ -106,7 +106,7 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   y += 7
 
   // ── 3. ENCART KPIs ──────────────────────────────────────────
-  const kpiBoxH = 18
+  const kpiBoxH = 20
   doc.setFillColor(...C.sectionBg)
   doc.setDrawColor(...C.border)
   doc.setLineWidth(0.35)
@@ -116,7 +116,8 @@ export function generatePnlPdf(data, currency = 'FCFA') {
     { label: "Chiffre d'Affaires", value: sep(kpis.caTotalFCFA) + ' FCFA' },
     { label: 'Marge Brute',        value: fPct(pnl.margeBrutePct) },
     { label: 'EBITDA',             value: fPct(pnl.ebitdaPct) },
-    { label: 'Resultat Net',       value: sep(pnl.resultatTotal) + ' FCFA', color: pnl.resultatTotal >= 0 ? C.green : C.red },
+    { label: 'Res. Exploitation',  value: fPct(pnl.resultatExplPct ?? pnl.ebitdaPct), color: (pnl.resultatExplTotal ?? pnl.ebitdaTotal) >= 0 ? C.green : C.red },
+    { label: 'Resultat Net',       value: sep(Math.abs(pnl.resultatTotal)) + ' FCFA', color: pnl.resultatTotal >= 0 ? C.green : C.red },
     { label: 'Marge Nette',        value: fPct(kpis.margeNette), color: pnl.resultatTotal >= 0 ? C.green : C.red },
   ]
   const kpiW = COL_W / kpiItems.length
@@ -140,12 +141,15 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   let   r         = 0
 
   const S = {
-    section: { fillColor: [80, 105, 88],    textColor: [235, 245, 235], fontStyle: 'bold',   fontSize: 8  },
-    detail:  { fillColor: C.white,          textColor: [35,  35,  35],  fontStyle: 'normal', fontSize: 8  },
-    total:   { fillColor: C.subtotalBg,     textColor: C.dark,          fontStyle: 'bold',   fontSize: 8  },
-    marge:   { fillColor: [242, 232, 212],  textColor: C.gold,          fontStyle: 'bold',   fontSize: 9  },
-    ebitda:  { fillColor: [232, 236, 248],  textColor: [35,  60, 115],  fontStyle: 'bold',   fontSize: 9  },
-    result:  {
+    section:      { fillColor: [80, 105, 88],    textColor: [235, 245, 235], fontStyle: 'bold',   fontSize: 8   },
+    sectionTax:   { fillColor: [90,  70, 130],   textColor: [240, 235, 255], fontStyle: 'bold',   fontSize: 8   },
+    sectionAmort: { fillColor: [70,  90,  90],   textColor: [230, 240, 240], fontStyle: 'bold',   fontSize: 8   },
+    detail:       { fillColor: C.white,          textColor: [35,  35,  35],  fontStyle: 'normal', fontSize: 8   },
+    total:        { fillColor: C.subtotalBg,     textColor: C.dark,          fontStyle: 'bold',   fontSize: 8   },
+    marge:        { fillColor: [242, 232, 212],  textColor: C.gold,          fontStyle: 'bold',   fontSize: 9   },
+    ebitda:       { fillColor: [232, 236, 248],  textColor: [35,  60, 115],  fontStyle: 'bold',   fontSize: 9   },
+    resultatExpl: { fillColor: [240, 235, 210],  textColor: [140,  90,   0], fontStyle: 'bold',   fontSize: 9   },
+    result:       {
       fillColor: pnl.resultatTotal >= 0 ? [225, 245, 230] : [248, 228, 225],
       textColor: pnl.resultatTotal >= 0 ? C.green : C.red,
       fontStyle: 'bold', fontSize: 9.5,
@@ -178,15 +182,15 @@ export function generatePnlPdf(data, currency = 'FCFA') {
     fSign(pnl.margeBruteTotal),
   ], S.marge)
 
-  // III. Charges
-  addRow(['III.  CHARGES D\'EXPLOITATION  (hors amortissements)', '', ''], S.section)
+  // III. Charges opérationnelles
+  addRow(['III.  CHARGES D\'EXPLOITATION OPERATIONNELLES', '', ''], S.section)
   pnl.chargesExploitation.forEach(c => addRow([
     '   ' + c.label,
     fNum(Math.abs(c.pertonne)),
     fNeg(Math.abs(c.total)),
   ], S.detail))
   addRow([
-    'TOTAL CHARGES D\'EXPLOITATION',
+    'TOTAL CHARGES EXPLOITATION',
     fNeg(Math.abs(pnl.totalChargesExpTonne)),
     fNeg(Math.abs(pnl.totalChargesExpTotal)),
   ], S.total)
@@ -198,15 +202,48 @@ export function generatePnlPdf(data, currency = 'FCFA') {
     fSign(pnl.ebitdaTotal),
   ], S.ebitda)
 
-  // IV. Amortissements
-  addRow(['IV.  AMORTISSEMENTS & CHARGES FINANCIERES', '', ''], S.section)
+  // IV. Impôts & Taxes (hors IS)
+  if (pnl.impotsTaxes?.length > 0) {
+    addRow(['IV.  IMPOTS & TAXES  (hors impot sur benefices)', '', ''], S.sectionTax)
+    pnl.impotsTaxes.forEach(t => addRow([
+      '   ' + t.label,
+      t.pertonne ? fNum(Math.abs(t.pertonne)) : '-',
+      fNeg(Math.abs(t.total)),
+    ], S.detail))
+    if (pnl.impotsTaxes.length > 1) {
+      addRow([
+        'TOTAL IMPOTS & TAXES',
+        fNeg(Math.abs(pnl.totalImpotsTaxesTonne ?? 0)),
+        fNeg(Math.abs(pnl.totalImpotsTaxesTotal ?? 0)),
+      ], S.total)
+    }
+    // Résultat d'exploitation
+    addRow([
+      `RESULTAT D'EXPLOITATION  (${fPct(pnl.resultatExplPct ?? 0)} du CA)`,
+      fSign(pnl.resultatExplTonne ?? 0),
+      fSign(pnl.resultatExplTotal ?? 0),
+    ], S.resultatExpl)
+  }
+
+  // V. Amortissements
+  addRow(['V.  AMORTISSEMENTS & CHARGES FINANCIERES', '', ''], S.sectionAmort)
   if (!pnl.amortissements?.length || pnl.amortissements.every(a => a.total === 0)) {
     addRow(['   Neant pour cette periode', '-', '-'], S.detail)
   } else {
     pnl.amortissements.forEach(a => addRow([
       '   ' + a.label,
-      fNum(Math.abs(a.pertonne)),
+      a.pertonne ? fNum(Math.abs(a.pertonne)) : '-',
       a.total === 0 ? '-' : fNeg(Math.abs(a.total)),
+    ], S.detail))
+  }
+
+  // VI. BIC (si applicable)
+  if (pnl.bic?.length > 0) {
+    addRow(['VI.  IMPOT SUR BENEFICES (IS)', '', ''], S.sectionTax)
+    pnl.bic.forEach(b => addRow([
+      '   ' + b.label,
+      b.pertonne ? fNum(Math.abs(b.pertonne)) : '-',
+      fNeg(Math.abs(b.total)),
     ], S.detail))
   }
 
