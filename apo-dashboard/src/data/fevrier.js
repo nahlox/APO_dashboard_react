@@ -56,10 +56,10 @@ export const febData = {
     caBassinFCFA:      0,   // non facturé — à régulariser
     coutMPFCFA:        1695469933,
     coutMPDetail:      '112,50 F/kg × 15 071 T traités',
-    chargesExplFCFA:   105216408,
-    amortissementFCFA: 20191988,
-    resultatNetFCFA:   329041859,
-    margeNette:        15.4,
+    chargesExplFCFA:   125155276,
+    amortissementFCFA: 20375782,
+    resultatNetFCFA:   288727209,
+    margeNette:        13.6,
 
     // Production
     regimesRecusT:     14798,
@@ -101,39 +101,49 @@ export const febData = {
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
-      { label: 'Salaires & charges sociales',   pertonne: 10000, total:  -30052695 },
-      { label: 'Carburant',                     pertonne:  3000, total:   -7583250 },
-      { label: 'Matériels & équipements',       pertonne:  5000, total:  -13608500 },
-      { label: "Main d'œuvre externe",          pertonne:  1000, total:   -4046000 },
-      { label: 'Véhicules & location engins',   pertonne:  4000, total:  -10926500 },
-      { label: 'Eau & électricité',             pertonne:  1000, total:   -4111475 },
-      { label: 'Frais divers & administratifs', pertonne:  5000, total:  -14696000 },
+      { label: 'Salaires & charges sociales',       pertonne: 10000, total:  -30052695 },
+      { label: 'Carburant',                         pertonne:  3000, total:   -7583250 },
+      { label: 'Matériels & équipements',           pertonne:  5000, total:  -13608500 },
+      { label: "Main d'œuvre externe",              pertonne:  1000, total:   -4046000 },
+      { label: 'Véhicules & location engins',       pertonne:  4000, total:  -10926500 },
+      { label: 'Eau & électricité',                 pertonne:  1000, total:   -4111475 },
+      { label: 'Frais divers & administratifs',     pertonne:  5000, total:  -14696000 },
+      // ── Charges bancaires (SGCI/BDA) ──
+      { label: 'Salaires & CNPS (banque)',           pertonne:  4000, total:  -10207092 },
+      { label: 'Électricité (CIE)',                  pertonne:  3000, total:   -9011510 },
+      { label: 'Entretien & réparation (banque)',    pertonne:  3000, total:   -8437593 },
+      { label: 'Véhicules & engins (banque)',        pertonne:  2000, total:   -6230000 },
+      { label: 'Sécurité & gardiennage',            pertonne:  1000, total:   -2400000 },
+      { label: 'Taxes & impôts',                    pertonne:  1000, total:   -2648951 },
+      { label: 'Eau & fournitures (banque)',         pertonne:     0, total:    -595691 },
+      { label: 'Frais admin (banque)',               pertonne:     0, total:    -600019 },
     ],
-    totalChargesExpTotal: -85024420,
-    totalChargesExpTonne:  -29000,
+    totalChargesExpTotal: -125155276,
+    totalChargesExpTonne:   -43000,
 
     // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
-    ebitdaTotal:   349233847,   // 434 258 267 − 85 024 420
-    ebitdaTonne:     122000,
-    ebitdaPct:         16.4,
+    ebitdaTotal:   309102991,   // 434 258 267 − 125 155 276
+    ebitdaTonne:     108000,
+    ebitdaPct:         14.5,
 
     // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
     amortissements: [
-      { label: 'Amortissement prêt bancaire & intérêts', pertonne: 7000, total: -20191988 },
+      { label: 'Amortissement prêt bancaire (ECHEANCE SGCI/BDA)', pertonne: 7000, total: -20191988 },
+      { label: 'Agios & frais financiers (SGCI/BDA)',              pertonne:    0, total:   -183794 },
     ],
-    totalAmortTotal: -20191988,
+    totalAmortTotal: -20375782,
     totalAmortTonne:   -7000,
 
     // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
-    totalChargesTotal:  -1800686341,   // conservé pour compatibilité
-    totalChargesTonne:   -628000,
-    resultatTotal:         329041859,
-    resultatTonne:           115000,
+    totalChargesTotal:  -1840817091,   // conservé pour compatibilité
+    totalChargesTonne:    -642000,
+    resultatTotal:         288727209,
+    resultatTonne:           101000,
 
     notes: [
       { label: 'Marge brute',  value: '20,4%', color: 'gold' },
-      { label: 'EBITDA',       value: '16,4%', color: 'gold' },
-      { label: 'Marge nette',  value: '15,4%', color: 'green' },
+      { label: 'EBITDA',       value: '14,5%', color: 'gold' },
+      { label: 'Marge nette',  value: '13,6%', color: 'green' },
       { label: 'Prix huile moy.', value: '681 F/kg (720→675 dès 04/02)', color: 'gold' },
     ],
   },
@@ -154,8 +164,8 @@ export const febData = {
       values: [2016088200, 113640000, 0],
     },
     charges: {
-      labels: ['Salaires', 'Amort. bancaire', 'Matériels', 'Véhicules', 'Frais divers', 'Carburant', 'Eau/Électricité', "Main d'œuvre ext."],
-      values: [30052695, 20191988, 13608500, 10926500, 14696000, 7583250, 4111475, 4046000],
+      labels: ['Salaires & CNPS', 'Amort. bancaire', 'Frais divers', 'Matériels', 'Véhicules', 'Électricité', 'Entretien', 'Carburant', 'Taxes', 'Sécurité', "Main d'œuvre ext.", 'Eau/Divers', 'Frais admin'],
+      values: [40259787, 20375782, 14696000, 13608500, 17156500, 9011510, 8437593, 7583250, 2648951, 2400000, 4046000, 4707166, 600019],
     },
   },
 

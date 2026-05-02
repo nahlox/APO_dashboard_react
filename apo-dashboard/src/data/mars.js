@@ -59,10 +59,10 @@ export const marsData = {
     caHuileFlorentinFCFA:         0,  // aucune livraison florentin en mars
     coutMPFCFA:        1203191000,
     coutMPDetail:      '91,13 F/kg × 13 204 T traités',
-    chargesExplFCFA:     80789538,
-    amortissementFCFA:   20191988,
-    resultatNetFCFA:    250723874,
-    margeNette:              16.1,
+    chargesExplFCFA:    152005913,
+    amortissementFCFA:   20517611,
+    resultatNetFCFA:    179181876,
+    margeNette:              11.5,
 
     // Production
     regimesRecusT:        13148,   // 13 148 400 kg reçus (825 camions)
@@ -104,37 +104,47 @@ export const marsData = {
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
-      { label: 'Salaires & charges sociales',   pertonne: 12000, total:  -30206582 },
-      { label: 'Carburant',                     pertonne:  3000, total:   -8892788 },
-      { label: 'Entretien & réparation',        pertonne:  5000, total:  -11496000 },
-      { label: 'Fournitures & matériaux',       pertonne:  2000, total:   -5362500 },
-      { label: 'Frais divers & administratifs', pertonne: 10000, total:  -24831668 },
+      { label: 'Salaires & charges sociales',       pertonne: 12000, total:  -30206582 },
+      { label: 'Carburant',                         pertonne:  3000, total:   -8892788 },
+      { label: 'Entretien & réparation',            pertonne:  5000, total:  -11496000 },
+      { label: 'Fournitures & matériaux',           pertonne:  2000, total:   -5362500 },
+      { label: 'Frais divers & administratifs',     pertonne: 10000, total:  -24831668 },
+      // ── Charges bancaires (SGCI/BDA) ──
+      { label: 'Entretien & réparation (banque)',    pertonne:  6000, total:  -14103894 },
+      { label: 'Électricité (CIE)',                  pertonne:  5000, total:  -12843850 },
+      { label: 'Salaires & CNPS (banque)',           pertonne:  4000, total:  -10806754 },
+      { label: 'Matériels & équipements (banque)',   pertonne:  4000, total:   -9927983 },
+      { label: 'Assurances (banque)',                pertonne:  3000, total:   -8809053 },
+      { label: 'Véhicules & engins (banque)',        pertonne:  3000, total:   -6930000 },
+      { label: 'Taxes & impôts',                    pertonne:  2000, total:   -3883950 },
+      { label: 'Frais admin & relationnels (banque)',pertonne:  2000, total:   -3910891 },
     ],
-    totalChargesExpTotal: -80789538,
-    totalChargesExpTonne:   -32000,
+    totalChargesExpTotal: -152005913,
+    totalChargesExpTonne:   -60000,
 
     // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
-    ebitdaTotal:   270915862,   // 351 705 400 − 80 789 538
-    ebitdaTonne:      107000,
-    ebitdaPct:          17.4,
+    ebitdaTotal:   199699487,   // 351 705 400 − 152 005 913
+    ebitdaTonne:      79000,
+    ebitdaPct:          12.8,
 
     // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
     amortissements: [
-      { label: 'Amortissement prêt bancaire & intérêts', pertonne: 8000, total: -20191988 },
+      { label: 'Amortissement prêt bancaire (ECHEANCE SGCI/BDA)', pertonne: 8000, total: -20191988 },
+      { label: 'Agios & frais financiers (SGCI/BDA)',              pertonne:    0, total:   -325623 },
     ],
-    totalAmortTotal: -20191988,
+    totalAmortTotal: -20517611,
     totalAmortTonne:    -8000,
 
     // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
-    totalChargesTotal:  -1304172526,
-    totalChargesTonne:     -514000,
-    resultatTotal:          250723874,
-    resultatTonne:            99000,
+    totalChargesTotal:  -1375714524,
+    totalChargesTonne:     -542000,
+    resultatTotal:          179181876,
+    resultatTonne:            71000,
 
     notes: [
       { label: 'Marge brute',     value: '22,6%',                          color: 'green' },
-      { label: 'EBITDA',          value: '17,4%',                          color: 'green' },
-      { label: 'Marge nette',     value: '16,1%',                          color: 'green' },
+      { label: 'EBITDA',          value: '12,8%',                          color: 'gold'  },
+      { label: 'Marge nette',     value: '11,5%',                          color: 'green' },
       { label: 'Prix huile moy.', value: '619 F/kg (majorit. 620 SARCI)', color: 'gold'  },
     ],
   },
@@ -155,8 +165,8 @@ export const marsData = {
       values: [1481616000, 66440400, 6840000],
     },
     charges: {
-      labels: ['Salaires', 'Amort. bancaire', 'Frais divers', 'Entretien & Rép.', 'Carburant', 'Fournitures', 'Transport'],
-      values: [30206582, 20191988, 24831668, 11496000, 8892788, 5362500, 368000],
+      labels: ['Salaires & CNPS', 'Amort. bancaire', 'Frais divers', 'Entretien & Rép.', 'Électricité', 'Matériels', 'Assurances', 'Véhicules', 'Carburant', 'Fournitures', 'Taxes', 'Frais admin'],
+      values: [41013336, 20517611, 24831668, 25599894, 12843850, 9927983, 8809053, 6930000, 8892788, 5362500, 3883950, 3910891],
     },
   },
 
