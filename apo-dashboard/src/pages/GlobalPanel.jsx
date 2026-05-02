@@ -34,7 +34,8 @@ function buildCombinedCharges(monthData) {
       merged[lbl] = (merged[lbl] || 0) + data.charts.charges.values[i]
     })
   }
-  return { labels: Object.keys(merged), values: Object.values(merged) }
+  const sorted = Object.entries(merged).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  return { labels: sorted.map(([l]) => l), values: sorted.map(([, v]) => v) }
 }
 
 export default function GlobalPanel({ moisData = [] }) {
