@@ -333,3 +333,27 @@ CREATE TABLE amortissement_bancaire (
                CHECK (type IN ('annuite', 'principal', 'interet', 'autre'))
 );
 CREATE INDEX idx_amort_periode ON amortissement_bancaire(periode_id);
+
+-- ── BANQUE APO (SGCI + BDA) ───────────────────────────────────
+-- Transactions bancaires catégorisées (Jan–Avr 2026, extension possible).
+-- Débits uniquement (montant_fcfa > 0).
+-- Crédits SARCI exclus (déjà dans ventes_huile).
+-- APPRO CAISSE / APPRO SARCI exclus (virements internes).
+-- COMPENSATION CHQ IMPAYEE exclud (reversement).
+CREATE TABLE banque_apo (
+  id             SERIAL PRIMARY KEY,
+  periode_id     INTEGER NOT NULL REFERENCES periodes(id) ON DELETE CASCADE,
+  banque         TEXT NOT NULL CHECK (banque IN ('SGCI','BDA')),
+  date_operation DATE,
+  date_valeur    DATE,
+  libelle        TEXT NOT NULL,
+  montant_fcfa   BIGINT NOT NULL,
+  categorie      TEXT NOT NULL CHECK (categorie IN (
+    'salaires','carburant','main_oeuvre','entretien','construction',
+    'vehicules','materiels','eau_fournitures','frais_relat','frais_admin',
+    'electricite','assurance','securite','charges_patronales',
+    'taxes_fiscales','frais_bancaires','amortissement','autre'
+  ))
+);
+CREATE INDEX idx_banque_periode ON banque_apo(periode_id);
+CREATE INDEX idx_banque_cat     ON banque_apo(categorie);
