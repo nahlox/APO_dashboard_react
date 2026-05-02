@@ -169,8 +169,13 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     parCat[cat] = (parCat[cat] || 0) + mt
   }
 
-  const chargesTaxes = Object.values(taxByLabel).reduce((s, v) => s + v, 0)
-  const charges = Object.values(parCat).reduce((s, v) => s + v, 0) + chargesTaxes
+  // BIC séparé (impôt sur bénéfices — après résultat d'exploitation)
+  const BIC_LABEL = 'BIC (acompte trimestriel)'
+  const bicMt     = taxByLabel[BIC_LABEL] || 0
+  const taxesExpl = Object.entries(taxByLabel).filter(([l]) => l !== BIC_LABEL)
+  const totalTaxesExpl = taxesExpl.reduce((s, [, v]) => s + v, 0)
+
+  const charges = Object.values(parCat).reduce((s, v) => s + v, 0)
 
   // ── Amortissement (Section IV — source: banque_apo en priorité) ───────────
   const amortFromBanque = banqueAmort.reduce((s, r) => s + (r.montant_fcfa || 0), 0)
@@ -181,11 +186,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const fraisFin = banqueFraisFin.reduce((s, r) => s + (r.montant_fcfa || 0), 0)
 
   // ── Résultats ─────────────────────────────────────────────────────────────
-  const margeBrute = caTotal - coutMP
-  const ebitda     = margeBrute - charges
-  const resultat   = ebitda - amort - fraisFin
+  const margeBrute    = caTotal - coutMP
+  const ebitda        = margeBrute - charges
+  const resultatExpl  = ebitda - totalTaxesExpl
+  const resultat      = resultatExpl - amort - fraisFin - bicMt
 
-  // ── Top dépenses (caisse + banque opérationnelle) ─────────────────────────
+  // ── Top dépenses (caisse + banque opérationnelle, hors taxes) ──────────────
   const topDepenses = Object.entries(parCat)
     .map(([cat, mt]) => ({ lib: CAT_LABELS[cat] || cat, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
@@ -266,7 +272,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       coutMPFCFA:           coutMP,
       coutMPDetail:         `${prixRegime.toFixed(2)} F/kg × ${regTraitesT} T traités`,
       chargesExplFCFA:      charges,
+      totalTaxesFCFA:       totalTaxesExpl + bicMt,
       amortissementFCFA:    totalAmortFin,
+      resultatExplFCFA:     resultatExpl,
       resultatNetFCFA:      resultat,
       margeNette:           caTotal ? +((resultat / caTotal) * 100).toFixed(1) : 0,
       regimesRecusT:        regRecusT,
@@ -307,40 +315,52 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       margeBruteTonne:  huileProduiteT ? Math.round(margeBrute / huileProduiteT) : 0,
       margeBrutePct:    caTotal ? +((margeBrute / caTotal) * 100).toFixed(1) : 0,
 
-      // ── III. CHARGES EXPLOITATION (caisse + banque opérationnelle) ─────────
-      chargesExploitation: [
-        ...topDepenses.slice(0, 10).map(d => ({
-          label:    d.lib,
-          pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
-          total:    -d.mt,
-        })),
-        ...Object.entries(taxByLabel).map(([label, mt]) => ({
-          label,
-          pertonne: huileProduiteT ? Math.round(mt / huileProduiteT) : 0,
-          total:    -mt,
-        })),
-      ],
+      // ── III. CHARGES EXPLOITATION (caisse + banque opérationnelle, hors taxes)
+      chargesExploitation: topDepenses.slice(0, 10).map(d => ({
+        label:    d.lib,
+        pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
+        total:    -d.mt,
+      })),
       totalChargesExpTotal: -charges,
       totalChargesExpTonne: huileProduiteT ? -Math.round(charges / huileProduiteT) : 0,
 
-      // ── EBE / EBITDA ───────────────────────────────────────────────────────
+      // ── EBE / EBITDA (hors taxes, hors amort) ─────────────────────────────
       ebitdaTotal:  ebitda,
       ebitdaTonne:  huileProduiteT ? Math.round(ebitda / huileProduiteT) : 0,
       ebitdaPct:    caTotal ? +((ebitda / caTotal) * 100).toFixed(1) : 0,
 
-      // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ───────────────────────────
+      // ── IV. IMPÔTS & TAXES (hors IS/BIC) ──────────────────────────────────
+      impotsTaxes: taxesExpl.map(([label, mt]) => ({
+        label,
+        pertonne: huileProduiteT ? Math.round(mt / huileProduiteT) : 0,
+        total:    -mt,
+      })),
+      totalImpotsTaxesTotal: -totalTaxesExpl,
+      totalImpotsTaxesTonne: huileProduiteT ? -Math.round(totalTaxesExpl / huileProduiteT) : 0,
+
+      // ── RÉSULTAT D'EXPLOITATION ────────────────────────────────────────────
+      resultatExplTotal:  resultatExpl,
+      resultatExplTonne:  huileProduiteT ? Math.round(resultatExpl / huileProduiteT) : 0,
+      resultatExplPct:    caTotal ? +((resultatExpl / caTotal) * 100).toFixed(1) : 0,
+
+      // ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ────────────────────────────
       amortissements:  amortissementsSection,
       totalAmortTotal: -totalAmortFin,
       totalAmortTonne: huileProduiteT ? -Math.round(totalAmortFin / huileProduiteT) : 0,
+
+      // ── VI. IMPÔT SUR BÉNÉFICES (BIC) ─────────────────────────────────────
+      bic: bicMt > 0 ? [{ label: 'BIC — acompte trimestriel (25% bénéfice imposable)', pertonne: huileProduiteT ? Math.round(bicMt / huileProduiteT) : 0, total: -bicMt }] : [],
+      totalBICTotal: -bicMt,
 
       // ── RÉSULTAT NET ───────────────────────────────────────────────────────
       resultatTotal:  resultat,
       resultatTonne:  huileProduiteT ? Math.round(resultat / huileProduiteT) : 0,
 
       notes: [
-        { label: 'Marge brute',  value: `${caTotal ? ((margeBrute / caTotal) * 100).toFixed(1) : 0}%`, color: 'gold' },
-        { label: 'EBITDA',       value: `${caTotal ? ((ebitda / caTotal) * 100).toFixed(1) : 0}%`,     color: 'gold' },
-        { label: 'Marge nette',  value: `${caTotal ? ((resultat / caTotal) * 100).toFixed(1) : 0}%`,   color: resultat >= 0 ? 'green' : 'red' },
+        { label: 'Marge brute',       value: `${caTotal ? ((margeBrute / caTotal) * 100).toFixed(1) : 0}%`,    color: 'gold' },
+        { label: 'EBITDA',            value: `${caTotal ? ((ebitda / caTotal) * 100).toFixed(1) : 0}%`,        color: 'gold' },
+        { label: 'Résultat exploit.', value: `${caTotal ? ((resultatExpl / caTotal) * 100).toFixed(1) : 0}%`, color: resultatExpl >= 0 ? 'gold' : 'red' },
+        { label: 'Marge nette',       value: `${caTotal ? ((resultat / caTotal) * 100).toFixed(1) : 0}%`,      color: resultat >= 0 ? 'green' : 'red' },
       ],
     },
     alertes: [],

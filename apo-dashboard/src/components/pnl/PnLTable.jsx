@@ -142,7 +142,7 @@ export default function PnLTable({ pnl, data }) {
 
       {/* ── III. CHARGES D'EXPLOITATION ────────────────────── */}
       <div style={{ background: 'rgba(224,92,92,0.03)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(224,92,92,0.1)' }}>
-        <SectionHeader title="III. Charges d'exploitation (hors amort.)" color="var(--red)" />
+        <SectionHeader title="III. Charges d'exploitation opérationnelles" color="var(--red)" />
         {pnl.chargesExploitation.map((row, i) => (
           <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
         ))}
@@ -164,13 +164,53 @@ export default function PnLTable({ pnl, data }) {
         borderColor="rgba(138,154,142,0.2)"
       />
 
-      {/* ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ───────── */}
+      {/* ── IV. IMPÔTS & TAXES (hors IS) ───────────────────── */}
+      {pnl.impotsTaxes && pnl.impotsTaxes.length > 0 && (
+        <div style={{ background: 'rgba(138,92,224,0.03)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(138,92,224,0.12)' }}>
+          <SectionHeader title="IV. Impôts & taxes (hors impôt sur bénéfices)" color="#8a5ce0" />
+          {pnl.impotsTaxes.map((row, i) => (
+            <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
+          ))}
+          {pnl.impotsTaxes.length > 1 && (
+            <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(138,92,224,0.15)', background: 'rgba(138,92,224,0.04)' }}>
+              <span style={{ ...styles.totalLabel, color: '#8a5ce0' }}>Total Impôts & taxes</span>
+              <span className="pnl-col-tonne" style={{ ...styles.totalNum, textAlign: 'right', color: '#8a5ce0' }}>– {fmt.full(Math.abs(pnl.totalImpotsTaxesTonne))}</span>
+              <span style={{ ...styles.totalNum, textAlign: 'right', color: '#8a5ce0' }}>– {c(pnl.totalImpotsTaxesTotal)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── RÉSULTAT D'EXPLOITATION ─────────────────────────── */}
+      {pnl.resultatExplTotal != null && (
+        <SubtotalRow
+          label="Résultat d'exploitation"
+          pertonne={pnl.resultatExplTonne}
+          total={pnl.resultatExplTotal}
+          pct={pnl.resultatExplPct}
+          color={pnl.resultatExplTotal >= 0 ? 'var(--gold)' : 'var(--red)'}
+          bg={pnl.resultatExplTotal >= 0 ? 'rgba(242,140,40,0.07)' : 'rgba(224,92,92,0.07)'}
+          borderColor={pnl.resultatExplTotal >= 0 ? 'rgba(242,140,40,0.2)' : 'rgba(224,92,92,0.2)'}
+        />
+      )}
+
+      {/* ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ────────── */}
       <div style={{ background: 'rgba(138,154,142,0.04)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(138,154,142,0.15)' }}>
-        <SectionHeader title="IV. Amortissements & charges financières" color="var(--text-dim)" />
+        <SectionHeader title="V. Amortissements & charges financières" color="var(--text-dim)" />
         {pnl.amortissements.map((row, i) => (
           <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text-dim)" indent />
         ))}
       </div>
+
+      {/* ── VI. IMPÔT SUR BÉNÉFICES (BIC) ──────────────────── */}
+      {pnl.bic && pnl.bic.length > 0 && (
+        <div style={{ background: 'rgba(138,92,224,0.03)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(138,92,224,0.12)' }}>
+          <SectionHeader title="VI. Impôt sur bénéfices (IS)" color="#8a5ce0" />
+          {pnl.bic.map((row, i) => (
+            <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text-dim)" indent />
+          ))}
+        </div>
+      )}
 
       {/* ── RÉSULTAT NET ─────────────────────────────────────── */}
       <div style={{ background: pnl.resultatTotal >= 0 ? 'rgba(76,175,122,0.08)' : 'rgba(224,92,92,0.08)', border: `1px solid ${pnl.resultatTotal >= 0 ? 'rgba(76,175,122,0.3)' : 'rgba(224,92,92,0.3)'}`, borderRadius: 8, padding: '12px 14px' }}>

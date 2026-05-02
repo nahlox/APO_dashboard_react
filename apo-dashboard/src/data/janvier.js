@@ -118,21 +118,32 @@ export const janData = {
       { label: 'Électricité (CIE)',                  pertonne:  3000, total:   -5362955 },
       { label: 'Véhicules & engins (banque)',        pertonne:  3000, total:   -6230000 },
       { label: 'Construction & travaux',             pertonne:  1000, total:   -2501500 },
-      { label: 'ITS / FDFP / RIBIC / FIRCA',        pertonne:  1000, total:   -2227009 },
-      { label: 'TSE (Taxe solidarité emplois)',     pertonne:     0, total:     -25036 },
       { label: 'Frais admin & relationnels (banque)',pertonne:  1000, total:   -2875859 },
       { label: 'Sécurité & gardiennage',            pertonne:  1000, total:   -1200000 },
       { label: 'Assurances',                        pertonne:     0, total:    -593338 },
     ],
-    totalChargesExpTotal: -110942565,
-    totalChargesExpTonne:   -57000,
+    totalChargesExpTotal: -108690520,   // sans taxes
+    totalChargesExpTonne:   -56000,
 
-    // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
-    ebitdaTotal:   -1770375,   // 109 172 190 − 110 942 565
-    ebitdaTonne:      -1000,
-    ebitdaPct:         -0.1,
+    // ── EBE / EBITDA (hors taxes, hors amort) ─────────────
+    ebitdaTotal:    481670,   // 109 172 190 − 108 690 520
+    ebitdaTonne:         0,
+    ebitdaPct:         0.0,
 
-    // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
+    // ── IV. IMPÔTS & TAXES (hors IS) ─────────────────────
+    impotsTaxes: [
+      { label: 'ITS / FDFP / RIBIC / FIRCA',     pertonne: 1000, total: -2227009 },
+      { label: 'TSE (Taxe solidarité emplois)',   pertonne:    0, total:   -25036 },
+    ],
+    totalImpotsTaxesTotal: -2252045,
+    totalImpotsTaxesTonne:  -1000,
+
+    // ── RÉSULTAT D'EXPLOITATION ────────────────────────────
+    resultatExplTotal:  -1770375,   // EBITDA − impôts & taxes
+    resultatExplTonne:     -1000,
+    resultatExplPct:        -0.1,
+
+    // ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ──────────
     amortissements: [
       { label: 'Amortissement prêt bancaire (ECHEANCE SGCI/BDA)', pertonne: 10000, total: -20191988 },
       { label: 'Agios & frais financiers (SGCI/BDA)',              pertonne:     0, total:   -208245 },
@@ -140,16 +151,21 @@ export const janData = {
     totalAmortTotal: -20400233,
     totalAmortTonne:  -10000,
 
-    // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
-    totalChargesTotal:  -1358433798,   // conservé pour compatibilité
+    // ── VI. BIC (aucun ce mois) ───────────────────────────
+    bic: [],
+    totalBICTotal: 0,
+
+    // ── RÉSULTAT NET ──────────────────────────────────────
+    totalChargesTotal:  -1358433798,
     totalChargesTonne:    -694000,
     resultatTotal:         -22170608,
     resultatTonne:            -11000,
 
     notes: [
-      { label: 'Marge brute',  value: '8,2%',  color: 'gold' },
-      { label: 'EBITDA',       value: '-0,1%', color: 'red' },
-      { label: 'Marge nette',  value: '-1,7%', color: 'red' },
+      { label: 'Marge brute',         value: '8,2%',  color: 'gold' },
+      { label: 'EBITDA',              value: '0,0%',  color: 'gold' },
+      { label: 'Résultat exploit.',   value: '-0,1%', color: 'red'  },
+      { label: 'Marge nette',         value: '-1,7%', color: 'red'  },
       { label: 'Stock fin mois', value: '1 401 T → valorisés en fév.', color: 'gold' },
     ],
   },

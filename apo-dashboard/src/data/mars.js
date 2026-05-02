@@ -116,19 +116,30 @@ export const marsData = {
       { label: 'Matériels & équipements (banque)',   pertonne:  4000, total:   -9927983 },
       { label: 'Assurances (banque)',                pertonne:  3000, total:   -8809053 },
       { label: 'Véhicules & engins (banque)',        pertonne:  3000, total:   -6930000 },
-      { label: 'ITS / FDFP / RIBIC / FIRCA',        pertonne:  1000, total:   -3796466 },
-      { label: 'TSE (Taxe solidarité emplois)',     pertonne:     0, total:     -87484 },
       { label: 'Frais admin & relationnels (banque)',pertonne:  2000, total:   -3910891 },
     ],
-    totalChargesExpTotal: -152005913,
-    totalChargesExpTonne:   -60000,
+    totalChargesExpTotal: -148121963,   // sans taxes
+    totalChargesExpTonne:   -58000,
 
-    // ── EBE / EBITDA (Marge Brute − Charges exploitation) ─
-    ebitdaTotal:   199699487,   // 351 705 400 − 152 005 913
-    ebitdaTonne:      79000,
-    ebitdaPct:          12.8,
+    // ── EBE / EBITDA (hors taxes, hors amort) ─────────────
+    ebitdaTotal:   203583437,   // 351 705 400 − 148 121 963
+    ebitdaTonne:      80000,
+    ebitdaPct:          13.1,
 
-    // ── IV. AMORTISSEMENTS & CHARGES FINANCIÈRES ─────────
+    // ── IV. IMPÔTS & TAXES (hors IS) ─────────────────────
+    impotsTaxes: [
+      { label: 'ITS / FDFP / RIBIC / FIRCA',     pertonne: 1000, total: -3796466 },
+      { label: 'TSE (Taxe solidarité emplois)',   pertonne:    0, total:   -87484 },
+    ],
+    totalImpotsTaxesTotal: -3883950,
+    totalImpotsTaxesTonne:  -2000,
+
+    // ── RÉSULTAT D'EXPLOITATION ────────────────────────────
+    resultatExplTotal:  199699487,
+    resultatExplTonne:    79000,
+    resultatExplPct:        12.8,
+
+    // ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ──────────
     amortissements: [
       { label: 'Amortissement prêt bancaire (ECHEANCE SGCI/BDA)', pertonne: 8000, total: -20191988 },
       { label: 'Agios & frais financiers (SGCI/BDA)',              pertonne:    0, total:   -325623 },
@@ -136,16 +147,21 @@ export const marsData = {
     totalAmortTotal: -20517611,
     totalAmortTonne:    -8000,
 
-    // ── RÉSULTAT NET (EBITDA − Amortissements) ────────────
+    // ── VI. BIC (aucun ce mois) ───────────────────────────
+    bic: [],
+    totalBICTotal: 0,
+
+    // ── RÉSULTAT NET ──────────────────────────────────────
     totalChargesTotal:  -1375714524,
     totalChargesTonne:     -542000,
     resultatTotal:          179181876,
     resultatTonne:            71000,
 
     notes: [
-      { label: 'Marge brute',     value: '22,6%',                          color: 'green' },
-      { label: 'EBITDA',          value: '12,8%',                          color: 'gold'  },
-      { label: 'Marge nette',     value: '11,5%',                          color: 'green' },
+      { label: 'Marge brute',         value: '22,6%',                          color: 'green' },
+      { label: 'EBITDA',              value: '13,1%',                          color: 'gold'  },
+      { label: 'Résultat exploit.',   value: '12,8%',                          color: 'gold'  },
+      { label: 'Marge nette',         value: '11,5%',                          color: 'green' },
       { label: 'Prix huile moy.', value: '619 F/kg (majorit. 620 SARCI)', color: 'gold'  },
     ],
   },
