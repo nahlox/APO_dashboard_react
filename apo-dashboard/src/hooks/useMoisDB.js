@@ -36,6 +36,24 @@ export const CAT_LABELS = {
 const CATS_FINANCIERES = new Set(['amortissement', 'frais_bancaires'])
 
 /**
+ * Parse le libellé d'une ligne taxes_fiscales → label lisible P&L
+ */
+function parseTaxLabel(libelle) {
+  const l = (libelle || '').toUpperCase()
+  if ((l.includes('ITS') || l.includes('FDFP') || l.includes('RIBIC') || l.includes('FIRCA')) &&
+      (l.includes('FDFP') || l.includes('RIBIC') || l.includes('FIRCA')))
+    return 'ITS / FDFP / RIBIC / FIRCA'
+  if (l.includes('TSE'))                                  return 'TSE (Taxe solidarité emplois)'
+  if (l.includes('FONCIER'))                              return 'Impôt foncier'
+  if (l.includes('PATENTE'))                              return 'Patente professionnelle'
+  if (l.includes('BIC'))                                  return 'BIC (acompte trimestriel)'
+  if (l.includes('DOMAINE FLUVIAL') || l.includes('AFFAIRES MARITIMES')) return 'Redevance domaine fluvial'
+  if (l.includes('PENAL'))                                return 'Pénalités fiscales'
+  if (l.includes('REGUL'))                                return 'ITS Régularisation'
+  return libelle
+}
+
+/**
  * Catégorise un libellé de caisse en clé DB (fallback si categorie non renseignée).
  */
 function categorizeLibelle(libelle = '') {
@@ -125,9 +143,11 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
   // ── Charges banque — séparées selon type ─────────────────────────────────
   // operational → Section III  |  amortissement + frais_bancaires → Section IV
-  const banqueOp     = {}   // catégorie → montant (opérationnels)
-  const banqueAmort  = []   // rows catégorie='amortissement'
-  const banqueFraisFin = [] // rows catégorie='frais_bancaires'
+  // taxes_fiscales → Section III mais chaque ligne individuelle (pas agrégée)
+  const banqueOp      = {}   // catégorie → montant (opérationnels, hors taxes)
+  const banqueAmort   = []   // rows catégorie='amortissement'
+  const banqueFraisFin= []   // rows catégorie='frais_bancaires'
+  const taxByLabel    = {}   // label parsé → montant (taxes individualisées)
 
   for (const r of (banqueRows || [])) {
     const cat = r.categorie || 'frais_admin'
@@ -136,6 +156,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       banqueAmort.push(r)
     } else if (cat === 'frais_bancaires') {
       banqueFraisFin.push(r)
+    } else if (cat === 'taxes_fiscales') {
+      const label = parseTaxLabel(r.libelle)
+      taxByLabel[label] = (taxByLabel[label] || 0) + mt
     } else {
       banqueOp[cat] = (banqueOp[cat] || 0) + mt
     }
@@ -146,7 +169,8 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     parCat[cat] = (parCat[cat] || 0) + mt
   }
 
-  const charges = Object.values(parCat).reduce((s, v) => s + v, 0)
+  const chargesTaxes = Object.values(taxByLabel).reduce((s, v) => s + v, 0)
+  const charges = Object.values(parCat).reduce((s, v) => s + v, 0) + chargesTaxes
 
   // ── Amortissement (Section IV — source: banque_apo en priorité) ───────────
   const amortFromBanque = banqueAmort.reduce((s, r) => s + (r.montant_fcfa || 0), 0)
@@ -284,11 +308,18 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       margeBrutePct:    caTotal ? +((margeBrute / caTotal) * 100).toFixed(1) : 0,
 
       // ── III. CHARGES EXPLOITATION (caisse + banque opérationnelle) ─────────
-      chargesExploitation: topDepenses.slice(0, 10).map(d => ({
-        label:    d.lib,
-        pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
-        total:    -d.mt,
-      })),
+      chargesExploitation: [
+        ...topDepenses.slice(0, 10).map(d => ({
+          label:    d.lib,
+          pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
+          total:    -d.mt,
+        })),
+        ...Object.entries(taxByLabel).map(([label, mt]) => ({
+          label,
+          pertonne: huileProduiteT ? Math.round(mt / huileProduiteT) : 0,
+          total:    -mt,
+        })),
+      ],
       totalChargesExpTotal: -charges,
       totalChargesExpTonne: huileProduiteT ? -Math.round(charges / huileProduiteT) : 0,
 
