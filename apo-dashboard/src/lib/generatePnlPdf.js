@@ -26,11 +26,33 @@ const C = {
 // IMPORTANT : NE PAS utiliser toLocaleString('fr-FR') — jsPDF
 // ne supporte pas l'espace fine insécable U+202F → rendu en "/"
 // On utilise un regex avec espace ASCII ordinaire.
+const USD_RATE = 563
 const sep   = (v) => Math.abs(Math.round(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-const fNum  = (v) => sep(v)
-const fNeg  = (v) => v === 0 ? '-' : `(${sep(v)})`
-const fSign = (v) => v >= 0 ? `+${sep(v)}` : `(${sep(Math.abs(v))})`
+
+// Formateurs sensibles à la devise (injectés après init de currency)
+let conv  = (v) => v                        // FCFA → FCFA par défaut
+let fNum  = (v) => sep(v)
+let fNeg  = (v) => v === 0 ? '-' : `(${sep(v)})`
+let fSign = (v) => v >= 0 ? `+${sep(v)}` : `(${sep(Math.abs(v))})`
 const fPct  = (v) => `${Number(v).toFixed(1)}%`
+
+function initFormatters(currency) {
+  if (currency === 'USD') {
+    conv  = (v) => Math.round(v / USD_RATE)
+    const pfx = (v) => `$${sep(Math.abs(v))}`
+    fNum  = (v) => `$${sep(Math.abs(conv(v)))}`
+    fNeg  = (v) => v === 0 ? '-' : `($${sep(Math.abs(conv(v)))})`
+    fSign = (v) => {
+      const u = conv(v)
+      return u >= 0 ? `+$${sep(u)}` : `($${sep(Math.abs(u))})`
+    }
+  } else {
+    conv  = (v) => v
+    fNum  = (v) => sep(v)
+    fNeg  = (v) => v === 0 ? '-' : `(${sep(v)})`
+    fSign = (v) => v >= 0 ? `+${sep(v)}` : `(${sep(Math.abs(v))})`
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function setFont(doc, size, style = 'normal', color = [30, 30, 30]) {
@@ -46,6 +68,8 @@ function hLine(doc, y, x1, x2, color = C.border, lw = 0.3) {
 
 // ── Main export ───────────────────────────────────────────────
 export function generatePnlPdf(data, currency = 'FCFA') {
+  initFormatters(currency)
+  const isUSD = currency === 'USD'
   const { pnl, kpis, _etl, alertes = [] } = data
   const mois    = _etl?.mois    ?? 'Mois'
   const annee   = _etl?.annee   ?? ''
@@ -112,12 +136,14 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   doc.setLineWidth(0.35)
   doc.roundedRect(MARGIN, y, COL_W, kpiBoxH, 2, 2, 'FD')
 
+  const caLabel  = isUSD ? `$${sep(Math.round(kpis.caTotalFCFA / USD_RATE))}` : `${sep(kpis.caTotalFCFA)} FCFA`
+  const resLabel = isUSD ? `$${sep(Math.abs(Math.round(pnl.resultatTotal / USD_RATE)))}` : `${sep(Math.abs(pnl.resultatTotal))} FCFA`
   const kpiItems = [
-    { label: "Chiffre d'Affaires", value: sep(kpis.caTotalFCFA) + ' FCFA' },
+    { label: "Chiffre d'Affaires", value: caLabel },
     { label: 'Marge Brute',        value: fPct(pnl.margeBrutePct) },
     { label: 'EBITDA',             value: fPct(pnl.ebitdaPct) },
     { label: 'Res. Exploitation',  value: fPct(pnl.resultatExplPct ?? pnl.ebitdaPct), color: (pnl.resultatExplTotal ?? pnl.ebitdaTotal) >= 0 ? C.green : C.red },
-    { label: 'Resultat Net',       value: sep(Math.abs(pnl.resultatTotal)) + ' FCFA', color: pnl.resultatTotal >= 0 ? C.green : C.red },
+    { label: 'Resultat Net',       value: resLabel, color: pnl.resultatTotal >= 0 ? C.green : C.red },
     { label: 'Marge Nette',        value: fPct(kpis.margeNette), color: pnl.resultatTotal >= 0 ? C.green : C.red },
   ]
   const kpiW = COL_W / kpiItems.length
@@ -257,9 +283,9 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   autoTable(doc, {
     startY: y,
     head: [[
-      { content: 'Libelle',    styles: { halign: 'left'  } },
-      { content: 'F / tonne', styles: { halign: 'right' } },
-      { content: 'Total (FCFA)', styles: { halign: 'right' } },
+      { content: 'Libelle',                                   styles: { halign: 'left'  } },
+      { content: isUSD ? '$ / tonne' : 'F / tonne',          styles: { halign: 'right' } },
+      { content: isUSD ? 'Total (USD)' : 'Total (FCFA)',      styles: { halign: 'right' } },
     ]],
     body: rows,
     columnStyles: {
@@ -335,6 +361,6 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   }
 
   // ── 7. Sauvegarde ────────────────────────────────────────────
-  const filename = `APO_PnL_${mois}_${annee}${partiel ? '_partiel' : ''}.pdf`
+  const filename = `APO_PnL_${mois}_${annee}${isUSD ? '_USD' : ''}${partiel ? '_partiel' : ''}.pdf`
   doc.save(filename)
 }
