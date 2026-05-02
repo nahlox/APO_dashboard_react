@@ -538,6 +538,7 @@ def recalculer_kpis(mois: int, periode_id: int):
     vb  = sb.table("ventes_bassin").select("montant_fcfa").eq("periode_id", periode_id).execute()
     ca1 = sb.table("caisse_apo").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
     ca2 = sb.table("caisse_apo2").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
+    bq  = sb.table("banque_apo").select("montant_fcfa,categorie").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
     ar  = sb.table("achats_regimes").select("poids_kg,montant_total").eq("periode_id", periode_id).execute()
     pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
@@ -553,11 +554,26 @@ def recalculer_kpis(mois: int, periode_id: int):
     ca_palmiste  = sum(safe_float(r["montant_fcfa"]) for r in vp.data)
     ca_florentin = sum(safe_float(r["montant_fcfa"]) for r in vf.data)
     ca_bassin    = sum(safe_float(r["montant_fcfa"]) for r in vb.data)
-    # Charges = caisse 1 + caisse 2, hors transferts inter-caisses
-    charges = (
+
+    # Charges caisse (hors transferts inter-caisses)
+    charges_caisse = (
         sum(safe_float(r["credit_fcfa"]) for r in ca1.data if not is_transfer(r["libelle"]))
       + sum(safe_float(r["credit_fcfa"]) for r in ca2.data if not is_transfer(r["libelle"]))
     )
+
+    # Charges banque — séparées par type
+    CATS_FIN = {"amortissement", "frais_bancaires"}
+    charges_banque = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
+                         if r.get("categorie") not in CATS_FIN)
+    amort_banque   = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
+                         if r.get("categorie") == "amortissement")
+    frais_fin      = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
+                         if r.get("categorie") == "frais_bancaires")
+
+    # Totaux
+    charges      = charges_caisse + charges_banque
+    amort_total  = amort_banque or 0   # banque = source prioritaire
+    frais_total  = frais_fin
 
     reg_recus   = sum(safe_float(r["regime_recu_kg"])        for r in pj.data)
     reg_traites = sum(safe_float(r["regime_traite_kg"])       for r in pj.data)
@@ -577,7 +593,8 @@ def recalculer_kpis(mois: int, periode_id: int):
     prix_huile  = ca_huile / huile_vend if huile_vend else 0
     te          = huile_prod / reg_traites if reg_traites else 0
     ca_total    = ca_huile + ca_palmiste + ca_florentin + ca_bassin
-    marge       = round((ca_total - cout_mp - charges) / ca_total * 100, 2) if ca_total else 0
+    resultat    = ca_total - cout_mp - charges - amort_total - frais_total
+    marge       = round(resultat / ca_total * 100, 2) if ca_total else 0
 
     pep_total    = sum(safe_float(r["montant_total"]) for r in pep.data)
     pep_encaisse = sum(safe_float(r["net_encaisse"])  for r in pep.data)
@@ -589,7 +606,10 @@ def recalculer_kpis(mois: int, periode_id: int):
         "ca_florentin_fcfa":       ca_florentin,
         "ca_bassin_fcfa":          ca_bassin,
         "cout_mp_fcfa":            cout_mp,
+        "ca_total_fcfa":           ca_total,
         "charges_exploitation":    charges,
+        "amortissement_fcfa":      amort_total + frais_total,
+        "resultat_net_fcfa":       resultat,
         "marge_nette_pct":         marge,
         "regimes_recus_kg":        reg_recus,
         "regimes_traites_kg":      reg_traites,
@@ -611,7 +631,7 @@ def recalculer_kpis(mois: int, periode_id: int):
 
     if not DRY_RUN:
         sb.table("kpis_mensuels").upsert(payload, on_conflict="periode_id").execute()
-    log(f"  ✅ KPIs mois {mois} — CA : {ca_total:,.0f} FCFA | Résultat : {ca_total - cout_mp - charges:,.0f} FCFA")
+    log(f"  ✅ KPIs mois {mois} — CA : {ca_total:,.0f} | Charges : {charges:,.0f} | Amort : {amort_total:,.0f} | Résultat : {resultat:,.0f} FCFA")
 
 
 # ── ORCHESTRATEUR ─────────────────────────────────────────────
