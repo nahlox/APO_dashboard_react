@@ -39,9 +39,8 @@ export const fmt = {
   /** Formatte selon devise active — avec suffixe devise */
   currency: (v, currency = 'FCFA') => {
     if (currency === 'USD') {
-      const usd = v / USD_RATE
-      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
-      return '$' + (usd / 1e6).toFixed(2) + ' M'
+      const usd = Math.round(v / USD_RATE)
+      return '$' + usd.toLocaleString('fr-FR')
     }
     if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
     return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
