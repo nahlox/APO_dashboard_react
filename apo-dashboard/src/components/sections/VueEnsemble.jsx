@@ -109,7 +109,7 @@ export default function VueEnsemble({ data, month }) {
         <KPICard label="CA Huile de Palme"         value={fmt.kpiValue(kpis.caHuileFCFA, currency)}   valueColor="green" sub={`${currency} · ${kpis.caHuileDetail}`} accent="accent-green" />
         <KPICard label="CA Noix de Palmiste"       value={fmt.kpiValue(kpis.caNoisFCFA, currency)}    sub={`${currency} · sous-produit`} />
         <KPICard label="Coût Matière Première"     value={fmt.kpiValue(kpis.coutMPFCFA, currency)}    valueColor="green" sub={`${currency} · ${kpis.coutMPDetail}`} accent="accent-green" />
-        <KPICard label="Résultat Net Estimé"       value={'+ ' + fmt.kpiValue(kpis.resultatNetFCFA, currency)} valueColor="green" sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent="accent-green" />
+        <KPICard label="Résultat Net Estimé"       value={(kpis.resultatNetFCFA >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(kpis.resultatNetFCFA), currency)} valueColor={kpis.resultatNetFCFA >= 0 ? 'green' : 'red'} sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent={kpis.resultatNetFCFA >= 0 ? 'accent-green' : 'accent-red'} />
         <KPICard label="Taux d'Extraction"         value={fmt.pct(kpis.tauxExtraction)}                      valueColor="green" sub="huile produite ÷ régimes traités" accent="accent-green" />
       </div>
 
