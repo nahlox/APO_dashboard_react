@@ -104,29 +104,18 @@ export const janData = {
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
-      { label: 'Rémunération du personnel',                    section: '66', pertonne: 14000, total:  -27338274 },
-      { label: 'Achat de carburant',                           section: '60', pertonne:  3000, total:   -4894732 },
-      { label: "Matériels & fournitures d'usine",              section: '60', pertonne:  4000, total:   -7524800 },
-      { label: "Main-d'œuvre occasionnelle",                   section: '63', pertonne:  3000, total:   -5932500 },
-      { label: 'Frais de transport / location engins',         section: '61', pertonne:  2000, total:   -4270000 },
-      { label: "Eau & fournitures de bureau",                  section: '60', pertonne:  3000, total:   -6107875 },
-      { label: 'Divers frais',                                 section: '63', pertonne:  3000, total:   -5045500 },
-      // ── Charges bancaires (SGCI/BDA) ──
-      { label: 'Charges sociales CNPS/CMU',                    section: '66', pertonne:  5000, total:   -9626375 },
-      { label: "Matériels & fournitures d'usine",     section: '60', pertonne:  6000, total:  -12198066 },
-      { label: 'Entretien, réparations, maintenance', section: '62', pertonne:  4000, total:   -7188746 },
-      { label: 'Électricité usine (CIE)',                      section: '60', pertonne:  3000, total:   -5362955 },
-      { label: 'Frais de transport',                   section: '61', pertonne:  3000, total:   -6230000 },
-      { label: 'Travaux & constructions',                      section: '60', pertonne:  1000, total:   -2501500 },
-      { label: 'Divers frais',                        section: '63', pertonne:  1000, total:   -2875859 },
-      { label: 'Sécurité & gardiennage',                       section: '63', pertonne:  1000, total:   -1200000 },
-      { label: 'Assurances',                                   section: '62', pertonne:     0, total:    -593338 },
+      // 60+61+62+63+66 — totaux consolidés par catégorie (= format Supabase avril+)
+      { label: "Fournitures de l'usine et des bureaux", section: '60', pertonne: 20000, total:  -38589928 },
+      { label: 'Frais de transport',                    section: '61', pertonne:  5000, total:  -10500000 },
+      { label: 'Services extérieurs',                   section: '62', pertonne:  4000, total:   -7782084 },
+      { label: 'Autres services extérieurs',            section: '63', pertonne:  8000, total:  -15053859 },
+      { label: 'Charges de personnel',                  section: '66', pertonne: 19000, total:  -36964649 },
     ],
-    totalChargesExpTotal: -108690520,   // sans taxes
+    totalChargesExpTotal: -108890520,   // sans taxes
     totalChargesExpTonne:   -56000,
 
     // ── EBE / EBITDA (hors taxes, hors amort) ─────────────
-    ebitdaTotal:   121592540,   // 230 283 060 − 108 690 520
+    ebitdaTotal:   121392540,   // 230 283 060 − 108 890 520
     ebitdaTonne:      62000,
     ebitdaPct:          9.1,
 
@@ -139,7 +128,7 @@ export const janData = {
     totalImpotsTaxesTonne:  -1000,
 
     // ── RÉSULTAT D'EXPLOITATION ────────────────────────────
-    resultatExplTotal:  119340495,
+    resultatExplTotal:  119140495,   // 121 392 540 − 2 252 045
     resultatExplTonne:     61000,
     resultatExplPct:         8.9,
 
@@ -158,7 +147,7 @@ export const janData = {
     // ── RÉSULTAT NET ──────────────────────────────────────
     totalChargesTotal:  -1235022898,
     totalChargesTonne:    -631000,
-    resultatTotal:         98940262,
+    resultatTotal:         98740262,   // 119 140 495 − 20 400 233
     resultatTonne:            51000,
 
     notes: [

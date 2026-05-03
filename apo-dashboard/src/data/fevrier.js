@@ -101,21 +101,12 @@ export const febData = {
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
-      { label: 'Rémunération du personnel',                    section: '66', pertonne: 10000, total:  -30052695 },
-      { label: 'Achat de carburant',                           section: '60', pertonne:  3000, total:   -7583250 },
-      { label: "Matériels & fournitures d'usine",              section: '60', pertonne:  5000, total:  -13608500 },
-      { label: "Main-d'œuvre occasionnelle",                   section: '63', pertonne:  1000, total:   -4046000 },
-      { label: 'Frais de transport / location engins',         section: '61', pertonne:  4000, total:  -10926500 },
-      { label: "Eau & fournitures de bureau",                  section: '60', pertonne:  1000, total:   -4111475 },
-      { label: 'Divers frais',                                 section: '63', pertonne:  5000, total:  -14696000 },
-      // ── Charges bancaires (SGCI/BDA) ──
-      { label: 'Charges sociales CNPS/CMU',                    section: '66', pertonne:  4000, total:  -10207092 },
-      { label: 'Électricité usine (CIE)',                      section: '60', pertonne:  3000, total:   -9011510 },
-      { label: 'Entretien, réparations, maintenance', section: '62', pertonne:  3000, total:   -8437593 },
-      { label: 'Frais de transport',                   section: '61', pertonne:  2000, total:   -6230000 },
-      { label: 'Sécurité & gardiennage',                       section: '63', pertonne:  1000, total:   -2400000 },
-      { label: "Eau & fournitures",                   section: '60', pertonne:     0, total:    -595691 },
-      { label: 'Divers frais',                        section: '63', pertonne:     0, total:    -600019 },
+      // 60+61+62+63+66 — totaux consolidés par catégorie (= format Supabase avril+)
+      { label: "Fournitures de l'usine et des bureaux", section: '60', pertonne: 12000, total:  -34910426 },
+      { label: 'Frais de transport',                    section: '61', pertonne:  6000, total:  -17156500 },
+      { label: 'Services extérieurs',                   section: '62', pertonne:  3000, total:   -8437593 },
+      { label: 'Autres services extérieurs',            section: '63', pertonne:  8000, total:  -21742019 },
+      { label: 'Charges de personnel',                  section: '66', pertonne: 14000, total:  -40259787 },
     ],
     totalChargesExpTotal: -122506325,   // sans taxes
     totalChargesExpTonne:   -43000,
