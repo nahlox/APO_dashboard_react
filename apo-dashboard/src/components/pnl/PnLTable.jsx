@@ -61,11 +61,23 @@ function SectionHeader({ title, color }) {
   )
 }
 
+// ── OHADA Section metadata ────────────────────────────────────
+const OHADA_SECTIONS = {
+  '60': { title: "60. Fournitures de l'usine et des bureaux", color: '#d4813a' },
+  '61': { title: '61. Frais de transport',                    color: '#c08a40' },
+  '62': { title: '62. Services extérieurs',                   color: '#5b8fe0' },
+  '63': { title: '63. Autres services extérieurs',            color: '#5b7ed0' },
+  '65': { title: '65. Autres charges',                        color: '#8a9e8a' },
+  '66': { title: '66. Charges de personnel',                  color: '#e05c5c' },
+}
+const SECTION_ORDER = ['60', '61', '62', '63', '65', '66']
+
 // ── Main Component ────────────────────────────────────────────
 
 export default function PnLTable({ pnl, data }) {
   const { currency } = useDashboardStore()
   const c = (v) => fmt.currency(Math.abs(v), currency)
+  const huileProduiteT = data?.kpis?.huileProduiteT || 0
 
   return (
     <div className="pnl-box">
@@ -140,29 +152,120 @@ export default function PnLTable({ pnl, data }) {
         borderColor="rgba(242,140,40,0.25)"
       />
 
-      {/* ── III. CHARGES D'EXPLOITATION ────────────────────── */}
-      <div style={{ background: 'rgba(224,92,92,0.03)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(224,92,92,0.1)' }}>
-        <SectionHeader title="III. Charges d'exploitation opérationnelles" color="var(--red)" />
-        {pnl.chargesExploitation.map((row, i) => (
-          <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
-        ))}
-        <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(224,92,92,0.2)', background: 'rgba(224,92,92,0.05)' }}>
-          <span style={{ ...styles.totalLabel, color: 'var(--red)' }}>Total Charges exploitation</span>
-          <span className="pnl-col-tonne" style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {fmt.full(Math.abs(pnl.totalChargesExpTonne))}</span>
-          <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {c(pnl.totalChargesExpTotal)}</span>
-        </div>
-      </div>
+      {/* ── III. CHARGES D'EXPLOITATION (OHADA 61→66) ───────── */}
+      {(() => {
+        // Group charges by section
+        const bySection = {}
+        for (const row of pnl.chargesExploitation) {
+          const sec = row.section || '65'
+          if (!bySection[sec]) bySection[sec] = []
+          bySection[sec].push(row)
+        }
 
-      {/* ── EBE / EBITDA ────────────────────────────────────── */}
-      <SubtotalRow
-        label="EBE / EBITDA"
-        pertonne={pnl.ebitdaTonne}
-        total={pnl.ebitdaTotal}
-        pct={pnl.ebitdaPct}
-        color="var(--text)"
-        bg="rgba(138,154,142,0.08)"
-        borderColor="rgba(138,154,142,0.2)"
-      />
+        // Compute per-section totals
+        const secTotals = {}
+        for (const [sec, rows] of Object.entries(bySection)) {
+          secTotals[sec] = rows.reduce((s, r) => s + (r.total || 0), 0)
+        }
+
+        // ValeurAjoutée = MargeBrute - sec 60+61+62+63+65
+        const vaDeductions = ['60','61','62','63','65'].reduce((s, sec) => s + (secTotals[sec] || 0), 0)
+        const valeurAjoutee = pnl.margeBruteTotal + vaDeductions   // vaDeductions are negative
+        const vaTonne = huileProduiteT ? Math.round(valeurAjoutee / huileProduiteT) : 0
+        const vaPct   = pnl.totalProduitsTotal ? +((valeurAjoutee / pnl.totalProduitsTotal) * 100).toFixed(1) : 0
+
+        // EBE = ValeurAjoutée - sec66
+        const sec66Total  = secTotals['66'] || 0
+        const ebe         = valeurAjoutee + sec66Total   // sec66Total is negative
+        const ebeTonne    = huileProduiteT ? Math.round(ebe / huileProduiteT) : 0
+        const ebePct      = pnl.totalProduitsTotal ? +((ebe / pnl.totalProduitsTotal) * 100).toFixed(1) : 0
+
+        return (
+          <>
+            <div style={{ background: 'rgba(224,92,92,0.03)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(224,92,92,0.1)' }}>
+              <SectionHeader title="III. Charges d'exploitation opérationnelles" color="var(--red)" />
+
+              {/* Pre-66 sections (60, 61, 62, 63, 65) */}
+              {SECTION_ORDER.filter(sec => sec !== '66' && bySection[sec]?.length > 0).map((sec, si) => {
+                const meta = OHADA_SECTIONS[sec] || { title: `Section ${sec}`, color: 'var(--text-dim)' }
+                const rows = bySection[sec]
+                const tot  = secTotals[sec]
+                const totT = huileProduiteT ? Math.round(tot / huileProduiteT) : 0
+                return (
+                  <div key={sec}>
+                    <div style={{ padding: '8px 14px 2px', marginTop: si === 0 ? 0 : 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: meta.color, opacity: 0.85 }}>{meta.title}</span>
+                    </div>
+                    {rows.map((row, i) => (
+                      <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
+                    ))}
+                    {rows.length > 1 && (
+                      <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '5px 14px', background: 'rgba(0,0,0,0.04)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ ...styles.label, color: meta.color, fontWeight: 600 }}>Sous-total {meta.title.split('.')[0]}</span>
+                        <span className="pnl-col-tonne" style={{ ...styles.num, textAlign: 'right', color: meta.color }}>– {fmt.full(Math.abs(totT))}</span>
+                        <span style={{ ...styles.num, textAlign: 'right', color: meta.color }}>– {c(tot)}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* ── Valeur Ajoutée (entre 65 et 66) ── */}
+              <SubtotalRow
+                label="Valeur Ajoutée"
+                pertonne={vaTonne}
+                total={valeurAjoutee}
+                pct={vaPct}
+                color="#58a6ff"
+                bg="rgba(88,166,255,0.07)"
+                borderColor="rgba(88,166,255,0.22)"
+              />
+
+              {/* Section 66 — Charges de personnel */}
+              {bySection['66']?.length > 0 && (() => {
+                const meta = OHADA_SECTIONS['66']
+                const rows = bySection['66']
+                const tot  = secTotals['66']
+                const totT = huileProduiteT ? Math.round(tot / huileProduiteT) : 0
+                return (
+                  <div>
+                    <div style={{ padding: '8px 14px 2px' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: meta.color, opacity: 0.85 }}>{meta.title}</span>
+                    </div>
+                    {rows.map((row, i) => (
+                      <DataRow key={i} label={row.label} pertonne={-row.pertonne} total={row.total} color="var(--text)" indent />
+                    ))}
+                    {rows.length > 1 && (
+                      <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '5px 14px', background: 'rgba(0,0,0,0.04)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ ...styles.label, color: meta.color, fontWeight: 600 }}>Sous-total 66</span>
+                        <span className="pnl-col-tonne" style={{ ...styles.num, textAlign: 'right', color: meta.color }}>– {fmt.full(Math.abs(totT))}</span>
+                        <span style={{ ...styles.num, textAlign: 'right', color: meta.color }}>– {c(tot)}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(224,92,92,0.2)', background: 'rgba(224,92,92,0.05)' }}>
+                <span style={{ ...styles.totalLabel, color: 'var(--red)' }}>Total Charges exploitation</span>
+                <span className="pnl-col-tonne" style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {fmt.full(Math.abs(pnl.totalChargesExpTonne))}</span>
+                <span style={{ ...styles.totalNum, textAlign: 'right', color: 'var(--red)' }}>– {c(pnl.totalChargesExpTotal)}</span>
+              </div>
+            </div>
+
+            {/* ── EBE (Excédent Brut d'Exploitation) ────────────── */}
+            <SubtotalRow
+              label="EBE — Excédent Brut d'Exploitation"
+              pertonne={ebeTonne}
+              total={ebe}
+              pct={ebePct}
+              color="var(--text)"
+              bg="rgba(138,154,142,0.08)"
+              borderColor="rgba(138,154,142,0.2)"
+            />
+          </>
+        )
+      })()}
 
       {/* ── IV. IMPÔTS & TAXES (hors IS) ───────────────────── */}
       {pnl.impotsTaxes && pnl.impotsTaxes.length > 0 && (

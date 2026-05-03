@@ -9,31 +9,32 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
 import { MONTH_DATA as MONTH_DATA_STATIC } from '../data/index'
 
-// ── Labels d'affichage (caisse + banque) ─────────────────────────────────────
+// ── Labels d'affichage (nomenclature OHADA — compte de résultat APO) ──────────
 export const CAT_LABELS = {
-  // Caisse (existants)
-  salaires:           'Salaires & Primes',
-  carburant:          'Carburant',
-  main_oeuvre:        "Main d'œuvre ext.",
-  entretien:          'Entretien & Réparation',
-  construction:       'Construction & Travaux',
-  vehicules:          'Véhicules & Transport',
-  materiels:          'Matériels & Équipements',
-  eau_fournitures:    'Eau & Fournitures',
-  frais_relat:        'Relations institutionnelles',
-  frais_admin:        'Frais administratifs',
-  autre:              'Autres dépenses',
-  // Banque (nouveaux)
-  electricite:        'Électricité (CIE)',
-  assurance:          'Assurances',
-  securite:           'Sécurité & Gardiennage',
-  charges_patronales: 'Charges patronales (CNPS/CMU)',
-  taxes_fiscales:     'Taxes & Impôts',
-  frais_bancaires:    'Frais & charges financières',
+  fournitures_usine:   "Fournitures de l'usine et des bureaux",
+  frais_transport:     'Frais de transport',
+  services_ext:        'Services extérieurs',
+  autres_services_ext: 'Autres services extérieurs',
+  autres_charges:      'Autres charges',
+  charges_personnel:   'Charges de personnel',
+  // Inchangés (sections séparées)
+  taxes_fiscales:      'Impôts et taxes',
+  frais_bancaires:     'Frais bancaires',
+  amortissement:       'Dotations aux amortissements',
 }
 
 // Catégories qui vont en Section IV (non opérationnelles)
 const CATS_FINANCIERES = new Set(['amortissement', 'frais_bancaires'])
+
+// Mapping catégorie → section OHADA
+const CAT_TO_SECTION = {
+  fournitures_usine:   '60',
+  frais_transport:     '61',
+  services_ext:        '62',
+  autres_services_ext: '63',
+  autres_charges:      '65',
+  charges_personnel:   '66',
+}
 
 /**
  * Parse le libellé d'une ligne taxes_fiscales → label lisible P&L
@@ -59,29 +60,21 @@ function parseTaxLabel(libelle) {
 function categorizeLibelle(libelle = '') {
   const l = libelle.toUpperCase()
 
-  if (/SALAIRE|PAIE DU|PAIE DES|PAIE JOUR|PRIME POUR|PRIME DE PRODUCTION|PRIME MOIS|AVANCE SUR SALAIRE|JOUR FERIER|TRAVAILLEURS TEMPORAIRE|PESONNEL JOUR/.test(l))
-    return 'salaires'
-  if (/CARBURANT|GASOIL|GAZOIL|ESSENCE/.test(l))
-    return 'carburant'
-  if (/MAIN D.O|MAIN DO|MAIN DOEUVRE|ACOMPTE SUR MAIN|SOLDE MAIN|REBOBINEUR|TOURNEUR|MACONNERIE|VITRIER/.test(l))
-    return 'main_oeuvre'
-  if (/REPARATION|REAPARATION|ENTRETIEN|REBOBINAGE|RECHARGEMENT BOUTEILLE|DEPANNAGE|DETRATAGE|NETTOYAGE|TEFLON|FABRICATION|CERVEAU DE FREIN|TAMPON POUR BENNE|DECANTEUR|FLEXIBLE POUR CHARGEUSE|PIECES DE RECHANGE|FILTRE/.test(l))
-    return 'entretien'
-  if (/CIMENT|GRAVIER|SABLE|FORAGE|DALLE|BRIQUES|CONTRE PLAQUE|BASSIN LAGUNAGE|TUYAUX|CONSTRUCTION|GARAGE ENGIN|BUREAU ANNEXE|CERTIFICAT FONCIER|TERRAIN|LEGALISATION/.test(l))
-    return 'construction'
-  if (/VEHICULE|BULDOZER|BULL|PORTE.CHAR|VISITE TECHNIQUE|TAXE|BILLET AVION|LAVAGE PICK|LOCATION CAMION|FRAIS DE TRANSPORT|TRANSPORT FOURNISSEUR|ACHAT DE MOTO|AFFAIRES MARITIMES|NIVELEUSE|DEPOT DE RAFFE/.test(l))
-    return 'vehicules'
-  if (/MATERIELS MECANIQUE|MATERIEL MECANIQUE|SOUDURE|CHAUDIERE|ORDINATEUR|INFORMATIQUE|BUREAU.ARMOIRE|MATERIEL ET EQUIPEMENT|REFRIGERATEUR|SPLIT|FRIGO|STARLINK|CABLE.*CABLAGE/.test(l))
-    return 'materiels'
-  if (/ACHAT EAU|EAU POUR|FOURNITURES|ACHAT DIVERS|ENCRE|FILTRE A EAU/.test(l))
-    return 'eau_fournitures'
-  if (/BAKCHICH|BACKCHICH|BAKHCHICH|FRAIS RELATIONNEL|AIDE FINANCIERE|DON POUR|MOBILE MONEY|RELATIONNEL|ASSISTANCE FUNEBRE|TEE.SHORT|POLOS/.test(l))
-    return 'frais_relat'
-  if (/VISA|JURIDIQUE|MEDICAUX|PRET|PRÊT|FRAIS DIVERS/.test(l))
-    return 'frais_admin'
+  if (/SALAIRE|PAIE DU|PAIE DES|PAIE JOUR|PRIME POUR|PRIME DE PRODUCTION|PRIME MOIS|AVANCE SUR SALAIRE|JOUR FERIER|TRAVAILLEURS TEMPORAIRE|PESONNEL JOUR|CNPS|CMU/.test(l))
+    return 'charges_personnel'
+  if (/CARBURANT|GASOIL|GAZOIL|ESSENCE|ELECTRICIT|CIE|ACHAT EAU|EAU POUR|FOURNITURES|ACHAT DIVERS|ENCRE|FILTRE A EAU|MATERIELS MECANIQUE|MATERIEL MECANIQUE|SOUDURE|CHAUDIERE|ORDINATEUR|INFORMATIQUE|BUREAU.ARMOIRE|MATERIEL ET EQUIPEMENT|REFRIGERATEUR|SPLIT|FRIGO|STARLINK|CABLE.*CABLAGE|CIMENT|GRAVIER|SABLE|FORAGE|DALLE|BRIQUES|CONTRE PLAQUE|BASSIN LAGUNAGE|TUYAUX|CONSTRUCTION|GARAGE ENGIN|BUREAU ANNEXE|CERTIFICAT FONCIER|TERRAIN|LEGALISATION/.test(l))
+    return 'fournitures_usine'
   if (/^ACHAT/.test(l))
-    return 'materiels'
-  return 'autre'
+    return 'fournitures_usine'
+  if (/VEHICULE|BULDOZER|BULL|PORTE.CHAR|VISITE TECHNIQUE|BILLET AVION|LAVAGE PICK|LOCATION CAMION|FRAIS DE TRANSPORT|TRANSPORT FOURNISSEUR|ACHAT DE MOTO|AFFAIRES MARITIMES|NIVELEUSE|DEPOT DE RAFFE/.test(l))
+    return 'frais_transport'
+  if (/REPARATION|REAPARATION|ENTRETIEN|REBOBINAGE|RECHARGEMENT BOUTEILLE|DEPANNAGE|DETRATAGE|NETTOYAGE|TEFLON|FABRICATION|CERVEAU DE FREIN|TAMPON POUR BENNE|DECANTEUR|FLEXIBLE POUR CHARGEUSE|PIECES DE RECHANGE|FILTRE|ASSURANCE/.test(l))
+    return 'services_ext'
+  if (/MAIN D.O|MAIN DO|MAIN DOEUVRE|ACOMPTE SUR MAIN|SOLDE MAIN|REBOBINEUR|TOURNEUR|MACONNERIE|VITRIER|SECURIT|GARDIEN|VISA|JURIDIQUE|MEDICAUX|PRET|PRÊT|FRAIS DIVERS|MISSION|HEBERGEMENT/.test(l))
+    return 'autres_services_ext'
+  if (/BAKCHICH|BACKCHICH|BAKHCHICH|FRAIS RELATIONNEL|AIDE FINANCIERE|DON POUR|MOBILE MONEY|RELATIONNEL|ASSISTANCE FUNEBRE|TEE.SHORT|POLOS/.test(l))
+    return 'autres_charges'
+  return 'autres_services_ext'
 }
 
 // Clés des mois déjà couverts par les fichiers statiques
@@ -193,7 +186,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
   // ── Top dépenses (caisse + banque opérationnelle, hors taxes) ──────────────
   const topDepenses = Object.entries(parCat)
-    .map(([cat, mt]) => ({ lib: CAT_LABELS[cat] || cat, mt, date: '' }))
+    .map(([cat, mt]) => ({ lib: CAT_LABELS[cat] || cat, cat, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
 
   // ── Graphiques journaliers ────────────────────────────────────────────────
@@ -318,6 +311,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       // ── III. CHARGES EXPLOITATION (caisse + banque opérationnelle, hors taxes)
       chargesExploitation: topDepenses.slice(0, 10).map(d => ({
         label:    d.lib,
+        section:  CAT_TO_SECTION[d.cat] || '65',
         pertonne: huileProduiteT ? Math.round(d.mt / huileProduiteT) : 0,
         total:    -d.mt,
       })),
