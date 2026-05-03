@@ -605,11 +605,14 @@ def recalculer_kpis(mois: int, periode_id: int):
     total_poids = sum(safe_float(r["poids_kg"])    for r in ar.data)
     total_mont  = sum(safe_float(r["montant_total"]) for r in ar.data)
     prix_moy    = total_mont / total_poids if total_poids else 0
-    cout_mp     = reg_traites * prix_moy
     nb_camions  = len(ar.data)
 
     prix_huile  = ca_huile / huile_vend if huile_vend else 0
     te          = huile_prod / reg_traites if reg_traites else 0
+    # Coût MP = graines nécessaires pour produire l'huile effectivement vendue
+    # graine_vendu = huile_vendue / TE  →  cout_mp = graine_vendu × prix_moy
+    graine_vendu = huile_vend / te if te else 0
+    cout_mp      = graine_vendu * prix_moy
     ca_total    = ca_huile + ca_palmiste + ca_florentin + ca_bassin
     resultat    = ca_total - cout_mp - charges - amort_total - frais_total
     marge       = round(resultat / ca_total * 100, 2) if ca_total else 0

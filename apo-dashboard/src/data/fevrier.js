@@ -54,12 +54,12 @@ export const febData = {
     caHuileDetail:     '681 F/kg moy × 2 959 T livrées (720→675 à partir du 4 fév)',
     caNoisFCFA:        113640000,
     caBassinFCFA:      0,   // non facturé — à régulariser
-    coutMPFCFA:        1695469933,
-    coutMPDetail:      '112,50 F/kg × 15 071 T traités',
-    chargesExplFCFA:   125155276,
+    coutMPFCFA:        1750505064,
+    coutMPDetail:      '112,50 F/kg × 15 560 T (graines/huile vendue)',
+    chargesExplFCFA:   122506325,
     amortissementFCFA: 20375782,
-    resultatNetFCFA:   288727209,
-    margeNette:        13.6,
+    resultatNetFCFA:   233692078,
+    margeNette:        11.0,
 
     // Production
     regimesRecusT:     14798,
@@ -92,12 +92,12 @@ export const febData = {
     totalProduitsTonne:   743000,
 
     // ── II. COÛT MATIÈRE PREMIÈRE ─────────────────────────
-    coutMP: { label: 'Régimes traités (112,50 F/kg × 15 071 T)', pertonne: 592000, total: -1695469933 },
+    coutMP: { label: 'Graines/huile vendue (112,50 F/kg × 15 560 T)', pertonne: 611000, total: -1750505064 },
 
     // ── MARGE BRUTE (I − II) ──────────────────────────────
-    margeBruteTotal:  434258267,   // 2 129 728 200 − 1 695 469 933
-    margeBruteTonne:   151000,
-    margeBrutePct:       20.4,
+    margeBruteTotal:  379223136,   // 2 129 728 200 − 1 750 505 064
+    margeBruteTonne:   132000,
+    margeBrutePct:       17.8,
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
@@ -121,9 +121,9 @@ export const febData = {
     totalChargesExpTonne:   -43000,
 
     // ── EBE / EBITDA (hors taxes, hors amort) ─────────────
-    ebitdaTotal:   311751942,   // 434 258 267 − 122 506 325
-    ebitdaTonne:     109000,
-    ebitdaPct:         14.6,
+    ebitdaTotal:   256716811,   // 379 223 136 − 122 506 325
+    ebitdaTonne:      90000,
+    ebitdaPct:         12.1,
 
     // ── IV. IMPÔTS & TAXES (hors IS) ─────────────────────
     impotsTaxes: [
@@ -134,9 +134,9 @@ export const febData = {
     totalImpotsTaxesTonne:  -1000,
 
     // ── RÉSULTAT D'EXPLOITATION ────────────────────────────
-    resultatExplTotal:  309102991,
-    resultatExplTonne:    108000,
-    resultatExplPct:        14.5,
+    resultatExplTotal:  254067860,
+    resultatExplTonne:     89000,
+    resultatExplPct:        11.9,
 
     // ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ──────────
     amortissements: [
@@ -151,16 +151,16 @@ export const febData = {
     totalBICTotal: 0,
 
     // ── RÉSULTAT NET ──────────────────────────────────────
-    totalChargesTotal:  -1840817091,
-    totalChargesTonne:    -642000,
-    resultatTotal:         288727209,
-    resultatTonne:           101000,
+    totalChargesTotal:  -1893257171,
+    totalChargesTonne:    -661000,
+    resultatTotal:         233692078,
+    resultatTonne:           82000,
 
     notes: [
-      { label: 'Marge brute',         value: '20,4%', color: 'gold'  },
-      { label: 'EBITDA',              value: '14,6%', color: 'gold'  },
-      { label: 'Résultat exploit.',   value: '14,5%', color: 'gold'  },
-      { label: 'Marge nette',         value: '13,6%', color: 'green' },
+      { label: 'Marge brute',         value: '17,8%', color: 'gold'  },
+      { label: 'EBITDA',              value: '12,1%', color: 'gold'  },
+      { label: 'Résultat exploit.',   value: '11,9%', color: 'gold'  },
+      { label: 'Marge nette',         value: '11,0%', color: 'green' },
       { label: 'Prix huile moy.', value: '681 F/kg (720→675 dès 04/02)', color: 'gold' },
     ],
   },

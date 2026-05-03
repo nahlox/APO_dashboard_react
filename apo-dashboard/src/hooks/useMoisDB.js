@@ -270,7 +270,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       caHuileFlorentinFCFA: caFlorentin,
       caBassinFCFA:         caBassin,
       coutMPFCFA:           coutMP,
-      coutMPDetail:         `${prixRegime.toFixed(2)} F/kg × ${regTraitesT} T traités`,
+      coutMPDetail:         `${prixRegime.toFixed(2)} F/kg × ${huileVendueT ? Math.round(huileVendueT / (te / 100)) : regTraitesT} T (graines/huile vendue)`,
       chargesExplFCFA:      charges,
       totalTaxesFCFA:       totalTaxesExpl + bicMt,
       amortissementFCFA:    totalAmortFin,
@@ -307,7 +307,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
       // ── II. COÛT MP ────────────────────────────────────────────────────────
       coutMP: {
-        label:    `Régimes traités (${prixRegime.toFixed(2)} F/kg × ${regTraitesT} T)`,
+        label:    `Graines/huile vendue (${prixRegime.toFixed(2)} F/kg × ${huileVendueT && te ? Math.round(huileVendueT / (te / 100)) : regTraitesT} T)`,
         pertonne: huileProduiteT ? Math.round(coutMP / huileProduiteT) : 0,
         total:    -coutMP,
       },

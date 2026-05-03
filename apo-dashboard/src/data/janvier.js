@@ -54,12 +54,12 @@ export const janData = {
     caHuileDetail:     '720 F/kg × 1 763 T livrées',
     caNoisFCFA:        58171200,
     caHuileFlorentinFCFA: 8588000,
-    coutMPFCFA:        1227091010,
-    coutMPDetail:      '122,73 F/kg × 9 998 T traités',
-    chargesExplFCFA:   110942565,
+    coutMPFCFA:        1105980140,
+    coutMPDetail:      '122,73 F/kg × 9 012 T (graines/huile vendue)',
+    chargesExplFCFA:   108690520,
     amortissementFCFA: 20400233,
-    resultatNetFCFA:   -22170608,
-    margeNette:        -1.7,
+    resultatNetFCFA:   98940262,
+    margeNette:        7.4,
 
     // Production
     regimesRecusT:     11170,
@@ -95,12 +95,12 @@ export const janData = {
     totalProduitsTonne:   683000,
 
     // ── II. COÛT MATIÈRE PREMIÈRE ─────────────────────────
-    coutMP: { label: 'Régimes traités (122,73 F/kg × 9 998 T)', pertonne: 627000, total: -1227091010 },
+    coutMP: { label: 'Graines/huile vendue (122,73 F/kg × 9 012 T)', pertonne: 565000, total: -1105980140 },
 
     // ── MARGE BRUTE (I − II) ──────────────────────────────
-    margeBruteTotal:  109172190,   // 1 336 263 200 − 1 227 091 010
-    margeBruteTonne:    56000,
-    margeBrutePct:        8.2,
+    margeBruteTotal:  230283060,   // 1 336 263 200 − 1 105 980 140
+    margeBruteTonne:   118000,
+    margeBrutePct:       17.2,
 
     // ── III. CHARGES D'EXPLOITATION ──────────────────────
     chargesExploitation: [
@@ -126,9 +126,9 @@ export const janData = {
     totalChargesExpTonne:   -56000,
 
     // ── EBE / EBITDA (hors taxes, hors amort) ─────────────
-    ebitdaTotal:    481670,   // 109 172 190 − 108 690 520
-    ebitdaTonne:         0,
-    ebitdaPct:         0.0,
+    ebitdaTotal:   121592540,   // 230 283 060 − 108 690 520
+    ebitdaTonne:      62000,
+    ebitdaPct:          9.1,
 
     // ── IV. IMPÔTS & TAXES (hors IS) ─────────────────────
     impotsTaxes: [
@@ -139,9 +139,9 @@ export const janData = {
     totalImpotsTaxesTonne:  -1000,
 
     // ── RÉSULTAT D'EXPLOITATION ────────────────────────────
-    resultatExplTotal:  -1770375,   // EBITDA − impôts & taxes
-    resultatExplTonne:     -1000,
-    resultatExplPct:        -0.1,
+    resultatExplTotal:  119340495,
+    resultatExplTonne:     61000,
+    resultatExplPct:         8.9,
 
     // ── V. AMORTISSEMENTS & CHARGES FINANCIÈRES ──────────
     amortissements: [
@@ -156,16 +156,16 @@ export const janData = {
     totalBICTotal: 0,
 
     // ── RÉSULTAT NET ──────────────────────────────────────
-    totalChargesTotal:  -1358433798,
-    totalChargesTonne:    -694000,
-    resultatTotal:         -22170608,
-    resultatTonne:            -11000,
+    totalChargesTotal:  -1235022898,
+    totalChargesTonne:    -631000,
+    resultatTotal:         98940262,
+    resultatTonne:            51000,
 
     notes: [
-      { label: 'Marge brute',         value: '8,2%',  color: 'gold' },
-      { label: 'EBITDA',              value: '0,0%',  color: 'gold' },
-      { label: 'Résultat exploit.',   value: '-0,1%', color: 'red'  },
-      { label: 'Marge nette',         value: '-1,7%', color: 'red'  },
+      { label: 'Marge brute',         value: '17,2%', color: 'gold'  },
+      { label: 'EBITDA',              value: '9,1%',  color: 'gold'  },
+      { label: 'Résultat exploit.',   value: '8,9%',  color: 'gold'  },
+      { label: 'Marge nette',         value: '7,4%',  color: 'green' },
       { label: 'Stock fin mois', value: '1 401 T → valorisés en fév.', color: 'gold' },
     ],
   },
