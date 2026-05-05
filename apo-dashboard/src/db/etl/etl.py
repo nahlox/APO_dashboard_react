@@ -134,55 +134,62 @@ def inserer(table: str, rows: list, periode_id: int | None = None, label: str = 
     log(f"  ✅ {table} : {len(rows)} lignes insérées {label}")
 
 def categorize_libelle(libelle: str) -> str:
-    """Catégorise une ligne de caisse. Aligné avec le SQL en base et categorizeLibelle() JS."""
+    """Catégorise une ligne de caisse selon la nomenclature OHADA (aligné avec categorizeLibelle() JS)."""
     l = (libelle or "").upper()
-    if any(k in l for k in ["SALAIRE", "PAIE DU", "PAIE DES", "PAIE JOUR", "PRIME POUR",
-                              "PRIME DE PRODUCTION", "PRIME MOIS", "PRIME SUR ACHAT",
+
+    # 66 — Charges de personnel
+    if any(k in l for k in ["SALAIRE", "PAIE DU", "PAIE DES", "PAIE JOUR",
+                              "PRIME POUR", "PRIME DE PRODUCTION", "PRIME MOIS", "PRIME SUR ACHAT",
                               "AVANCE SUR SALAIRE", "JOUR FERIER", "TRAVAILLEURS TEMPORAIRE",
-                              "PESONNEL JOUR"]):
-        return "salaires"
-    if any(k in l for k in ["CARBURANT", "GASOIL", "GAZOIL", "ESSENCE"]):
-        return "carburant"
-    if any(k in l for k in ["MAIN D'O", "MAIN DO", "MAIN DOEUVRE",
-                              "ACOMPTE SUR MAIN", "SOLDE MAIN",
-                              "REBOBINEUR", "TOURNEUR", "MACONNERIE", "VITRIER"]):
-        return "main_oeuvre"
+                              "PESONNEL JOUR", "CNPS", "CMU"]):
+        return "charges_personnel"
+
+    # 61 — Frais de transport
+    if any(k in l for k in ["VEHICULE", "BULDOZER", "BULL", "PORTE-CHAR", "PORTE CHAR",
+                              "BILLET AVION", "LAVAGE PICK", "LOCATION CAMION",
+                              "FRAIS DE TRANSPORT", "TRANSPORT FOURNISSEUR",
+                              "ACHAT DE MOTO", "AFFAIRES MARITIMES", "NIVELEUSE", "DEPOT DE RAFFE"]):
+        return "frais_transport"
+
+    # 62 — Services extérieurs (entretien, maintenance, assurances)
     if any(k in l for k in ["REPARATION", "REAPARATION", "ENTRETIEN", "REBOBINAGE",
                               "RECHARGEMENT BOUTEILLE", "DEPANNAGE", "DETRATAGE",
-                              "NETTOYAGE", "TEFLON", "FABRICATION", "CERVEAU DE FREIN",
+                              "TEFLON", "FABRICATION", "CERVEAU DE FREIN",
                               "TAMPON POUR BENNE", "DECANTEUR", "FLEXIBLE POUR CHARGEUSE",
-                              "PIECES DE RECHANGE", "FILTRE"]):
-        return "entretien"
-    if any(k in l for k in ["CIMENT", "GRAVIER", "SABLE", "FORAGE", "DALLE", "BRIQUES",
-                              "CONTRE PLAQUE", "BASSIN LAGUNAGE", "TUYAUX", "CONSTRUCTION",
-                              "GARAGE ENGIN", "BUREAU ANNEXE", "CERTIFICAT FONCIER",
-                              "TERRAIN", "LEGALISATION"]):
-        return "construction"
-    if any(k in l for k in ["VEHICULE", "BULDOZER", "BULL", "PORTE-CHAR", "PORTE CHAR",
-                              "VISITE TECHNIQUE", "TAXE", "BILLET AVION", "LAVAGE PICK",
-                              "LOCATION CAMION", "FRAIS DE TRANSPORT", "TRANSPORT FOURNISSEUR",
-                              "ACHAT DE MOTO", "AFFAIRES MARITIMES", "NIVELEUSE", "DEPOT DE RAFFE"]):
-        return "vehicules"
-    if any(k in l for k in ["MATERIELS MECANIQUE", "MATERIEL MECANIQUE", "SOUDURE",
-                              "CHAUDIERE", "ORDINATEUR", "INFORMATIQUE", "BUREAU+ARMOIRE",
-                              "MATERIEL ET EQUIPEMENT", "REFRIGERATEUR", "SPLIT", "FRIGO",
-                              "STARLINK", "CABLE"]):
-        return "materiels"
-    if (l.startswith("ACHAT DE MATERIELS") or l.startswith("ACHAT MATERIELS")
-            or l.startswith("ACHAT DE MATERIEL") or l.startswith("ACHAT MATERIEL")):
-        return "materiels"
-    if any(k in l for k in ["ACHAT EAU", "EAU POUR", "FOURNITURES", "ACHAT DIVERS",
-                              "ENCRE", "FILTRE A EAU"]):
-        return "eau_fournitures"
+                              "PIECES DE RECHANGE", "ASSURANCE"]):
+        return "services_ext"
+
+    # 63 — Autres services extérieurs (main-d'œuvre, sécurité, divers)
+    if any(k in l for k in ["MAIN D'O", "MAIN DO", "MAIN DOEUVRE",
+                              "ACOMPTE SUR MAIN", "SOLDE MAIN",
+                              "REBOBINEUR", "TOURNEUR", "MACONNERIE", "VITRIER",
+                              "SECURIT", "GARDIEN", "NETTOYAGE", "TRAVAUX",
+                              "VISA", "JURIDIQUE", "MEDICAUX", "MISSION", "HEBERGEMENT"]):
+        return "autres_services_ext"
+
+    # 65 — Autres charges (dons, relations)
     if any(k in l for k in ["BAKCHICH", "BACKCHICH", "BAKHCHICH", "FRAIS RELATIONNEL",
                               "AIDE FINANCIERE", "DON POUR", "MOBILE MONEY",
                               "RELATIONNEL", "ASSISTANCE FUNEBRE", "TEE-SHORT", "POLOS"]):
-        return "frais_relat"
-    if any(k in l for k in ["VISA", "JURIDIQUE", "MEDICAUX", "PRET", "FRAIS DIVERS"]):
-        return "frais_admin"
+        return "autres_charges"
+
+    # 60 — Fournitures de l'usine et des bureaux (tout le reste des achats)
+    if any(k in l for k in ["CARBURANT", "GASOIL", "GAZOIL", "ESSENCE",
+                              "ELECTRICIT", "CIE", "ACHAT EAU", "EAU POUR",
+                              "FOURNITURES", "ACHAT DIVERS", "ENCRE", "FILTRE A EAU",
+                              "MATERIELS MECANIQUE", "MATERIEL MECANIQUE", "SOUDURE",
+                              "CHAUDIERE", "ORDINATEUR", "INFORMATIQUE", "BUREAU+ARMOIRE",
+                              "MATERIEL ET EQUIPEMENT", "REFRIGERATEUR", "SPLIT", "FRIGO",
+                              "STARLINK", "CABLE",
+                              "CIMENT", "GRAVIER", "SABLE", "FORAGE", "DALLE", "BRIQUES",
+                              "CONTRE PLAQUE", "TUYAUX", "CONSTRUCTION",
+                              "GARAGE ENGIN", "BUREAU ANNEXE", "CERTIFICAT FONCIER",
+                              "TERRAIN", "LEGALISATION", "BIDONS"]):
+        return "fournitures_usine"
     if l.startswith("ACHAT"):
-        return "materiels"
-    return "autre"
+        return "fournitures_usine"
+
+    return "autres_services_ext"
 
 
 def safe_float(val, default=0.0) -> float:
