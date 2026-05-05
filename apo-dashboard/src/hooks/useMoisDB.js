@@ -7,8 +7,6 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
-import { MONTH_DATA as MONTH_DATA_STATIC } from '../data/index'
-
 // ── Labels d'affichage (nomenclature OHADA — compte de résultat APO) ──────────
 export const CAT_LABELS = {
   fournitures_usine:   "Fournitures de l'usine et des bureaux",
@@ -77,8 +75,8 @@ function categorizeLibelle(libelle = '') {
   return 'autres_services_ext'
 }
 
-// Clés des mois déjà couverts par les fichiers statiques
-const STATIC_KEYS = new Set(MONTH_DATA_STATIC.map(m => m.key))
+// Tous les mois sont maintenant servis depuis Supabase — STATIC_KEYS vide
+const STATIC_KEYS = new Set()
 
 const ACCENTS = [
   { accent: 'var(--gold)',   rgba: 'rgba(242,140,40,' },
