@@ -309,14 +309,16 @@ def parse_ventes_huile(path: Path, mois: int, periode_id: int):
     for row in lignes:
         if not row[1] or not isinstance(row[1], datetime):
             continue
-        if row[1].year != 2026 or row[1].month != mois:
+        # Certaines lignes ont l'année 2025 par erreur de saisie (ex: janvier 2026 saisi en 2025)
+        # On filtre uniquement par mois, pas par année — le sheet "2026" ne contient que des données 2026
+        if row[1].month != mois:
             continue
         if safe_float(row[3]) == 0:  # ignore lignes vides
             continue
         rows.append({
             "periode_id":     periode_id,
             "client_id":      client_id,
-            "date_vente":     row[1].date().isoformat(),
+            "date_vente":     row[1].replace(year=2026).date().isoformat(),
             "libelle":        str(row[2] or ""),
             "poids_apo_kg":   safe_float(row[3]),
             "poids_sarci_kg": safe_float(row[4]),
@@ -565,7 +567,7 @@ def recalculer_kpis(mois: int, periode_id: int):
     ca2 = sb.table("caisse_apo2").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
     bq  = sb.table("banque_apo").select("montant_fcfa,categorie").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
-    ar  = sb.table("achats_regimes").select("poids_kg,montant_total").eq("periode_id", periode_id).execute()
+    ar  = sb.table("achats_regimes").select("poids_kg,prix_kg,prix_transport").eq("periode_id", periode_id).execute()
     pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
 
     # Patterns de transferts inter-caisses à exclure des charges
@@ -609,8 +611,9 @@ def recalculer_kpis(mois: int, periode_id: int):
     nb_steril   = sum(safe_int(r["nb_sterilisateurs"])        for r in pj.data)
     stock_fin   = safe_float(pj.data[-1]["regime_restant_kg"]) if pj.data else 0
 
-    total_poids = sum(safe_float(r["poids_kg"])    for r in ar.data)
-    total_mont  = sum(safe_float(r["montant_total"]) for r in ar.data)
+    total_poids = sum(safe_float(r["poids_kg"]) for r in ar.data)
+    # Coût réel = poids × (prix_kg + prix_transport) — le transport des régimes fait partie du coût MP
+    total_mont  = sum(safe_float(r["poids_kg"]) * (safe_float(r["prix_kg"]) + safe_float(r["prix_transport"])) for r in ar.data)
     prix_moy    = total_mont / total_poids if total_poids else 0
     nb_camions  = len(ar.data)
 
