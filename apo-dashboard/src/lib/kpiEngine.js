@@ -24,33 +24,36 @@ export const fmt = {
   tonnes: (v) => Math.round(v).toLocaleString('fr-FR') + ' T',
 
   /**
-   * Formatteur nombre entier — tooltip charts.
-   * FCFA → nombre complet avec espaces
-   * EUR  → conversion + "€"
+   * Graphiques & tooltips — format M/K abrégé.
+   * FCFA → "1 337,4 M FCFA"   |  EUR → "2,04 M €"
    */
   money: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
     if (currency === 'EUR') {
-      const eur = Math.round(v / eurRate)
-      return eur.toLocaleString('fr-FR') + ' €'
+      const eur = v / eurRate
+      if (eur < 1e6) return Math.round(eur / 1e3).toLocaleString('fr-FR') + ' K €'
+      return (eur / 1e6).toFixed(2) + ' M €'
     }
-    return Math.round(v).toLocaleString('fr-FR') + ' FCFA'
+    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
+    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
   },
 
-  /** Formatte selon devise — tableaux */
+  /** Tableaux — format M/K abrégé. */
   currency: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
     if (currency === 'EUR') {
-      const eur = Math.round(v / eurRate)
-      return eur.toLocaleString('fr-FR') + ' €'
+      const eur = v / eurRate
+      if (eur < 1e6) return Math.round(eur / 1e3).toLocaleString('fr-FR') + ' K €'
+      return (eur / 1e6).toFixed(2) + ' M €'
     }
-    return Math.round(v).toLocaleString('fr-FR') + ' FCFA'
+    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
+    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
   },
 
-  /** Pour les KPI cards — nombre complet, sans suffixe (la carte gère l'unité) */
+  /** KPI cards — nombre entier complet + devise collée après. */
   kpiValue: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
     if (currency === 'EUR') {
-      return Math.round(v / eurRate).toLocaleString('fr-FR')
+      return Math.round(v / eurRate).toLocaleString('fr-FR') + ' €'
     }
-    return Math.round(v).toLocaleString('fr-FR')
+    return Math.round(v).toLocaleString('fr-FR') + ' FCFA'
   },
 
   /** Suffixe de devise pour les en-têtes de colonnes */

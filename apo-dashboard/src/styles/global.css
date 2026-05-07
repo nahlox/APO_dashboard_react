@@ -321,7 +321,7 @@ body.light .kpi-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.0
 .kpi-card.accent-red { border-color: rgba(224,92,92,0.25); }
 .kpi-card.accent-red::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
 .kpi-label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
-.kpi-value { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-value { font-family: 'DM Mono', monospace; font-size: clamp(16px, 1.5vw + 0.5rem, 26px); font-weight: 600; color: var(--text); line-height: 1.2; margin-bottom: 6px; word-break: break-word; }
 .kpi-value.gold { color: var(--gold); }
 .kpi-value.green { color: var(--green); }
 .kpi-value.red { color: var(--red); }
@@ -456,7 +456,7 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   .chart-card.span2,
   .chart-card.span3 { grid-column: span 1; }
   .global-compare-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-  .kpi-value { font-size: 24px; }
+  /* kpi-value size handled by clamp() in base rule */
 }
 
 /* Bouton hamburger mobile (caché sur desktop) */
@@ -543,7 +543,7 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
     margin-bottom: 14px;
   }
   .kpi-card { padding: 14px 16px; }
-  .kpi-value { font-size: 20px; }
+  /* kpi-value size handled by clamp() */
   .kpi-label { font-size: 10px; letter-spacing: 1.5px; margin-bottom: 6px; }
   .kpi-sub { font-size: 11px; }
 
@@ -597,7 +597,7 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   main { padding: 8px 10px 20px; }
   .nav-tab { padding: 11px 8px; font-size: 9px; letter-spacing: 0.3px; }
   .kpi-grid { grid-template-columns: 1fr; gap: 8px; }
-  .kpi-value { font-size: 22px; }
+  /* kpi-value size handled by clamp() */
   .section-title { font-size: 18px; }
   .chart-card { padding: 10px 12px; }
   .data-table th { padding: 7px 6px; }
