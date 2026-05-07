@@ -25,6 +25,9 @@ export default function Production({ data, month }) {
     Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = {}
 
+    // Skip chart init when no daily data (canvases not rendered)
+    if (!production.grainesDailyLabels?.length) return
+
     // Graphique FFB journalier
     charts.current.daily = new Chart(refDaily.current, {
       type: 'bar',
