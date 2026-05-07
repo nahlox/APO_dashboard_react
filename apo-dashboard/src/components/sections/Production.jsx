@@ -42,10 +42,8 @@ export default function Production({ data, month }) {
     Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = {}
 
-    if (!hasDaily) return
-
     // ── Réception journalière ──────────────────────────────────────────────
-    if (refDaily.current) {
+    if (hasDaily && refDaily.current) {
       charts.current.daily = new Chart(refDaily.current, {
         type: 'bar',
         data: {
@@ -71,7 +69,7 @@ export default function Production({ data, month }) {
     }
 
     // ── Taux d'extraction journalier ──────────────────────────────────────
-    if (refTE.current && teDailyLabels.length > 0) {
+    if (hasDaily && refTE.current && teDailyLabels.length > 0) {
       const teRaw    = teDailyVals.map(v => parseFloat(v) || 0)
       const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
       const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
