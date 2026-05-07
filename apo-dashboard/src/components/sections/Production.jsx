@@ -139,6 +139,14 @@ export default function Production({ data, month }) {
     return () => Object.values(charts.current).forEach(c => c?.destroy())
   }, [month])
 
+  const te = kpis.tauxExtraction  // already in %
+  const gapTo22 = Math.max(0, 22 - te)
+  const gainTonnes = kpis.regimesTraitesT * (gapTo22 / 100)
+  const teColor  = te >= 22 ? 'var(--green)' : te >= 18 ? 'var(--gold)' : 'var(--red)'
+  const teBadge  = te >= 22 ? { cls: 'badge-up',      txt: 'Objectif atteint ✓' }
+                 : te >= 18 ? { cls: 'badge-neutral',  txt: 'Dans la norme' }
+                 :            { cls: 'badge-down',     txt: 'Sous le minimum' }
+
   return (
     <section>
       <div className="section-title">Production & Approvisionnement</div>
@@ -159,9 +167,9 @@ export default function Production({ data, month }) {
         <div className="gauge-row" style={{ marginTop: 16 }}>
           <div className="gauge-item">
             <div className="gauge-label">TE APO {monthLabel(data)}</div>
-            <div className="gauge-value" style={{ color: 'var(--gold)' }}>{fmt.pct(kpis.tauxExtraction)}</div>
+            <div className="gauge-value" style={{ color: teColor }}>{fmt.pct(te)}</div>
             <div className="gauge-unit">huile / régimes traités</div>
-            <span className="kpi-badge badge-neutral" style={{ marginTop: 8 }}>Dans la norme</span>
+            <span className={`kpi-badge ${teBadge.cls}`} style={{ marginTop: 8 }}>{teBadge.txt}</span>
           </div>
           <div className="gauge-item">
             <div className="gauge-label">Standard Minimum</div>
@@ -176,10 +184,21 @@ export default function Production({ data, month }) {
             <span className="kpi-badge badge-up" style={{ marginTop: 8 }}>Objectif long terme</span>
           </div>
           <div className="gauge-item">
-            <div className="gauge-label">Gain Potentiel (+3%)</div>
-            <div className="gauge-value" style={{ color: 'var(--accent)' }}>{fmt.tonnes(kpis.regimesTraitesT * 0.03)}</div>
-            <div className="gauge-unit">huile supplémentaire</div>
-            <span className="kpi-badge badge-up" style={{ marginTop: 8 }}>≈ revenus additionnels</span>
+            {te >= 22 ? (
+              <>
+                <div className="gauge-label">Objectif 22% atteint</div>
+                <div className="gauge-value" style={{ color: 'var(--green)' }}>✓ 22%+</div>
+                <div className="gauge-unit">aucun gain à chercher</div>
+                <span className="kpi-badge badge-up" style={{ marginTop: 8 }}>Performance optimale</span>
+              </>
+            ) : (
+              <>
+                <div className="gauge-label">Gain Potentiel (+{gapTo22.toFixed(1)}% vers 22%)</div>
+                <div className="gauge-value" style={{ color: 'var(--accent)' }}>{fmt.tonnes(gainTonnes)}</div>
+                <div className="gauge-unit">huile supplémentaire possible</div>
+                <span className="kpi-badge badge-up" style={{ marginTop: 8 }}>≈ revenus additionnels</span>
+              </>
+            )}
           </div>
         </div>
       </div>
