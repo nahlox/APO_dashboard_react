@@ -41,7 +41,7 @@ function buildCombinedCharges(monthData) {
 export default function GlobalPanel({ moisData = [] }) {
   // Jan/Fév/Mar = données statiques exactes ; moisData = mois supplémentaires Supabase (avr+)
   const MONTH_DATA = [...MONTH_DATA_STATIC, ...moisData]
-  const { setActiveMonth, currency } = useDashboardStore()
+  const { setActiveMonth, currency, eurRate } = useDashboardStore()
 
   const combinedCharges = buildCombinedCharges(MONTH_DATA)
   const global = buildGlobalKPIs(...MONTH_DATA.map(m => m.data))
@@ -65,8 +65,8 @@ export default function GlobalPanel({ moisData = [] }) {
     charts.current = {}
 
     const cur = currency
-    const div = cur === 'USD' ? (1e6 / fmt.toUSD(1e6)) : 1e6
-    const axisLabel = cur === 'USD' ? ' K$' : ' M'
+    const div = cur === 'EUR' ? eurRate : 1
+    const axisLabel = cur === 'EUR' ? ' K€' : ' M'
 
     // CA par mois
     charts.current.ca = new Chart(refCA.current, {
@@ -88,7 +88,7 @@ export default function GlobalPanel({ moisData = [] }) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur, eurRate) } } },
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
@@ -107,7 +107,7 @@ export default function GlobalPanel({ moisData = [] }) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur) } } },
+        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur, eurRate) } } },
         scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
       },
     })
@@ -148,13 +148,13 @@ export default function GlobalPanel({ moisData = [] }) {
         layout: { padding: 10 },
         plugins: {
           legend: { display: false },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur, eurRate)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
         },
       },
     })
 
     return () => Object.values(charts.current).forEach(c => c?.destroy())
-  }, [currency, moisData.length])
+  }, [currency, eurRate, moisData.length])
 
   return (
     <div>
@@ -163,14 +163,14 @@ export default function GlobalPanel({ moisData = [] }) {
 
       {/* KPIs cumulés */}
       <div className="kpi-grid">
-        <KPICard label={`CA Cumulé ${range}`}            value={fmt.kpiValue(global.caCumule, currency)}             valueColor="gold"  sub={`${currency} · ${sum}`} />
+        <KPICard label={`CA Cumulé ${range}`}            value={fmt.kpiValue(global.caCumule, currency, eurRate)}             valueColor="gold"  sub={`${currency} · ${sum}`} />
         {MONTH_DATA.length >= 2 && (
           <KPICard label={`Évolution CA ${monthShort(MONTH_DATA.at(-1).data)}/${monthShort(MONTH_DATA.at(-2).data)}`}
                    value={(global.evolutionCA_MarFev > 0 ? '+' : '') + global.evolutionCA_MarFev.toFixed(1) + '%'}
                    valueColor="gold"
-                   sub={`${fmt.currency(MONTH_DATA.at(-1).data.kpis.caTotalFCFA, currency)} vs ${fmt.currency(MONTH_DATA.at(-2).data.kpis.caTotalFCFA, currency)}`} />
+                   sub={`${fmt.currency(MONTH_DATA.at(-1).data.kpis.caTotalFCFA, currency, eurRate)} vs ${fmt.currency(MONTH_DATA.at(-2).data.kpis.caTotalFCFA, currency, eurRate)}`} />
         )}
-        <KPICard label={`Résultat Cumulé ${range}`}      value={'+ ' + fmt.kpiValue(global.resultatCumule, currency)} valueColor="green" sub={`${currency} · ${sum}`} accent="accent-green" />
+        <KPICard label={`Résultat Cumulé ${range}`}      value={'+ ' + fmt.kpiValue(global.resultatCumule, currency, eurRate)} valueColor="green" sub={`${currency} · ${sum}`} accent="accent-green" />
         <KPICard label="Huile Produite Cumulée"          value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold"  sub={MONTH_DATA.map(m => fmt.tonnes(m.data.kpis.huileProduiteT)).join(' + ')} />
         {MONTH_DATA.length >= 2 && (
           <KPICard label={`Évolution Production ${monthShort(MONTH_DATA.at(-1).data)}/${monthShort(MONTH_DATA.at(-2).data)}`}
@@ -238,10 +238,10 @@ export default function GlobalPanel({ moisData = [] }) {
               {data._etl.annee}
             </div>
             {[
-              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency),                        'var(--gold)'],
-              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency),                          'var(--red)'],
-              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency),                     'var(--red)'],
-              ['Résultat Net',          '+ ' + fmt.currency(data.kpis.resultatNetFCFA, currency),              'var(--green)'],
+              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency, eurRate),                        'var(--gold)'],
+              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency, eurRate),                          'var(--red)'],
+              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency, eurRate),                     'var(--red)'],
+              ['Résultat Net',          '+ ' + fmt.currency(data.kpis.resultatNetFCFA, currency, eurRate),              'var(--green)'],
               ['Marge Nette',           data.kpis.margeNette + '%',                                            'var(--green)'],
               ['Régimes Traités',       fmt.tonnes(data.kpis.regimesTraitesT),                                 null],
               ['Huile Produite',        fmt.tonnes(data.kpis.huileProduiteT),                                  null],

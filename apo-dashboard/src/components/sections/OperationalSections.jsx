@@ -4,7 +4,7 @@ import { monthFull } from '../../lib/monthUtils'
 
 // ── CHARGES ──────────────────────────────────────────────────
 export function Charges({ data, month }) {
-  const { currency } = useDashboardStore()
+  const { currency, eurRate } = useDashboardStore()
   const { charges } = data
 
   // Detect mode: categories (API months, date='') vs transactions (static months, date='dd/mm')
@@ -45,7 +45,7 @@ export function Charges({ data, month }) {
                     {total > 0 ? (r.mt / total * 100).toFixed(1) + '%' : '—'}
                   </td>
                 )}
-                <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency)}</td>
+                <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency, eurRate)}</td>
               </tr>
             ))}
           </tbody>
@@ -57,7 +57,7 @@ export function Charges({ data, month }) {
 
 // ── FOURNISSEURS ──────────────────────────────────────────────
 export function Fournisseurs({ data, month }) {
-  const { currency } = useDashboardStore()
+  const { currency, eurRate } = useDashboardStore()
   const { fournisseurs } = data
   return (
     <section>
@@ -86,7 +86,7 @@ export function Fournisseurs({ data, month }) {
                   <td>{f.name}</td>
                   <td className="num">{fmt.full(f.poids)}</td>
                   <td className="num">{f.prix} F/kg</td>
-                  <td className="num" style={{ color: 'var(--gold)' }}>{fmt.currency(f.montant, currency)}</td>
+                  <td className="num" style={{ color: 'var(--gold)' }}>{fmt.currency(f.montant, currency, eurRate)}</td>
                   <td>
                     <div className="mini-bar-wrap" style={{ minWidth: 120 }}>
                       <div className="mini-bar">
@@ -107,7 +107,7 @@ export function Fournisseurs({ data, month }) {
 
 // ── PÉPINIÈRE ─────────────────────────────────────────────────
 export function Pepiniere({ data, month }) {
-  const { currency } = useDashboardStore()
+  const { currency, eurRate } = useDashboardStore()
   const { kpis, pepiniere } = data
   if (!pepiniere) return null
 
@@ -119,17 +119,17 @@ export function Pepiniere({ data, month }) {
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">
           <div className="kpi-label">Contrats Totaux</div>
-          <div className="kpi-value gold">{fmt.kpiValue(kpis.pepContratsFCFA, currency)}</div>
+          <div className="kpi-value gold">{fmt.kpiValue(kpis.pepContratsFCFA, currency, eurRate)}</div>
           <div className="kpi-sub">{currency} · {pepiniere.clients.length} clients</div>
         </div>
         <div className="kpi-card accent-green">
           <div className="kpi-label">Encaissé</div>
-          <div className="kpi-value green">{fmt.kpiValue(kpis.pepEncaisséFCFA, currency)}</div>
+          <div className="kpi-value green">{fmt.kpiValue(kpis.pepEncaisséFCFA, currency, eurRate)}</div>
           <div className="kpi-sub">{currency} · {(kpis.pepEncaisséFCFA / kpis.pepContratsFCFA * 100).toFixed(0)}% collecté</div>
         </div>
         <div className="kpi-card accent-red">
           <div className="kpi-label">Reste à Percevoir</div>
-          <div className="kpi-value red">{fmt.kpiValue(kpis.pepResteaFCFA, currency)}</div>
+          <div className="kpi-value red">{fmt.kpiValue(kpis.pepResteaFCFA, currency, eurRate)}</div>
           <div className="kpi-sub">{currency} · créances à recouvrer</div>
         </div>
       </div>
@@ -159,10 +159,10 @@ export function Pepiniere({ data, month }) {
                   <td>{r.nom}</td>
                   <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{r.loc}</td>
                   <td className="num">{r.ha} ha</td>
-                  <td className="num">{fmt.currency(r.total, currency)}</td>
-                  <td className="num" style={{ color: 'var(--green)' }}>{fmt.currency(r.enc, currency)}</td>
+                  <td className="num">{fmt.currency(r.total, currency, eurRate)}</td>
+                  <td className="num" style={{ color: 'var(--green)' }}>{fmt.currency(r.enc, currency, eurRate)}</td>
                   <td className="num" style={{ color: reste > 0 ? 'var(--red)' : 'var(--text-dim)' }}>
-                    {reste > 0 ? '–' + fmt.currency(reste, currency) : '0'}
+                    {reste > 0 ? '–' + fmt.currency(reste, currency, eurRate) : '0'}
                   </td>
                   <td>
                     <span className={`kpi-badge ${reste === 0 ? 'badge-up' : 'badge-down'}`}>

@@ -41,7 +41,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
-  const { activeMonth, activeTab, setActiveTab, theme, setMoisData } = useDashboardStore()
+  const { activeMonth, activeTab, setActiveTab, theme, setMoisData, setEurRate } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
 
@@ -52,6 +52,17 @@ export default function App() {
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light')
   }, [theme])
+
+  // Taux EUR live — XOF est arrimé à 655,957 mais on vérifie via l'API
+  useEffect(() => {
+    fetch('https://api.frankfurter.app/latest?from=EUR&to=XOF')
+      .then(r => r.json())
+      .then(d => {
+        const rate = d?.rates?.XOF
+        if (rate && rate > 0) setEurRate(rate, d.date)
+      })
+      .catch(() => { /* utilise le taux par défaut 655,957 */ })
+  }, [setEurRate])
 
   const staticKeys = new Set(MONTH_DATA.map(m => m.key))
   const allMois    = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]

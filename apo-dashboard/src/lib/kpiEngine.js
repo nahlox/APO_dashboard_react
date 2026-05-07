@@ -4,7 +4,9 @@
 // validation avec Rawad. Toute logique métier passe par ici.
 // ============================================================
 
-const USD_RATE = 563 // 1 USD = 563 FCFA (XE.com · 11 mars 2026)
+// XOF (FCFA) est arrimé à l'EUR au taux fixe de 655,957
+// Le taux live est récupéré au démarrage et stocké dans dashboardStore.
+export const EUR_RATE_DEFAULT = 655.957
 
 // ── FORMATTERS ───────────────────────────────────────────────
 
@@ -22,46 +24,40 @@ export const fmt = {
   tonnes: (v) => Math.round(v).toLocaleString('fr-FR') + ' T',
 
   /**
-   * Formatteur intelligent M/K selon la devise active.
-   * < 1 000 000 FCFA → affiche en milliers (K)
-   * ≥ 1 000 000 FCFA → affiche en millions (M)
+   * Formatteur nombre entier — tooltip charts.
+   * FCFA → nombre complet avec espaces
+   * EUR  → conversion + "€"
    */
-  money: (v, currency = 'FCFA') => {
-    if (currency === 'USD') {
-      const usd = v / USD_RATE
-      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
-      return '$' + (usd / 1e6).toFixed(2) + ' M'
+  money: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
+    if (currency === 'EUR') {
+      const eur = Math.round(v / eurRate)
+      return eur.toLocaleString('fr-FR') + ' €'
     }
-    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
-    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
+    return Math.round(v).toLocaleString('fr-FR') + ' FCFA'
   },
 
-  /** Formatte selon devise active — avec suffixe devise */
-  currency: (v, currency = 'FCFA') => {
-    if (currency === 'USD') {
-      const usd = Math.round(v / USD_RATE)
-      return '$' + usd.toLocaleString('fr-FR')
+  /** Formatte selon devise — tableaux */
+  currency: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
+    if (currency === 'EUR') {
+      const eur = Math.round(v / eurRate)
+      return eur.toLocaleString('fr-FR') + ' €'
     }
-    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K FCFA'
-    return (v / 1e6).toFixed(1).replace('.', ',') + ' M FCFA'
+    return Math.round(v).toLocaleString('fr-FR') + ' FCFA'
   },
 
-  /** Pour les KPI cards */
-  kpiValue: (v, currency = 'FCFA') => {
-    if (currency === 'USD') {
-      const usd = v / USD_RATE
-      if (usd < 1e6) return '$' + Math.round(usd / 1e3).toLocaleString('fr-FR') + ' K'
-      return '$' + (usd / 1e6).toFixed(2) + ' M'
+  /** Pour les KPI cards — nombre complet, sans suffixe (la carte gère l'unité) */
+  kpiValue: (v, currency = 'FCFA', eurRate = EUR_RATE_DEFAULT) => {
+    if (currency === 'EUR') {
+      return Math.round(v / eurRate).toLocaleString('fr-FR')
     }
-    if (v < 1e6) return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K'
-    return (v / 1e6).toFixed(1).replace('.', ',') + ' M'
+    return Math.round(v).toLocaleString('fr-FR')
   },
 
   /** Suffixe de devise pour les en-têtes de colonnes */
-  currencyLabel: (currency = 'FCFA') => currency === 'USD' ? 'USD' : 'FCFA',
+  currencyLabel: (currency = 'FCFA') => currency === 'EUR' ? 'EUR' : 'FCFA',
 
-  /** Conversion brute vers USD */
-  toUSD: (v) => v / USD_RATE,
+  /** Conversion brute vers EUR */
+  toEUR: (v, eurRate = EUR_RATE_DEFAULT) => v / eurRate,
 }
 
 // ── RÈGLES DE CALCUL OFFICIELLES ────────────────────────────

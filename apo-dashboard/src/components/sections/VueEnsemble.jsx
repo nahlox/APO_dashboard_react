@@ -30,7 +30,7 @@ function buildMonthCharges(monthKey, MONTH_DATA) {
 }
 
 export default function VueEnsemble({ data, month }) {
-  const { currency, moisData } = useDashboardStore()
+  const { currency, eurRate, moisData } = useDashboardStore()
   const { kpis, pnl, alertes, charts } = data
 
   const allMois = [...MONTH_DATA_STATIC, ...moisData]
@@ -66,7 +66,7 @@ export default function VueEnsemble({ data, month }) {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { position: 'right', labels: { padding: 16, font: { size: 12 }, color: '#c8c8c8' } },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur, eurRate)} (${(c.raw / kpis.caTotalFCFA * 100).toFixed(1)}%)` } },
         },
       },
     })
@@ -87,7 +87,7 @@ export default function VueEnsemble({ data, month }) {
         layout: { padding: 20 },
         plugins: {
           legend: { display: false },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${fmt.money(c.raw, cur, eurRate)} (${(c.raw / totalCharges * 100).toFixed(1)}%)` } },
         },
       },
     })
@@ -105,11 +105,11 @@ export default function VueEnsemble({ data, month }) {
 
       {/* KPIs */}
       <div className="kpi-grid">
-        <KPICard label="Chiffre d'Affaires Total"  value={fmt.kpiValue(kpis.caTotalFCFA, currency)}   valueColor="gold"  sub={`${currency} · tous produits confondus`} />
-        <KPICard label="CA Huile de Palme"         value={fmt.kpiValue(kpis.caHuileFCFA, currency)}   valueColor="green" sub={`${currency} · ${kpis.caHuileDetail}`} accent="accent-green" />
-        <KPICard label="CA Noix de Palmiste"       value={fmt.kpiValue(kpis.caNoisFCFA, currency)}    sub={`${currency} · sous-produit`} />
-        <KPICard label="Coût Matière Première"     value={fmt.kpiValue(kpis.coutMPFCFA, currency)}    valueColor="green" sub={`${currency} · ${kpis.coutMPDetail}`} accent="accent-green" />
-        <KPICard label="Résultat Net Estimé"       value={(kpis.resultatNetFCFA >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(kpis.resultatNetFCFA), currency)} valueColor={kpis.resultatNetFCFA >= 0 ? 'green' : 'red'} sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent={kpis.resultatNetFCFA >= 0 ? 'accent-green' : 'accent-red'} />
+        <KPICard label="Chiffre d'Affaires Total"  value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}   valueColor="gold"  sub={`${currency} · tous produits confondus`} />
+        <KPICard label="CA Huile de Palme"         value={fmt.kpiValue(kpis.caHuileFCFA, currency, eurRate)}   valueColor="green" sub={`${currency} · ${kpis.caHuileDetail}`} accent="accent-green" />
+        <KPICard label="CA Noix de Palmiste"       value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)}    sub={`${currency} · sous-produit`} />
+        <KPICard label="Coût Matière Première"     value={fmt.kpiValue(kpis.coutMPFCFA, currency, eurRate)}    valueColor="green" sub={`${currency} · ${kpis.coutMPDetail}`} accent="accent-green" />
+        <KPICard label="Résultat Net Estimé"       value={(kpis.resultatNetFCFA >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(kpis.resultatNetFCFA), currency, eurRate)} valueColor={kpis.resultatNetFCFA >= 0 ? 'green' : 'red'} sub={`${currency} · marge nette ~${kpis.margeNette}%`} accent={kpis.resultatNetFCFA >= 0 ? 'accent-green' : 'accent-red'} />
         <KPICard label="Taux d'Extraction"         value={fmt.pct(kpis.tauxExtraction)}                      valueColor="green" sub="huile produite ÷ régimes traités" accent="accent-green" />
       </div>
 

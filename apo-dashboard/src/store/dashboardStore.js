@@ -14,7 +14,8 @@ export const useDashboardStore = create((set) => ({
   sidebarOpen: false,
   theme: 'light',
   currency: 'FCFA',
-  USD_RATE: 563,
+  eurRate: 655.957,        // taux live XOF→EUR (mis à jour au démarrage)
+  eurRateDate: null,       // date du taux (ex: "2026-05-07")
 
   // Actions
   setActiveMonth: (month) => set({ activeMonth: month }),
@@ -30,6 +31,7 @@ export const useDashboardStore = create((set) => ({
     return { theme: next }
   }),
   toggleCurrency: () => set((s) => ({
-    currency: s.currency === 'FCFA' ? 'USD' : 'FCFA'
+    currency: s.currency === 'FCFA' ? 'EUR' : 'FCFA'
   })),
+  setEurRate: (rate, date) => set({ eurRate: rate, eurRateDate: date }),
 }))

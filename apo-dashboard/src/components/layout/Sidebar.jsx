@@ -13,7 +13,7 @@ function moisLabel(data) {
 export default function Sidebar({ allMois = [] }) {
   const {
     activeMonth, sidebarCollapsed, sidebarOpen,
-    theme, currency,
+    theme, currency, eurRate, eurRateDate,
     toggleSidebar, toggleTheme, toggleCurrency,
     setActiveMonth, closeMobileMenu,
   } = useDashboardStore()
@@ -81,13 +81,14 @@ export default function Sidebar({ allMois = [] }) {
           <div className="toggle-wrap">
             <span className={`toggle-label${currency === 'FCFA' ? ' active' : ''}`}>FCFA</span>
             <label className="toggle-switch">
-              <input type="checkbox" checked={currency === 'USD'} onChange={toggleCurrency} />
+              <input type="checkbox" checked={currency === 'EUR'} onChange={toggleCurrency} />
               <span className="toggle-slider" />
             </label>
-            <span className={`toggle-label${currency === 'USD' ? ' active' : ''}`}>USD</span>
+            <span className={`toggle-label${currency === 'EUR' ? ' active' : ''}`}>EUR</span>
           </div>
           <div className="rate-info">
-            1 USD = <span>563 FCFA</span><br />XE.com · 11 mars 2026
+            1 € = <span>{eurRate.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} XOF</span>
+            <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCF'}
           </div>
         </div>
       </aside>

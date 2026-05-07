@@ -8,7 +8,7 @@ import { monthFull } from '../../lib/monthUtils'
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 export default function Revenus({ data, month }) {
-  const { currency } = useDashboardStore()
+  const { currency, eurRate } = useDashboardStore()
   const { kpis, revenus } = data
   const refCA = useRef(null)
   const chartRef = useRef(null)
@@ -21,8 +21,8 @@ export default function Revenus({ data, month }) {
         labels: revenus.caJoursLabels,
         datasets: [{
           label: `CA Huile (${currency})`,
-          data: currency === 'USD'
-            ? revenus.caJoursVals.map(v => fmt.toUSD(v))
+          data: currency === 'EUR'
+            ? revenus.caJoursVals.map(v => fmt.toEUR(v, eurRate))
             : revenus.caJoursVals,
           borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
           fill: true, tension: 0.4,
@@ -31,15 +31,15 @@ export default function Revenus({ data, month }) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(currency === 'USD' ? c.raw * 563 : c.raw, currency) } } },
+        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(currency === 'EUR' ? c.raw * eurRate : c.raw, currency, eurRate) } } },
         scales: {
           x: { grid: { display: false } },
-          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => fmt.money(currency === 'USD' ? v * 563 : v, currency) } },
+          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => fmt.money(currency === 'EUR' ? v * eurRate : v, currency, eurRate) } },
         },
       },
     })
     return () => chartRef.current?.destroy()
-  }, [month, currency])
+  }, [month, currency, eurRate])
 
   return (
     <section>
@@ -47,9 +47,9 @@ export default function Revenus({ data, month }) {
       <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {monthFull(data)}</div>
 
       <div className="kpi-grid">
-        <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency)}  valueColor="green" sub={currency} accent="accent-green" />
-        <KPICard label="CA Huile de Palme"  value={fmt.kpiValue(kpis.caHuileFCFA, currency)}  valueColor="gold"  sub={`${currency} · ${(kpis.caHuileFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
-        <KPICard label="CA Noix Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency)}   sub={`${currency} · ${(kpis.caNoisFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
+        <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}  valueColor="green" sub={currency} accent="accent-green" />
+        <KPICard label="CA Huile de Palme"  value={fmt.kpiValue(kpis.caHuileFCFA, currency, eurRate)}  valueColor="gold"  sub={`${currency} · ${(kpis.caHuileFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
+        <KPICard label="CA Noix Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)}   sub={`${currency} · ${(kpis.caNoisFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
         <KPICard label="Huile Vendue"       value={fmt.tonnes(kpis.huileVendueT)}              sub="tonnes livrées" />
       </div>
 
@@ -82,7 +82,7 @@ export default function Revenus({ data, month }) {
                 <td>{p.quantite}</td>
                 <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 13 }}>{p.prixUnitaire}</td>
                 <td className="num" style={{ color: 'var(--gold)' }}>
-                  {p.totalFCFA > 0 ? fmt.currency(p.totalFCFA, currency) : '—'}
+                  {p.totalFCFA > 0 ? fmt.currency(p.totalFCFA, currency, eurRate) : '—'}
                 </td>
                 <td className="num" style={{ color: 'var(--text-dim)' }}>
                   {p.totalFCFA > 0 ? (p.totalFCFA / kpis.caTotalFCFA * 100).toFixed(1) + '%' : '—'}
