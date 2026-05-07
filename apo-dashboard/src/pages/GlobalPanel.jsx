@@ -65,8 +65,15 @@ export default function GlobalPanel({ moisData = [] }) {
     charts.current = {}
 
     const cur = currency
-    const div = cur === 'EUR' ? eurRate : 1
-    const axisLabel = cur === 'EUR' ? ' K€' : ' M'
+    // FCFA → données en millions ; EUR → données en euros bruts
+    const div = cur === 'EUR' ? eurRate : 1e6
+    const yTick = (v) => {
+      if (cur === 'EUR') {
+        if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + ' M€'
+        return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K€'
+      }
+      return v.toLocaleString('fr-FR') + ' M'
+    }
 
     // CA par mois
     charts.current.ca = new Chart(refCA.current, {
@@ -89,7 +96,7 @@ export default function GlobalPanel({ moisData = [] }) {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur, eurRate) } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: yTick } } },
       },
     })
 
@@ -108,7 +115,7 @@ export default function GlobalPanel({ moisData = [] }) {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(c.raw * div, cur, eurRate) } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toFixed(0) + axisLabel } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: yTick } } },
       },
     })
 

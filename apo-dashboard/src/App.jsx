@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { usePullToRefresh } from './hooks/usePullToRefresh'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
@@ -64,6 +65,8 @@ export default function App() {
       .catch(() => { /* utilise le taux par défaut 655,957 */ })
   }, [setEurRate])
 
+  const { pullDistance } = usePullToRefresh()
+
   const staticKeys = new Set(MONTH_DATA.map(m => m.key))
   const allMois    = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]
 
@@ -73,6 +76,18 @@ export default function App() {
 
   return (
     <>
+      {pullDistance > 10 && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          height: pullDistance, background: 'rgba(19,37,25,0.92)',
+          transition: 'height 0.1s', pointerEvents: 'none',
+          color: pullDistance >= 80 ? 'var(--gold)' : 'var(--text-dim)',
+          fontSize: 13, letterSpacing: 1,
+        }}>
+          {pullDistance >= 80 ? '↑ Relâchez pour actualiser' : '↓ Tirez pour actualiser'}
+        </div>
+      )}
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
       <Header />
 
