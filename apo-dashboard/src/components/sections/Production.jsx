@@ -13,7 +13,6 @@ export default function Production({ data, month }) {
   const kpis       = data?.kpis       ?? {}
   const production = data?.production ?? {}
 
-  // Defensive defaults — prevents crashes when a month has incomplete data
   const dailyLabels   = production.grainesDailyLabels ?? []
   const dailyKg       = production.grainesDailyKg     ?? []
   const teDailyLabels = production.teDailyLabels      ?? []
@@ -33,17 +32,19 @@ export default function Production({ data, month }) {
                    : te >= 18 ? { cls: 'badge-neutral', txt: 'Dans la norme' }
                    :            { cls: 'badge-down',    txt: 'Sous le minimum' }
 
+  // Refs always declared — canvases always in DOM (hidden via style when no data)
   const refDaily  = useRef(null)
   const refTE     = useRef(null)
   const refCompar = useRef(null)
   const charts    = useRef({})
 
   useEffect(() => {
-    Object.values(charts.current).forEach(c => c?.destroy())
+    // Destroy previous instances
+    Object.values(charts.current).forEach(c => { try { c?.destroy() } catch (_) {} })
     charts.current = {}
 
     // ── Réception journalière ──────────────────────────────────────────────
-    if (hasDaily && refDaily.current) {
+    if (dailyLabels.length > 0 && refDaily.current) {
       charts.current.daily = new Chart(refDaily.current, {
         type: 'bar',
         data: {
@@ -69,8 +70,8 @@ export default function Production({ data, month }) {
     }
 
     // ── Taux d'extraction journalier ──────────────────────────────────────
-    if (hasDaily && refTE.current && teDailyLabels.length > 0) {
-      const teRaw    = teDailyVals.map(v => parseFloat(v) || 0)
+    if (teDailyLabels.length > 0 && refTE.current) {
+      const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
       const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
       const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
       const teYMin    = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
@@ -117,8 +118,8 @@ export default function Production({ data, month }) {
       })
     }
 
-    // ── Comparaison annuelle ───────────────────────────────────────────────
-    if (refCompar.current && comparAnnuel.length > 0) {
+    // ── Comparaison annuelle (toujours initialisée) ────────────────────────
+    if (comparAnnuel.length > 0 && refCompar.current) {
       const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
       charts.current.compar = new Chart(refCompar.current, {
         type: 'bar',
@@ -142,8 +143,11 @@ export default function Production({ data, month }) {
       })
     }
 
-    return () => Object.values(charts.current).forEach(c => c?.destroy())
-  }, [month, hasDaily])
+    return () => {
+      Object.values(charts.current).forEach(c => { try { c?.destroy() } catch (_) {} })
+      charts.current = {}
+    }
+  }, [month])
 
   return (
     <section>
@@ -202,56 +206,42 @@ export default function Production({ data, month }) {
         </div>
       </div>
 
-      {/* Charts journaliers */}
-      {!hasDaily ? (
-        <div className="chart-card" style={{ marginBottom: 24, textAlign: 'center', padding: '32px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
+      {/* Réception journalière — cachée si pas de données */}
+      <div className="charts-grid col1" style={{ marginBottom: 24, display: hasDaily ? undefined : 'none' }}>
+        <div className="chart-card">
+          <div className="chart-title">Réception Journalière des Régimes FFB</div>
+          <div className="chart-subtitle">Tonnage reçu par jour (source: Tableau de Production)</div>
+          <div className="chart-container" style={{ height: 240 }}>
+            <canvas ref={refDaily} />
+          </div>
+        </div>
+      </div>
+
+      {/* Message si pas de données journalières */}
+      {!hasDaily && (
+        <div className="chart-card" style={{ marginBottom: 24, textAlign: 'center', padding: '24px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
           Données journalières non disponibles pour ce mois
-          <br />
-          <span style={{ fontSize: 11, opacity: 0.6 }}>( production_journaliere non renseignée dans Supabase )</span>
-        </div>
-      ) : (
-        <>
-          <div className="charts-grid col1" style={{ marginBottom: 24 }}>
-            <div className="chart-card">
-              <div className="chart-title">Réception Journalière des Régimes FFB</div>
-              <div className="chart-subtitle">Tonnage reçu par jour (source: Tableau de Production)</div>
-              <div className="chart-container" style={{ height: 240 }}>
-                <canvas ref={refDaily} />
-              </div>
-            </div>
-          </div>
-
-          <div className="charts-grid">
-            <div className="chart-card">
-              <div className="chart-title">Taux d'Extraction Journalier</div>
-              <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
-              <div className="chart-container" style={{ height: 260 }}>
-                <canvas ref={refTE} />
-              </div>
-            </div>
-            <div className="chart-card">
-              <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
-              <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
-              <div className="chart-container" style={{ height: 260 }}>
-                <canvas ref={refCompar} />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Comparaison annuelle toujours visible même sans données journalières */}
-      {!hasDaily && comparAnnuel.length > 0 && (
-        <div className="charts-grid col1">
-          <div className="chart-card">
-            <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
-            <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
-            <div className="chart-container" style={{ height: 260 }}>
-              <canvas ref={refCompar} />
-            </div>
-          </div>
+          <span style={{ display: 'block', fontSize: 11, opacity: 0.6, marginTop: 4 }}>( production_journaliere non renseignée dans Supabase )</span>
         </div>
       )}
+
+      {/* TE journalier + Comparaison annuelle */}
+      <div className="charts-grid">
+        <div className="chart-card" style={{ display: hasDaily ? undefined : 'none' }}>
+          <div className="chart-title">Taux d'Extraction Journalier</div>
+          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
+          <div className="chart-container" style={{ height: 260 }}>
+            <canvas ref={refTE} />
+          </div>
+        </div>
+        <div className="chart-card">
+          <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
+          <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
+          <div className="chart-container" style={{ height: 260 }}>
+            <canvas ref={refCompar} />
+          </div>
+        </div>
+      </div>
     </section>
   )
 }
