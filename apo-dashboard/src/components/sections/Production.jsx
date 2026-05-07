@@ -56,8 +56,8 @@ export default function Production({ data, month }) {
     const p95 = teValides.length
       ? teValides[Math.floor(teValides.length * 0.95)]
       : 25
-    const teYMin = Math.max(0, Math.floor(Math.min(...teValides.filter(v => v > 0)) - 1))
-    const teYMax = Math.ceil(Math.max(p95, 23) + 1)  // toujours au moins jusqu'à la cible 22%
+    const teYMin = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
+    const teYMax = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
 
     // Valeurs affichées : on plafonne les outliers au teYMax pour préserver l'échelle,
     // le tooltip affiche toujours la vraie valeur
