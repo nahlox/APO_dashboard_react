@@ -204,6 +204,13 @@ export default function Production({ data, month }) {
       </div>
 
       {/* Charts */}
+      {production.grainesDailyLabels.length === 0 ? (
+        <div className="chart-card" style={{ marginBottom: 24, textAlign: 'center', padding: '32px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
+          Données journalières non disponibles pour ce mois<br />
+          <span style={{ fontSize: 11, opacity: 0.6 }}>( production_journaliere non renseignée dans Supabase )</span>
+        </div>
+      ) : (
+        <>
       <div className="charts-grid col1" style={{ marginBottom: 24 }}>
         <div className="chart-card">
           <div className="chart-title">Réception Journalière des Régimes FFB</div>
@@ -230,6 +237,8 @@ export default function Production({ data, month }) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </section>
   )
 }
