@@ -593,6 +593,10 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
 }
 
 /* ===== SMALL PHONE (≤ 400px: iPhone SE, Galaxy A14 etc) ===== */
+@media (max-width: 900px) {
+  .mobile-refresh-btn { display: flex !important; align-items: center; justify-content: center; }
+}
+
 @media (max-width: 400px) {
   main { padding: 8px 10px 20px; }
   .nav-tab { padding: 11px 8px; font-size: 9px; letter-spacing: 0.3px; }

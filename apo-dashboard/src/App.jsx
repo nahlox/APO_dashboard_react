@@ -88,6 +88,18 @@ export default function App() {
           {pullDistance >= 80 ? '↑ Relâchez pour actualiser' : '↓ Tirez pour actualiser'}
         </div>
       )}
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          display: 'none',
+          position: 'fixed', bottom: 24, right: 20, zIndex: 9998,
+          background: 'rgba(19,37,25,0.95)', border: '1px solid rgba(242,140,40,0.4)',
+          color: 'var(--gold)', borderRadius: 50, width: 48, height: 48,
+          fontSize: 20, cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+        }}
+        className="mobile-refresh-btn"
+        title="Actualiser"
+      >↻</button>
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
       <Header />
 
