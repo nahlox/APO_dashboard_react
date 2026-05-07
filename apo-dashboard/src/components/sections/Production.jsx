@@ -10,157 +10,155 @@ import { monthFull, monthLabel, monthEndDate } from '../../lib/monthUtils'
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 export default function Production({ data, month }) {
-  const { kpis, production } = data
-  const endDate = monthEndDate(data)
-  const detailSub = kpis.nbCamions != null
-    ? `${kpis.nbCamions} camions`
-    : `${kpis.nbFournisseurs} fournisseurs`
+  const kpis       = data?.kpis       ?? {}
+  const production = data?.production ?? {}
 
-  const refDaily   = useRef(null)
-  const refTE      = useRef(null)
-  const refCompar  = useRef(null)
-  const charts     = useRef({})
+  // Defensive defaults — prevents crashes when a month has incomplete data
+  const dailyLabels   = production.grainesDailyLabels ?? []
+  const dailyKg       = production.grainesDailyKg     ?? []
+  const teDailyLabels = production.teDailyLabels      ?? []
+  const teDailyVals   = production.teDailyVals        ?? []
+  const comparLabels  = production.comparAnnuelLabels  ?? []
+  const comparAnnuel  = production.comparAnnuel        ?? []
+  const hasDaily      = dailyLabels.length > 0
+
+  const endDate   = monthEndDate(data)
+  const detailSub = kpis.nbCamions ? `${kpis.nbCamions} camions` : `${kpis.nbFournisseurs ?? 0} fournisseurs`
+
+  const te         = kpis.tauxExtraction ?? 0
+  const gapTo22    = Math.max(0, 22 - te)
+  const gainTonnes = (kpis.regimesTraitesT ?? 0) * (gapTo22 / 100)
+  const teColor    = te >= 22 ? 'var(--green)' : te >= 18 ? 'var(--gold)' : 'var(--red)'
+  const teBadge    = te >= 22 ? { cls: 'badge-up',     txt: 'Objectif atteint ✓' }
+                   : te >= 18 ? { cls: 'badge-neutral', txt: 'Dans la norme' }
+                   :            { cls: 'badge-down',    txt: 'Sous le minimum' }
+
+  const refDaily  = useRef(null)
+  const refTE     = useRef(null)
+  const refCompar = useRef(null)
+  const charts    = useRef({})
 
   useEffect(() => {
     Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = {}
 
-    // Skip chart init when no daily data (canvases not rendered)
-    if (!production.grainesDailyLabels?.length) return
+    if (!hasDaily) return
 
-    // Graphique FFB journalier
-    charts.current.daily = new Chart(refDaily.current, {
-      type: 'bar',
-      data: {
-        labels: production.grainesDailyLabels,
-        datasets: [{
-          label: 'Régimes reçus (kg)',
-          data: production.grainesDailyKg,
-          backgroundColor: production.grainesDailyKg.map(v =>
-            v > 700000 ? chartColors.gold : v > 0 ? 'rgba(242,140,40,0.5)' : 'rgba(242,140,40,0.15)'
-          ),
-          borderRadius: 3,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => `${fmt.full(c.raw)} kg` } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => (v / 1000).toFixed(0) + 'T' } },
-        },
-      },
-    })
-
-    // Taux d'extraction — axe Y dynamique robuste aux outliers
-    const teRaw = production.teDailyVals.map(v => parseFloat(v))
-    // Percentile 95 sur les valeurs non-nulles pour ignorer les outliers extrêmes
-    const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
-    const p95 = teValides.length
-      ? teValides[Math.floor(teValides.length * 0.95)]
-      : 25
-    const teYMin = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
-    const teYMax = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
-
-    // Valeurs affichées : on plafonne les outliers au teYMax pour préserver l'échelle,
-    // le tooltip affiche toujours la vraie valeur
-    const teAffichees = teRaw.map(v => (v > teYMax ? teYMax : v))
-    const outlierIdx  = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
-
-    charts.current.te = new Chart(refTE.current, {
-      type: 'line',
-      data: {
-        labels: production.teDailyLabels,
-        datasets: [
-          {
-            label: 'TE%', data: teAffichees,
-            borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
-            fill: true, tension: 0.3,
-            pointBackgroundColor: teRaw.map((v, i) =>
-              outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
-              : v >= 19.5 ? chartColors.green
-              : v >= 18   ? chartColors.gold
-              : chartColors.red
+    // ── Réception journalière ──────────────────────────────────────────────
+    if (refDaily.current) {
+      charts.current.daily = new Chart(refDaily.current, {
+        type: 'bar',
+        data: {
+          labels: dailyLabels,
+          datasets: [{
+            label: 'Régimes reçus (kg)',
+            data: dailyKg,
+            backgroundColor: dailyKg.map(v =>
+              v > 700000 ? chartColors.gold : v > 0 ? 'rgba(242,140,40,0.5)' : 'rgba(242,140,40,0.15)'
             ),
-            pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
-            pointStyle: teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
-          },
-          { label: 'Min 18%',  data: Array(production.teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
-          { label: 'Cible 22%',data: Array(production.teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
-        ],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { font: { size: 12 } } },
-          tooltip: {
-            ...defaultTooltip,
-            callbacks: {
-              label: c => {
-                const real = teRaw[c.dataIndex]
-                const suffix = outlierIdx.has(c.dataIndex) ? ' ⚠ hors plage' : ''
-                return `TE : ${real.toFixed(2)}%${suffix}`
-              },
-            },
+            borderRadius: 3,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => `${fmt.full(c.raw)} kg` } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => (v / 1000).toFixed(0) + 'T' } },
           },
         },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-          y: {
-            min: teYMin,
-            max: teYMax,
-            grid: { color: 'rgba(242,140,40,0.06)' },
-            ticks: { callback: v => v + '%' },
-          },
-        },
-      },
-    })
+      })
+    }
 
-    // Comparaison annuelle
-    const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
-    charts.current.compar = new Chart(refCompar.current, {
-      type: 'bar',
-      data: {
-        labels: production.comparAnnuelLabels,
-        datasets: production.comparAnnuel.map((entry, i) => ({
-          label: entry.label,
-          data: entry.values,
-          backgroundColor: bgColors[i] || chartColors.dim,
-          borderRadius: 3,
-        })),
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + 'T' } },
+    // ── Taux d'extraction journalier ──────────────────────────────────────
+    if (refTE.current && teDailyLabels.length > 0) {
+      const teRaw    = teDailyVals.map(v => parseFloat(v) || 0)
+      const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
+      const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
+      const teYMin    = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
+      const teYMax    = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
+      const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
+      const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
+
+      charts.current.te = new Chart(refTE.current, {
+        type: 'line',
+        data: {
+          labels: teDailyLabels,
+          datasets: [
+            {
+              label: 'TE%', data: teAff,
+              borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
+              fill: true, tension: 0.3,
+              pointBackgroundColor: teRaw.map((v, i) =>
+                outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
+                : v >= 19.5 ? chartColors.green
+                : v >= 18   ? chartColors.gold
+                : chartColors.red
+              ),
+              pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
+              pointStyle:  teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
+            },
+            { label: 'Min 18%',   data: Array(teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+            { label: 'Cible 22%', data: Array(teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+          ],
         },
-      },
-    })
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { font: { size: 12 } } },
+            tooltip: { ...defaultTooltip, callbacks: { label: c => {
+              const real = teRaw[c.dataIndex] ?? 0
+              return `TE : ${real.toFixed(2)}%${outlierIdx.has(c.dataIndex) ? ' ⚠ hors plage' : ''}`
+            }}},
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+            y: { min: teYMin, max: teYMax, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
+          },
+        },
+      })
+    }
+
+    // ── Comparaison annuelle ───────────────────────────────────────────────
+    if (refCompar.current && comparAnnuel.length > 0) {
+      const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
+      charts.current.compar = new Chart(refCompar.current, {
+        type: 'bar',
+        data: {
+          labels: comparLabels,
+          datasets: comparAnnuel.map((entry, i) => ({
+            label: entry.label,
+            data: entry.values,
+            backgroundColor: bgColors[i] || chartColors.dim,
+            borderRadius: 3,
+          })),
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + 'T' } },
+          },
+        },
+      })
+    }
 
     return () => Object.values(charts.current).forEach(c => c?.destroy())
-  }, [month])
-
-  const te = kpis.tauxExtraction  // already in %
-  const gapTo22 = Math.max(0, 22 - te)
-  const gainTonnes = kpis.regimesTraitesT * (gapTo22 / 100)
-  const teColor  = te >= 22 ? 'var(--green)' : te >= 18 ? 'var(--gold)' : 'var(--red)'
-  const teBadge  = te >= 22 ? { cls: 'badge-up',      txt: 'Objectif atteint ✓' }
-                 : te >= 18 ? { cls: 'badge-neutral',  txt: 'Dans la norme' }
-                 :            { cls: 'badge-down',     txt: 'Sous le minimum' }
+  }, [month, hasDaily])
 
   return (
     <section>
       <div className="section-title">Production & Approvisionnement</div>
       <div className="section-subtitle">Collecte de régimes FFB et indicateurs de production — {monthFull(data)}</div>
 
+      {/* KPIs */}
       <div className="kpi-grid">
-        <KPICard label="Régimes Reçus (FFB)"     value={fmt.tonnes(kpis.regimesRecusT)}   valueColor="gold"  sub={`kg achetés · ${detailSub}`} />
-        <KPICard label="Régimes Traités"          value={fmt.tonnes(kpis.regimesTraitesT)} valueColor="green" sub="kg effectivement traités · base coût MP" accent="accent-green" />
-        <KPICard label="Stock Régimes Fin Mois"   value={fmt.tonnes(kpis.stockFinMoisT)}   sub={`kg en stock au ${endDate} · reportés mois suiv.`} />
-        <KPICard label="Huile Brute Produite"     value={fmt.tonnes(kpis.huileProduiteT)}  valueColor="green" sub={`kg produits · ${fmt.tonnes(kpis.huileVendueT)} livrés`} accent="accent-green" />
-        <KPICard label="Taux d'Extraction Réel"   value={fmt.pct(kpis.tauxExtraction)}     valueColor="green" sub="Huile produite ÷ Régimes traités" accent="accent-green" />
+        <KPICard label="Régimes Reçus (FFB)"   value={fmt.tonnes(kpis.regimesRecusT   ?? 0)} valueColor="gold"  sub={`kg achetés · ${detailSub}`} />
+        <KPICard label="Régimes Traités"        value={fmt.tonnes(kpis.regimesTraitesT ?? 0)} valueColor="green" sub="kg effectivement traités · base coût MP" accent="accent-green" />
+        <KPICard label="Stock Régimes Fin Mois" value={fmt.tonnes(kpis.stockFinMoisT   ?? 0)} sub={`kg en stock au ${endDate} · reportés mois suiv.`} />
+        <KPICard label="Huile Brute Produite"   value={fmt.tonnes(kpis.huileProduiteT  ?? 0)} valueColor="green" sub={`kg produits · ${fmt.tonnes(kpis.huileVendueT ?? 0)} livrés`} accent="accent-green" />
+        <KPICard label="Taux d'Extraction Réel" value={fmt.pct(te)}                           valueColor="green" sub="Huile produite ÷ Régimes traités" accent="accent-green" />
       </div>
 
       {/* Indicateurs TE */}
@@ -206,41 +204,55 @@ export default function Production({ data, month }) {
         </div>
       </div>
 
-      {/* Charts */}
-      {production.grainesDailyLabels.length === 0 ? (
+      {/* Charts journaliers */}
+      {!hasDaily ? (
         <div className="chart-card" style={{ marginBottom: 24, textAlign: 'center', padding: '32px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
-          Données journalières non disponibles pour ce mois<br />
+          Données journalières non disponibles pour ce mois
+          <br />
           <span style={{ fontSize: 11, opacity: 0.6 }}>( production_journaliere non renseignée dans Supabase )</span>
         </div>
       ) : (
         <>
-      <div className="charts-grid col1" style={{ marginBottom: 24 }}>
-        <div className="chart-card">
-          <div className="chart-title">Réception Journalière des Régimes FFB</div>
-          <div className="chart-subtitle">Tonnage reçu par jour (source: Tableau de Production)</div>
-          <div className="chart-container" style={{ height: 240 }}>
-            <canvas ref={refDaily} />
+          <div className="charts-grid col1" style={{ marginBottom: 24 }}>
+            <div className="chart-card">
+              <div className="chart-title">Réception Journalière des Régimes FFB</div>
+              <div className="chart-subtitle">Tonnage reçu par jour (source: Tableau de Production)</div>
+              <div className="chart-container" style={{ height: 240 }}>
+                <canvas ref={refDaily} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="charts-grid">
-        <div className="chart-card">
-          <div className="chart-title">Taux d'Extraction Journalier</div>
-          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
-          <div className="chart-container" style={{ height: 260 }}>
-            <canvas ref={refTE} />
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="chart-title">Taux d'Extraction Journalier</div>
+              <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
+              <div className="chart-container" style={{ height: 260 }}>
+                <canvas ref={refTE} />
+              </div>
+            </div>
+            <div className="chart-card">
+              <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
+              <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
+              <div className="chart-container" style={{ height: 260 }}>
+                <canvas ref={refCompar} />
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="chart-card">
-          <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
-          <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
-          <div className="chart-container" style={{ height: 260 }}>
-            <canvas ref={refCompar} />
-          </div>
-        </div>
-      </div>
         </>
+      )}
+
+      {/* Comparaison annuelle toujours visible même sans données journalières */}
+      {!hasDaily && comparAnnuel.length > 0 && (
+        <div className="charts-grid col1">
+          <div className="chart-card">
+            <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
+            <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
+            <div className="chart-container" style={{ height: 260 }}>
+              <canvas ref={refCompar} />
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )
