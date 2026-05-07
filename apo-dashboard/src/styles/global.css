@@ -321,7 +321,7 @@ body.light .kpi-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.0
 .kpi-card.accent-red { border-color: rgba(224,92,92,0.25); }
 .kpi-card.accent-red::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
 .kpi-label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
-.kpi-value { font-family: 'DM Mono', monospace; font-size: clamp(16px, 1.5vw + 0.5rem, 26px); font-weight: 600; color: var(--text); line-height: 1.2; margin-bottom: 6px; word-break: break-word; }
+.kpi-value { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 600; color: var(--text); line-height: 1.2; margin-bottom: 6px; word-break: break-word; }
 .kpi-value.gold { color: var(--gold); }
 .kpi-value.green { color: var(--green); }
 .kpi-value.red { color: var(--red); }
