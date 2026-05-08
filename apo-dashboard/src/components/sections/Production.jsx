@@ -157,14 +157,9 @@ export default function Production({ data, month }) {
       </div>
 
       {/* Tank huile */}
-      <div className="chart-card" style={{ marginBottom: 24 }}>
-        <div className="chart-title">Stock Huile Disponible</div>
-        <div className="chart-subtitle">
-          {production.stockHuileKg > 0
-            ? `${(production.stockHuileKg / 1000).toFixed(1)} T non vendues · valeur estimée au prix moyen du mois`
-            : 'Données de stock non disponibles'}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 32, padding: '16px 8px', flexWrap: 'wrap' }}>
+      <div style={{ marginBottom: 24, display: 'flex' }}>
+        <div className="chart-card" style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, padding: '14px 20px' }}>
+          <div className="chart-title" style={{ fontSize: 13 }}>Stock Huile</div>
           <OilTank
             stockKg={production.stockHuileKg ?? 0}
             capaciteKg={production.tankCapaciteKg ?? 1_300_000}
