@@ -156,9 +156,11 @@ export default function Production({ data, month }) {
         <KPICard label="Taux d'Extraction Réel" value={fmt.pct(te)}                           valueColor="green" sub="Huile produite ÷ Régimes traités" accent="accent-green" />
       </div>
 
-      {/* Tank huile */}
-      <div style={{ marginBottom: 24, display: 'flex' }}>
-        <div className="chart-card" style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, padding: '14px 20px' }}>
+      {/* Tank + Indicateurs TE — côte à côte */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'stretch', flexWrap: 'wrap' }}>
+
+        {/* Tank huile */}
+        <div className="chart-card" style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, padding: '14px 20px', flexShrink: 0 }}>
           <div className="chart-title" style={{ fontSize: 13 }}>Stock Huile</div>
           <OilTank
             stockKg={production.stockHuileKg ?? 0}
@@ -169,10 +171,9 @@ export default function Production({ data, month }) {
             isLive={data?._etl?.source === 'supabase' && new Date().getMonth() + 1 === (data?._etl?.mois ? ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].indexOf(data._etl.mois) + 1 : 0)}
           />
         </div>
-      </div>
 
-      {/* Indicateurs TE */}
-      <div className="chart-card" style={{ marginBottom: 24 }}>
+        {/* Indicateurs TE */}
+        <div className="chart-card" style={{ flex: 1, minWidth: 0 }}>
         <div className="chart-title">Indicateur : Taux d'Extraction (TE)</div>
         <div className="chart-subtitle">Calculé sur régimes traités</div>
         <div className="gauge-row" style={{ marginTop: 16 }}>
@@ -211,6 +212,7 @@ export default function Production({ data, month }) {
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
 

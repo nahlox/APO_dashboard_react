@@ -22,9 +22,10 @@ export default function OilTank({ stockKg = 0, capaciteKg = 1_300_000, prixKg = 
     return () => clearTimeout(t)
   }, [pct])
 
-  const fillColor   = pct > 60 ? '#3FA34D' : pct > 30 ? '#F28C28' : '#E05C5C'
-  const fillColorA  = pct > 60 ? 'rgba(63,163,77,0.18)' : pct > 30 ? 'rgba(242,140,40,0.18)' : 'rgba(224,92,92,0.18)'
-  const waveColor   = pct > 60 ? 'rgba(63,163,77,0.55)' : pct > 30 ? 'rgba(242,140,40,0.55)' : 'rgba(224,92,92,0.55)'
+  // CPO orange-red fixed palette
+  const fillColor  = '#D4500A'
+  const fillColorA = 'rgba(212,80,10,0.22)'
+  const waveColor  = 'rgba(212,80,10,0.60)'
 
   const tankH = 180
   const tankW = 110
