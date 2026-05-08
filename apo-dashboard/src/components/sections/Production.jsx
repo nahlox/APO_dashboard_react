@@ -19,7 +19,6 @@ export default function Production({ data, month }) {
   const teDailyVals   = production.teDailyVals        ?? []
   const comparLabels  = production.comparAnnuelLabels  ?? []
   const comparAnnuel  = production.comparAnnuel        ?? []
-  const hasDaily      = dailyLabels.length > 0
 
   const endDate   = monthEndDate(data)
   const detailSub = kpis.nbCamions ? `${kpis.nbCamions} camions` : `${kpis.nbFournisseurs ?? 0} fournisseurs`
@@ -32,116 +31,108 @@ export default function Production({ data, month }) {
                    : te >= 18 ? { cls: 'badge-neutral', txt: 'Dans la norme' }
                    :            { cls: 'badge-down',    txt: 'Sous le minimum' }
 
-  // Refs always declared — canvases always in DOM (hidden via style when no data)
   const refDaily  = useRef(null)
   const refTE     = useRef(null)
   const refCompar = useRef(null)
   const charts    = useRef({})
 
   useEffect(() => {
-    // Destroy previous instances
     Object.values(charts.current).forEach(c => { try { c?.destroy() } catch (_) {} })
     charts.current = {}
 
     // ── Réception journalière ──────────────────────────────────────────────
-    if (dailyLabels.length > 0 && refDaily.current) {
-      charts.current.daily = new Chart(refDaily.current, {
-        type: 'bar',
-        data: {
-          labels: dailyLabels,
-          datasets: [{
-            label: 'Régimes reçus (kg)',
-            data: dailyKg,
-            backgroundColor: dailyKg.map(v =>
-              v > 700000 ? chartColors.gold : v > 0 ? 'rgba(242,140,40,0.5)' : 'rgba(242,140,40,0.15)'
-            ),
-            borderRadius: 3,
-          }],
+    charts.current.daily = new Chart(refDaily.current, {
+      type: 'bar',
+      data: {
+        labels: dailyLabels,
+        datasets: [{
+          label: 'Régimes reçus (kg)',
+          data: dailyKg,
+          backgroundColor: dailyKg.map(v =>
+            v > 700000 ? chartColors.gold : v > 0 ? 'rgba(242,140,40,0.5)' : 'rgba(242,140,40,0.15)'
+          ),
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => `${fmt.full(c.raw)} kg` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => (v / 1000).toFixed(0) + 'T' } },
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => `${fmt.full(c.raw)} kg` } } },
-          scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-            y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => (v / 1000).toFixed(0) + 'T' } },
-          },
-        },
-      })
-    }
+      },
+    })
 
     // ── Taux d'extraction journalier ──────────────────────────────────────
-    if (teDailyLabels.length > 0 && refTE.current) {
-      const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
-      const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
-      const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
-      const teYMin    = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
-      const teYMax    = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
-      const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
-      const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
+    const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
+    const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
+    const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
+    const teYMin    = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
+    const teYMax    = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
+    const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
+    const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
 
-      charts.current.te = new Chart(refTE.current, {
-        type: 'line',
-        data: {
-          labels: teDailyLabels,
-          datasets: [
-            {
-              label: 'TE%', data: teAff,
-              borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
-              fill: true, tension: 0.3,
-              pointBackgroundColor: teRaw.map((v, i) =>
-                outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
-                : v >= 19.5 ? chartColors.green
-                : v >= 18   ? chartColors.gold
-                : chartColors.red
-              ),
-              pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
-              pointStyle:  teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
-            },
-            { label: 'Min 18%',   data: Array(teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
-            { label: 'Cible 22%', data: Array(teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { font: { size: 12 } } },
-            tooltip: { ...defaultTooltip, callbacks: { label: c => {
-              const real = teRaw[c.dataIndex] ?? 0
-              return `TE : ${real.toFixed(2)}%${outlierIdx.has(c.dataIndex) ? ' ⚠ hors plage' : ''}`
-            }}},
+    charts.current.te = new Chart(refTE.current, {
+      type: 'line',
+      data: {
+        labels: teDailyLabels,
+        datasets: [
+          {
+            label: 'TE%', data: teAff,
+            borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
+            fill: true, tension: 0.3,
+            pointBackgroundColor: teRaw.map((v, i) =>
+              outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
+              : v >= 19.5 ? chartColors.green
+              : v >= 18   ? chartColors.gold
+              : chartColors.red
+            ),
+            pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
+            pointStyle:  teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
           },
-          scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-            y: { min: teYMin, max: teYMax, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
-          },
+          { label: 'Min 18%',   data: Array(teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+          { label: 'Cible 22%', data: Array(teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { font: { size: 12 } } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => {
+            const real = teRaw[c.dataIndex] ?? 0
+            return `TE : ${real.toFixed(2)}%${outlierIdx.has(c.dataIndex) ? ' ⚠ hors plage' : ''}`
+          }}},
         },
-      })
-    }
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+          y: { min: teYMin, max: teYMax, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
+        },
+      },
+    })
 
-    // ── Comparaison annuelle (toujours initialisée) ────────────────────────
-    if (comparAnnuel.length > 0 && refCompar.current) {
-      const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
-      charts.current.compar = new Chart(refCompar.current, {
-        type: 'bar',
-        data: {
-          labels: comparLabels,
-          datasets: comparAnnuel.map((entry, i) => ({
-            label: entry.label,
-            data: entry.values,
-            backgroundColor: bgColors[i] || chartColors.dim,
-            borderRadius: 3,
-          })),
+    // ── Comparaison annuelle ───────────────────────────────────────────────
+    const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
+    charts.current.compar = new Chart(refCompar.current, {
+      type: 'bar',
+      data: {
+        labels: comparLabels,
+        datasets: comparAnnuel.map((entry, i) => ({
+          label: entry.label,
+          data: entry.values,
+          backgroundColor: bgColors[i] || chartColors.dim,
+          borderRadius: 3,
+        })),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + 'T' } },
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { labels: { font: { size: 12 } } }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.full(Math.round(c.raw)) + ' T' } } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + 'T' } },
-          },
-        },
-      })
-    }
+      },
+    })
 
     return () => {
       Object.values(charts.current).forEach(c => { try { c?.destroy() } catch (_) {} })
@@ -154,7 +145,6 @@ export default function Production({ data, month }) {
       <div className="section-title">Production & Approvisionnement</div>
       <div className="section-subtitle">Collecte de régimes FFB et indicateurs de production — {monthFull(data)}</div>
 
-      {/* KPIs */}
       <div className="kpi-grid">
         <KPICard label="Régimes Reçus (FFB)"   value={fmt.tonnes(kpis.regimesRecusT   ?? 0)} valueColor="gold"  sub={`kg achetés · ${detailSub}`} />
         <KPICard label="Régimes Traités"        value={fmt.tonnes(kpis.regimesTraitesT ?? 0)} valueColor="green" sub="kg effectivement traités · base coût MP" accent="accent-green" />
@@ -206,8 +196,8 @@ export default function Production({ data, month }) {
         </div>
       </div>
 
-      {/* Réception journalière — cachée si pas de données */}
-      <div className="charts-grid col1" style={{ marginBottom: 24, display: hasDaily ? undefined : 'none' }}>
+      {/* Charts — toujours affichés, vides si pas de données journalières */}
+      <div className="charts-grid col1" style={{ marginBottom: 24 }}>
         <div className="chart-card">
           <div className="chart-title">Réception Journalière des Régimes FFB</div>
           <div className="chart-subtitle">Tonnage reçu par jour (source: Tableau de Production)</div>
@@ -217,17 +207,8 @@ export default function Production({ data, month }) {
         </div>
       </div>
 
-      {/* Message si pas de données journalières */}
-      {!hasDaily && (
-        <div className="chart-card" style={{ marginBottom: 24, textAlign: 'center', padding: '24px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
-          Données journalières non disponibles pour ce mois
-          <span style={{ display: 'block', fontSize: 11, opacity: 0.6, marginTop: 4 }}>( production_journaliere non renseignée dans Supabase )</span>
-        </div>
-      )}
-
-      {/* TE journalier + Comparaison annuelle */}
       <div className="charts-grid">
-        <div className="chart-card" style={{ display: hasDaily ? undefined : 'none' }}>
+        <div className="chart-card">
           <div className="chart-title">Taux d'Extraction Journalier</div>
           <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
           <div className="chart-container" style={{ height: 260 }}>
