@@ -193,6 +193,11 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const teDailyLabels      = prodJour.map(r => r.date_production?.slice(8, 10))
   const teDailyVals        = prodJour.map(r => ((r.taux_extraction || 0) * 100).toFixed(2))
 
+  // Stock huile fin de période (dernière ligne disponible)
+  const lastProdJour      = prodJour.at(-1)
+  const stockHuileKg      = (lastProdJour?.stock_huile_kg || 0)
+  const TANK_CAPACITE_KG  = 1_300_000   // tank 1000T + tank 300T
+
   const caParJour = {}
   for (const r of ventesHuile) {
     const d = r.date_vente || ''
@@ -276,6 +281,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       huileVendueT,
       tauxExtraction:       +te.toFixed(2),
       nbCamions:            kpis.nb_camions || 0,
+      prixMoyenHuileKg:     prixHuile,
       palmisteProduitT:     palmisteProdT,
       palmisteVenduT:       palmisteVendT,
       pepContratsFCFA:      kpis.pepiniere_contrats_fcfa || 0,
@@ -371,6 +377,8 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       grainesDailyKg,
       teDailyLabels,
       teDailyVals,
+      stockHuileKg,
+      tankCapaciteKg: TANK_CAPACITE_KG,
       comparAnnuelLabels: ['Rég. Reçus (T)', 'Rég. Traités (T)', 'Huile Prod. (T)', 'Vente Huile (T)'],
       comparAnnuel: [{ label: `${periode.libelle} ${periode.annee}`, values: [regRecusT, regTraitesT, huileProduiteT, huileVendueT] }],
       qualite: { ffaRate: null, humidite: null, impuretes: null },
@@ -423,7 +431,7 @@ export function useMoisDB() {
             await Promise.all([
 
               supabase.from('production_journaliere')
-                .select('date_production, regime_recu_kg, taux_extraction')
+                .select('date_production, regime_recu_kg, taux_extraction, stock_huile_kg')
                 .eq('periode_id', periodeId)
                 .order('date_production')
                 .then(r => r.data || []),

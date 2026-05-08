@@ -4,12 +4,15 @@ import {
   PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler
 } from 'chart.js'
 import KPICard from '../kpi/KPICard'
+import OilTank from '../OilTank'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { monthFull, monthLabel, monthEndDate } from '../../lib/monthUtils'
+import { useDashboardStore } from '../../store/dashboardStore'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 export default function Production({ data, month }) {
+  const { currency, eurRate } = useDashboardStore()
   const kpis       = data?.kpis       ?? {}
   const production = data?.production ?? {}
 
@@ -151,6 +154,26 @@ export default function Production({ data, month }) {
         <KPICard label="Stock Régimes Fin Mois" value={fmt.tonnes(kpis.stockFinMoisT   ?? 0)} sub={`kg en stock au ${endDate} · reportés mois suiv.`} />
         <KPICard label="Huile Brute Produite"   value={fmt.tonnes(kpis.huileProduiteT  ?? 0)} valueColor="green" sub={`kg produits · ${fmt.tonnes(kpis.huileVendueT ?? 0)} livrés`} accent="accent-green" />
         <KPICard label="Taux d'Extraction Réel" value={fmt.pct(te)}                           valueColor="green" sub="Huile produite ÷ Régimes traités" accent="accent-green" />
+      </div>
+
+      {/* Tank huile */}
+      <div className="chart-card" style={{ marginBottom: 24 }}>
+        <div className="chart-title">Stock Huile Disponible</div>
+        <div className="chart-subtitle">
+          {production.stockHuileKg > 0
+            ? `${(production.stockHuileKg / 1000).toFixed(1)} T non vendues · valeur estimée au prix moyen du mois`
+            : 'Données de stock non disponibles'}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 32, padding: '16px 8px', flexWrap: 'wrap' }}>
+          <OilTank
+            stockKg={production.stockHuileKg ?? 0}
+            capaciteKg={production.tankCapaciteKg ?? 1_300_000}
+            prixKg={kpis.prixMoyenHuileKg ?? 0}
+            currency={currency}
+            eurRate={eurRate}
+            isLive={data?._etl?.source === 'supabase' && new Date().getMonth() + 1 === (data?._etl?.mois ? ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].indexOf(data._etl.mois) + 1 : 0)}
+          />
+        </div>
       </div>
 
       {/* Indicateurs TE */}
