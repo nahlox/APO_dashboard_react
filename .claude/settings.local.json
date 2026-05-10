@@ -35,7 +35,10 @@
       "Skill(schedule:*)",
       "mcp__scheduled-tasks__list_scheduled_tasks",
       "mcp__scheduled-tasks__create_scheduled_task",
-      "Bash(kill 58653 58651)"
+      "Bash(kill 58653 58651)",
+      "Bash(git pull *)",
+      "Bash(python3 -)",
+      "Bash(python3 etl_cloud.py --mois 5)"
     ]
   }
 }

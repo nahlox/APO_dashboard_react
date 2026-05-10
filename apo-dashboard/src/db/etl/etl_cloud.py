@@ -102,6 +102,7 @@ def sheet_vente_palmiste(mois):
     if mois == 1: return "VENTE NOIX PALMISTE JANVIER"
     if mois == 2: return "VEMTE NOIX DE PALMISTE FEVRIER"   # typo connue dans l'Excel
     if mois == 4: return "VENTE PALMISTE AVRIL"              # nom court en avril
+    if mois == 5: return "VENTE PALMISTE MAI"                # nom court en mai
     return f"VENTE NOIX DE PALMISTE {NOMS_MOIS_FR[mois]}"
 def sheet_vente_florentin(mois): return f"VENTE FLORENTIN {NOMS_MOIS_FR[mois]}"
 def sheet_vente_bassin(mois):    return f"VENTE BASSIN {NOMS_MOIS_FR[mois]}"
