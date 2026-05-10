@@ -193,10 +193,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const teDailyLabels      = prodJour.map(r => r.date_production?.slice(8, 10))
   const teDailyVals        = prodJour.map(r => ((r.taux_extraction || 0) * 100).toFixed(2))
 
-  // Stock huile fin de période (dernière ligne disponible)
-  const lastProdJour      = prodJour.at(-1)
-  const stockHuileKg      = (lastProdJour?.stock_huile_kg || 0)
-  const TANK_CAPACITE_KG  = 1_300_000   // tank 1000T + tank 300T
+  // Stock huile : dernière ligne avec stock renseigné (≠ 0)
+  // L'Excel pré-remplit tout le mois — les jours futurs ont stock = copie du dernier jour réel
+  // On prend la dernière ligne où stock_huile_kg > 0 (= dernier jour avec données réelles)
+  const lastProdJourAvecStock = [...prodJour].reverse().find(r => (r.stock_huile_kg || 0) > 0)
+  const stockHuileKg          = (lastProdJourAvecStock?.stock_huile_kg || 0)
+  const TANK_CAPACITE_KG      = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
 
   const caParJour = {}
   for (const r of ventesHuile) {
