@@ -38,7 +38,8 @@
       "Bash(kill 58653 58651)",
       "Bash(git pull *)",
       "Bash(python3 -)",
-      "Bash(python3 etl_cloud.py --mois 5)"
+      "Bash(python3 etl_cloud.py --mois 5)",
+      "Bash(git config *)"
     ]
   }
 }
