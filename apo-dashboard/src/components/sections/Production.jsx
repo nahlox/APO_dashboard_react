@@ -71,8 +71,10 @@ export default function Production({ data, month }) {
     const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
     const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
     const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
-    const teYMin    = teValides.length > 0 ? Math.max(0, Math.floor(Math.min(...teValides) - 1)) : 0
-    const teYMax    = teValides.length > 0 ? Math.ceil(Math.max(p95, 23) + 1) : 30
+    const dataMin   = teValides.length > 0 ? Math.min(...teValides) : 18
+    const dataMax   = teValides.length > 0 ? p95 : 22
+    const teYMin    = Math.min(Math.floor(dataMin - 1), 16)   // toujours ≤ 16 pour voir 18 avec marge
+    const teYMax    = Math.max(Math.ceil(dataMax + 1), 24)    // toujours ≥ 24 pour voir 22 avec marge
     const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
     const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
 
