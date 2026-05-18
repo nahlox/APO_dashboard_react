@@ -200,13 +200,28 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const stockHuileKg          = (lastProdJourAvecStock?.stock_huile_kg || 0)
   const TANK_CAPACITE_KG      = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
 
-  const caParJour = {}
+  // CA journalier : agrégat par jour avec suivi confirmation SARCI
+  // montant_fcfa DB = poids_apo * prix_kg (colonne générée)
+  // CA correct = poids_sarci * prix_kg si SARCI confirmé, sinon poids_apo * prix_kg (provisoire)
+  const joursData = {}
   for (const r of ventesHuile) {
     const d = r.date_vente || ''
-    caParJour[d] = (caParJour[d] || 0) + (r.montant_fcfa || 0)
+    if (!joursData[d]) joursData[d] = { ca: 0, poidsApo: 0, sarciOk: true }
+    const poidsApo   = r.poids_apo_kg   || 0
+    const poidsSarci = r.poids_sarci_kg || 0
+    const prix       = r.prix_kg        || 0
+    const sarciConfirme = poidsSarci > 0
+    // CA = poids SARCI si confirmé (facturé sur poids client), sinon poids APO (provisoire)
+    const caLigne = sarciConfirme ? poidsSarci * prix : poidsApo * prix
+    joursData[d].ca       += caLigne
+    joursData[d].poidsApo += poidsApo
+    if (!sarciConfirme) joursData[d].sarciOk = false
   }
-  const caJoursLabels = Object.keys(caParJour).sort().map(d => d.slice(8, 10))
-  const caJoursVals   = Object.keys(caParJour).sort().map(d => caParJour[d])
+  const caJoursSorted  = Object.keys(joursData).sort()
+  const caJoursLabels  = caJoursSorted.map(d => d.slice(8, 10))
+  const caJoursVals    = caJoursSorted.map(d => joursData[d].ca)
+  const caJoursPoidsT  = caJoursSorted.map(d => joursData[d].poidsApo / 1000)
+  const caJoursSarciOk = caJoursSorted.map(d => joursData[d].sarciOk)
 
   // ── Top fournisseurs ──────────────────────────────────────────────────────
   const fournisseursItems = topFournisseurs.map(r => ({
@@ -394,6 +409,8 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       ],
       caJoursLabels,
       caJoursVals,
+      caJoursPoidsT,
+      caJoursSarciOk,
     },
     charges: { topDepenses },
     fournisseurs: {
@@ -439,7 +456,7 @@ export function useMoisDB() {
                 .then(r => r.data || []),
 
               supabase.from('ventes_huile')
-                .select('date_vente, montant_fcfa')
+                .select('date_vente, montant_fcfa, poids_apo_kg, poids_sarci_kg, prix_kg')
                 .eq('periode_id', periodeId)
                 .order('date_vente')
                 .then(r => r.data || []),

@@ -13,28 +13,79 @@ export default function Revenus({ data, month }) {
   const refCA = useRef(null)
   const chartRef = useRef(null)
 
+  const labels    = revenus.caJoursLabels  ?? []
+  const caVals    = revenus.caJoursVals    ?? []
+  const poidsT    = revenus.caJoursPoidsT  ?? []
+  const sarciOk   = revenus.caJoursSarciOk ?? []
+
   useEffect(() => {
     chartRef.current?.destroy()
+    if (!refCA.current) return
+
+    const caDisplay = currency === 'EUR'
+      ? caVals.map(v => +(v / eurRate).toFixed(0))
+      : caVals
+
     chartRef.current = new Chart(refCA.current, {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: revenus.caJoursLabels,
-        datasets: [{
-          label: `CA Huile (${currency})`,
-          data: currency === 'EUR'
-            ? revenus.caJoursVals.map(v => fmt.toEUR(v, eurRate))
-            : revenus.caJoursVals,
-          borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
-          fill: true, tension: 0.4,
-          pointBackgroundColor: chartColors.gold, pointRadius: 4,
-        }],
+        labels,
+        datasets: [
+          {
+            // Axe gauche : tonnes APO livrées
+            label: 'Tonnes livrées (APO)',
+            data: poidsT,
+            backgroundColor: sarciOk.map(ok => ok ? 'rgba(242,140,40,0.55)' : 'rgba(242,140,40,0.22)'),
+            borderColor:     sarciOk.map(ok => ok ? 'rgba(242,140,40,0.9)' : 'rgba(242,140,40,0.5)'),
+            borderWidth: 1,
+            borderRadius: 3,
+            yAxisID: 'yPoids',
+            order: 2,
+          },
+          {
+            // Axe droit : CA
+            type: 'line',
+            label: `CA Huile (${currency})`,
+            data: caDisplay,
+            borderColor: chartColors.green,
+            backgroundColor: 'rgba(63,163,77,0.06)',
+            fill: true, tension: 0.35,
+            pointBackgroundColor: sarciOk.map(ok => ok ? chartColors.green : 'rgba(242,140,40,0.7)'),
+            pointRadius: 5,
+            pointStyle: sarciOk.map(ok => ok ? 'circle' : 'triangle'),
+            yAxisID: 'yCA',
+            order: 1,
+          },
+        ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...defaultTooltip, callbacks: { label: c => fmt.money(currency === 'EUR' ? c.raw * eurRate : c.raw, currency, eurRate) } } },
+        plugins: {
+          legend: { labels: { font: { size: 11 } } },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: c => {
+                if (c.datasetIndex === 0) return `Livré APO : ${c.raw.toFixed(1)} T`
+                const fcfa = currency === 'EUR' ? c.raw * eurRate : c.raw
+                const confirmed = sarciOk[c.dataIndex]
+                return `CA : ${fmt.currency(fcfa, currency, eurRate)}${confirmed ? '' : ' ⏳ poids SARCI en attente'}`
+              },
+            },
+          },
+        },
         scales: {
           x: { grid: { display: false } },
-          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => fmt.money(currency === 'EUR' ? v * eurRate : v, currency, eurRate) } },
+          yPoids: {
+            position: 'left',
+            grid: { color: 'rgba(242,140,40,0.06)' },
+            ticks: { callback: v => v.toFixed(0) + ' T' },
+          },
+          yCA: {
+            position: 'right',
+            grid: { display: false },
+            ticks: { callback: v => currency === 'EUR' ? v.toFixed(0) + ' €' : (v / 1_000_000).toFixed(1) + ' M' },
+          },
         },
       },
     })
@@ -54,8 +105,8 @@ export default function Revenus({ data, month }) {
       </div>
 
       <div className="chart-card" style={{ marginBottom: 24 }}>
-        <div className="chart-title">CA Journalier Huile</div>
-        <div className="chart-subtitle">Chiffre d'affaires huile par jour de livraison ({currency})</div>
+        <div className="chart-title">Livraisons & CA Journalier Huile</div>
+        <div className="chart-subtitle">Barres = tonnes livrées (poids APO) · Ligne = CA ({currency}) · ⏳ triangle = poids SARCI en attente</div>
         <div className="chart-container" style={{ height: 260 }}>
           <canvas ref={refCA} />
         </div>
