@@ -299,6 +299,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       tauxExtraction:       +te.toFixed(2),
       nbCamions:            kpis.nb_camions || 0,
       prixMoyenHuileKg:     prixHuile,
+      prixMoyenRegimeKg:    prixRegime,
       palmisteProduitT:     palmisteProdT,
       palmisteVenduT:       palmisteVendT,
       pepContratsFCFA:      kpis.pepiniere_contrats_fcfa || 0,

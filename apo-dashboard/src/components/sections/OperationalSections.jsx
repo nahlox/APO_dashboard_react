@@ -1,25 +1,138 @@
-import { fmt } from '../../lib/kpiEngine'
+import { useEffect, useRef } from 'react'
+import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { monthFull } from '../../lib/monthUtils'
+
+Chart.register(BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend)
 
 // ── CHARGES ──────────────────────────────────────────────────
 export function Charges({ data, month }) {
   const { currency, eurRate } = useDashboardStore()
-  const { charges } = data
+  const { charges, kpis } = data
+  const refWaterfall = useRef(null)
+  const chartRef     = useRef(null)
 
-  // Detect mode: categories (API months, date='') vs transactions (static months, date='dd/mm')
   const isCategorized = charges.topDepenses.length > 0 && charges.topDepenses[0].date === ''
   const total = charges.topDepenses.reduce((s, r) => s + r.mt, 0)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    if (!refWaterfall.current || !isCategorized) return
+
+    const ca      = kpis.caTotalFCFA       || 0
+    const coutMP  = kpis.coutMPFCFA        || 0
+    const amort   = kpis.amortissementFCFA || 0
+    const taxes   = kpis.totalTaxesFCFA    || 0
+    const resultat= kpis.resultatNetFCFA   || 0
+
+    // Build waterfall steps: CA → -coutMP → -each charge cat → -amort → -taxes → Résultat
+    const steps = [
+      { label: "CA",              value:  ca,      color: chartColors.green },
+      { label: "Coût MP",         value: -coutMP,  color: 'rgba(224,92,92,0.85)' },
+      ...charges.topDepenses.map(r => ({ label: r.lib.replace("Fournitures de l'usine et des bureaux", "Fournitures").replace("Autres services extérieurs", "Autres serv. ext.").replace("Services extérieurs", "Services ext."), value: -r.mt, color: 'rgba(224,92,92,0.75)' })),
+      ...(amort  > 0 ? [{ label: "Amort. & frais fin.", value: -amort,  color: 'rgba(224,92,92,0.65)' }] : []),
+      ...(taxes  > 0 ? [{ label: "Impôts & taxes",      value: -taxes,  color: 'rgba(224,92,92,0.65)' }] : []),
+      { label: "Résultat Net",    value:  resultat, color: resultat >= 0 ? chartColors.green : 'rgba(224,92,92,0.9)' },
+    ]
+
+    // Floating bar: [base, base+value] for each step
+    let running = 0
+    const bases  = []
+    const values = []
+    const colors = []
+    for (const s of steps) {
+      if (s.label === "CA" || s.label === "Résultat Net") {
+        bases.push(0)
+        values.push(Math.abs(s.value))
+      } else {
+        const top = running + s.value
+        bases.push(Math.min(running, top))
+        values.push(Math.abs(s.value))
+      }
+      colors.push(s.color)
+      if (s.label !== "Résultat Net") running += s.value
+    }
+
+    const div = currency === 'EUR' ? eurRate : 1e6
+
+    chartRef.current = new Chart(refWaterfall.current, {
+      type: 'bar',
+      data: {
+        labels: steps.map(s => s.label),
+        datasets: [
+          {
+            // invisible base
+            data: bases.map(b => b / div),
+            backgroundColor: 'transparent',
+            borderWidth: 0,
+            stack: 'waterfall',
+          },
+          {
+            // visible bar
+            data: values.map(v => v / div),
+            backgroundColor: colors,
+            borderRadius: 3,
+            stack: 'waterfall',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: (ctx) => {
+                if (ctx.datasetIndex === 0) return null
+                const step = steps[ctx.dataIndex]
+                const sign = step.value < 0 ? '− ' : '+ '
+                return sign + fmt.money(Math.abs(step.value), currency, eurRate)
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, stacked: true, ticks: { font: { size: 10 }, maxRotation: 30 } },
+          y: {
+            stacked: true,
+            grid: { color: 'rgba(242,140,40,0.06)' },
+            ticks: {
+              callback: v => {
+                if (currency === 'EUR') return Math.round(v / 1e3).toLocaleString('fr-FR') + ' K€'
+                return v.toLocaleString('fr-FR') + ' M'
+              },
+            },
+          },
+        },
+      },
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [month, currency, eurRate, isCategorized])
 
   return (
     <section>
       <div className="section-title">Charges & Coûts</div>
       <div className="section-subtitle">Dépenses opérationnelles — {monthFull(data)}</div>
+
+      {isCategorized && (
+        <div className="chart-card">
+          <div className="chart-title">Du CA au Résultat Net</div>
+          <div className="chart-subtitle">Décomposition des coûts — de la recette brute au bénéfice ({currency})</div>
+          <div className="chart-container" style={{ height: 300 }}>
+            <canvas ref={refWaterfall} />
+          </div>
+        </div>
+      )}
+
       <div className="chart-card">
         <div className="chart-title">{isCategorized ? 'Répartition par Catégorie' : 'Top Dépenses du Mois'}</div>
         <div className="chart-subtitle">
           {isCategorized
-            ? 'Charges d\'exploitation classées par catégorie (hors achats graines)'
+            ? "Charges d'exploitation classées par catégorie (hors achats graines)"
             : 'Classées par montant décroissant (hors achats graines)'}
         </div>
         <table className="data-table">
