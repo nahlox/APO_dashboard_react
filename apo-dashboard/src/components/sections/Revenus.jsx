@@ -20,6 +20,9 @@ export default function Revenus({ data, month }) {
   const blanc     = revenus.blanc ?? {}
   const noir      = revenus.noir  ?? {}
 
+  const C_BLANC = { bg: 'rgba(210,180,80,0.55)', border: 'rgba(210,180,80,0.9)', text: 'rgba(210,180,80,0.95)' }
+  const C_NOIR  = { bg: 'rgba(130,130,130,0.45)', border: 'rgba(130,130,130,0.8)', text: 'rgba(130,130,130,0.95)' }
+
   useEffect(() => {
     chartRef.current?.destroy()
     if (!refCA.current) return
@@ -35,16 +38,16 @@ export default function Revenus({ data, month }) {
           {
             label: 'BLANC — chèque SARCI',
             data: blancVals,
-            backgroundColor: 'rgba(63,163,77,0.55)',
-            borderColor: 'rgba(63,163,77,0.9)',
+            backgroundColor: C_BLANC.bg,
+            borderColor: C_BLANC.border,
             borderWidth: 1, borderRadius: 3,
             yAxisID: 'yCA', order: 2,
           },
           {
             label: 'NOIR — autres règlements',
             data: noirVals,
-            backgroundColor: 'rgba(224,92,92,0.45)',
-            borderColor: 'rgba(224,92,92,0.8)',
+            backgroundColor: C_NOIR.bg,
+            borderColor: C_NOIR.border,
             borderWidth: 1, borderRadius: 3,
             yAxisID: 'yCA', order: 2,
           },
@@ -118,12 +121,12 @@ export default function Revenus({ data, month }) {
           <div className="chart-title" style={{ marginBottom: 8 }}>Graines correspondantes (via TE {kpis.tauxExtraction?.toFixed(1)}%)</div>
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', fontSize: 13 }}>
             <span>
-              <span style={{ color: 'rgba(210,180,80,0.9)', fontWeight: 700 }}>BLANC</span>
+              <span style={{ color: C_BLANC.text, fontWeight: 700 }}>BLANC</span>
               {' — '}<strong>{(blanc.grainesT ?? 0).toFixed(0)} T</strong> de régimes
               {blanc.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {blanc.prixMoyKg.toFixed(0)} F/kg huile</span>}
             </span>
             <span>
-              <span style={{ color: 'rgba(180,180,180,0.85)', fontWeight: 700 }}>NOIR</span>
+              <span style={{ color: C_NOIR.text, fontWeight: 700 }}>NOIR</span>
               {' — '}<strong>{(noir.grainesT ?? 0).toFixed(0)} T</strong> de régimes
               {noir.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {noir.prixMoyKg.toFixed(0)} F/kg huile</span>}
             </span>
@@ -155,11 +158,11 @@ export default function Revenus({ data, month }) {
           </thead>
           <tbody>
             {revenus.produits.map((p, i) => (
-              <tr key={i} style={p.circuit ? { borderLeft: `3px solid ${p.circuit === 'blanc' ? 'rgba(63,163,77,0.7)' : 'rgba(224,92,92,0.6)'}` } : {}}>
+              <tr key={i} style={p.circuit ? { borderLeft: `3px solid ${p.circuit === 'blanc' ? C_BLANC.border : C_NOIR.border}` } : {}}>
                 <td style={{ fontWeight: p.circuit ? 600 : 400 }}>{p.produit}</td>
                 <td>{p.quantite}</td>
                 <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{p.prixUnitaire}</td>
-                <td className="num" style={{ color: p.circuit === 'blanc' ? 'var(--green)' : p.circuit === 'noir' ? 'rgba(224,92,92,0.9)' : 'var(--gold)' }}>
+                <td className="num" style={{ color: p.circuit === 'blanc' ? C_BLANC.text : p.circuit === 'noir' ? C_NOIR.text : 'var(--gold)' }}>
                   {p.totalFCFA > 0 ? fmt.currency(p.totalFCFA, currency, eurRate) : '—'}
                 </td>
                 <td className="num" style={{ color: 'var(--text-dim)' }}>
