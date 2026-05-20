@@ -165,10 +165,7 @@ export default function GlobalPanel({ moisData = [] }) {
     const prixRegimes = MONTH_DATA.map(m => m.data.kpis.prixMoyenRegimeKg || 0)
     const prixCPO     = MONTH_DATA.map(m => m.data.kpis.prixMoyenHuileKg  || 0)
     const teList      = MONTH_DATA.map(m => (m.data.kpis.tauxExtraction    || 0) / 100)
-    // Valeur de l'huile extraite par kg de régime acheté = prix_cpo × TE
-    const valHuileKg  = MONTH_DATA.map((_, i) => +(prixCPO[i] * teList[i]).toFixed(1))
-    // Marge brute par kg de régime = valeur huile − prix régime
-    const margeKg     = MONTH_DATA.map((_, i) => +(valHuileKg[i] - prixRegimes[i]).toFixed(1))
+    const margeKg     = MONTH_DATA.map((_, i) => +(prixCPO[i] * teList[i] - prixRegimes[i]).toFixed(1))
 
     charts.current.prix = new Chart(refPrix.current, {
       type: 'line',
@@ -181,16 +178,7 @@ export default function GlobalPanel({ moisData = [] }) {
             borderColor: chartColors.gold,
             backgroundColor: 'rgba(242,140,40,0.08)',
             pointBackgroundColor: chartColors.gold,
-            borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'y',
-          },
-          {
-            label: 'Valeur huile / kg régime (F/kg)',
-            data: valHuileKg,
-            borderColor: chartColors.accent,
-            backgroundColor: 'rgba(107,201,122,0.08)',
-            pointBackgroundColor: chartColors.accent,
-            borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false,
-            borderDash: [4, 3], yAxisID: 'y',
+            borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'yPrix',
           },
           {
             label: 'Prix régimes achetés (F/kg)',
@@ -198,7 +186,7 @@ export default function GlobalPanel({ moisData = [] }) {
             borderColor: 'rgba(224,92,92,1)',
             backgroundColor: 'rgba(224,92,92,0.08)',
             pointBackgroundColor: 'rgba(224,92,92,1)',
-            borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'y',
+            borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'yPrix',
           },
           {
             label: 'Marge brute / kg régime (F/kg)',
@@ -206,21 +194,28 @@ export default function GlobalPanel({ moisData = [] }) {
             borderColor: chartColors.green,
             backgroundColor: 'rgba(63,163,77,0.15)',
             pointBackgroundColor: chartColors.green,
-            borderWidth: 2, pointRadius: 4, tension: 0.3, fill: true, yAxisID: 'y',
+            borderWidth: 2, pointRadius: 4, tension: 0.3, fill: true, yAxisID: 'yMarge',
           },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { font: { size: 11 }, boxWidth: 14 } },
           tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toLocaleString('fr-FR')} F/kg` } },
         },
         scales: {
           x: { grid: { display: false } },
-          y: {
+          yPrix: {
+            position: 'left',
             grid: { color: 'rgba(242,140,40,0.06)' },
             ticks: { callback: v => v.toLocaleString('fr-FR') + ' F' },
+          },
+          yMarge: {
+            position: 'right',
+            grid: { display: false },
+            ticks: { callback: v => v.toLocaleString('fr-FR') + ' F', color: 'rgba(63,163,77,0.6)', font: { size: 10 } },
           },
         },
       },
@@ -308,9 +303,6 @@ export default function GlobalPanel({ moisData = [] }) {
         </div>
         <div className="chart-container" style={{ height: 300 }}>
           <canvas ref={refPrix} />
-        </div>
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', fontSize: 11, color: 'var(--text-dim)' }}>
-          Marge brute/kg = (Prix CPO × Taux extraction) − Prix régimes · Hors charges exploitation &amp; amortissement
         </div>
       </div>
 
