@@ -305,34 +305,42 @@ def parse_ventes_huile(path: Path, mois: int, periode_id: int):
     sarci = sb.table("clients").select("id").eq("reference", "SARCI").single().execute()
     client_id = sarci.data["id"] if sarci.data else None
 
-    # Pré-passe : repérer les lignes "REGLEMENT CHEQUE PAR SARCI"
-    # Une vente est BLANC si elle est immédiatement suivie d'un règlement chèque
-    # avec le même montant (col 8 = vente_apo / avance_sarci selon la ligne)
-    all_rows = [r for r in lignes if r[1] and isinstance(r[1], datetime)]
-    cheque_montants = set()
-    for i, row in enumerate(all_rows):
+    # Détection BLANC : un "REGLEMENT CHEQUE PAR SARCI" couvre une ou plusieurs
+    # livraisons consécutives précédentes dont la somme = montant du chèque.
+    # On remonte depuis chaque chèque en accumulant les montants de vente jusqu'à match.
+    all_rows_dt = [r for r in lignes if r[1] and isinstance(r[1], datetime)]
+    blanc_indices = set()   # indices dans all_rows_dt des livraisons BLANC
+
+    for i, row in enumerate(all_rows_dt):
         lib = str(row[2] or "").strip().upper()
-        if lib == "REGLEMENT CHEQUE PAR SARCI":
-            montant = safe_float(row[7]) or safe_float(row[8])
-            if montant:
-                cheque_montants.add(round(montant, 0))
+        if lib != "REGLEMENT CHEQUE PAR SARCI":
+            continue
+        cheque_mt = round(safe_float(row[7]) or safe_float(row[8]) or 0, 0)
+        if not cheque_mt:
+            continue
+        # Remonter les lignes précédentes en cherchant des VENTE D'HUILE SARCI
+        cumul = 0.0
+        for j in range(i - 1, max(i - 20, -1), -1):
+            lib_j = str(all_rows_dt[j][2] or "").strip().upper()
+            if "VENTE D'HUILE" not in lib_j:
+                continue
+            vente_mt = round(safe_float(all_rows_dt[j][8]) or
+                             safe_float(all_rows_dt[j][3]) * safe_float(all_rows_dt[j][6]), 0)
+            cumul += vente_mt
+            blanc_indices.add(j)
+            if round(cumul, 0) >= cheque_mt:
+                break
 
     rows = []
-    for row in lignes:
-        if not row[1] or not isinstance(row[1], datetime):
-            continue
+    for idx, row in enumerate(all_rows_dt):
         if row[1].month != mois:
             continue
-        if safe_float(row[3]) == 0:  # ignore lignes vides (pas de poids)
+        if safe_float(row[3]) == 0:
             continue
         lib = str(row[2] or "").strip().upper()
-        # Seules les lignes VENTE D'HUILE SARCI sont des livraisons
         if "VENTE D'HUILE" not in lib and "VENTE HUILE" not in lib:
             continue
-        # circuit : BLANC si le montant de cette vente apparaît dans un règlement chèque
-        vente_apo = safe_float(row[8]) or safe_float(row[3]) * safe_float(row[6])
-        is_blanc = round(vente_apo, 0) in cheque_montants
-        circuit = "blanc" if is_blanc else "noir"
+        circuit = "blanc" if idx in blanc_indices else "noir"
         rows.append({
             "periode_id":     periode_id,
             "client_id":      client_id,
