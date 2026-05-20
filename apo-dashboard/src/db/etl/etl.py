@@ -305,16 +305,34 @@ def parse_ventes_huile(path: Path, mois: int, periode_id: int):
     sarci = sb.table("clients").select("id").eq("reference", "SARCI").single().execute()
     client_id = sarci.data["id"] if sarci.data else None
 
+    # Pré-passe : repérer les lignes "REGLEMENT CHEQUE PAR SARCI"
+    # Une vente est BLANC si elle est immédiatement suivie d'un règlement chèque
+    # avec le même montant (col 8 = vente_apo / avance_sarci selon la ligne)
+    all_rows = [r for r in lignes if r[1] and isinstance(r[1], datetime)]
+    cheque_montants = set()
+    for i, row in enumerate(all_rows):
+        lib = str(row[2] or "").strip().upper()
+        if lib == "REGLEMENT CHEQUE PAR SARCI":
+            montant = safe_float(row[7]) or safe_float(row[8])
+            if montant:
+                cheque_montants.add(round(montant, 0))
+
     rows = []
     for row in lignes:
         if not row[1] or not isinstance(row[1], datetime):
             continue
-        # Certaines lignes ont l'année 2025 par erreur de saisie (ex: janvier 2026 saisi en 2025)
-        # On filtre uniquement par mois, pas par année — le sheet "2026" ne contient que des données 2026
         if row[1].month != mois:
             continue
-        if safe_float(row[3]) == 0:  # ignore lignes vides
+        if safe_float(row[3]) == 0:  # ignore lignes vides (pas de poids)
             continue
+        lib = str(row[2] or "").strip().upper()
+        # Seules les lignes VENTE D'HUILE SARCI sont des livraisons
+        if "VENTE D'HUILE" not in lib and "VENTE HUILE" not in lib:
+            continue
+        # circuit : BLANC si le montant de cette vente apparaît dans un règlement chèque
+        vente_apo = safe_float(row[8]) or safe_float(row[3]) * safe_float(row[6])
+        is_blanc = round(vente_apo, 0) in cheque_montants
+        circuit = "blanc" if is_blanc else "noir"
         rows.append({
             "periode_id":     periode_id,
             "client_id":      client_id,
@@ -324,8 +342,12 @@ def parse_ventes_huile(path: Path, mois: int, periode_id: int):
             "poids_sarci_kg": safe_float(row[4]),
             "prix_kg":        safe_float(row[6]),
             "avance_sarci":   safe_float(row[7]),
+            "circuit":        circuit,
         })
 
+    blanc = sum(1 for r in rows if r["circuit"] == "blanc")
+    noir  = sum(1 for r in rows if r["circuit"] == "noir")
+    log(f"    circuit → {blanc} blanc / {noir} noir")
     inserer("ventes_huile", rows, periode_id, f"(mois {mois})")
 
 

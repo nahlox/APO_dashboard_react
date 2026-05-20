@@ -10,21 +10,22 @@ Chart.register(BarElement, BarController, LineElement, LineController, PointElem
 export default function Revenus({ data, month }) {
   const { currency, eurRate } = useDashboardStore()
   const { kpis, revenus } = data
-  const refCA = useRef(null)
+  const refCA   = useRef(null)
   const chartRef = useRef(null)
 
   const labels    = revenus.caJoursLabels  ?? []
   const caVals    = revenus.caJoursVals    ?? []
   const poidsT    = revenus.caJoursPoidsT  ?? []
   const sarciOk   = revenus.caJoursSarciOk ?? []
+  const blanc     = revenus.blanc ?? {}
+  const noir      = revenus.noir  ?? {}
 
   useEffect(() => {
     chartRef.current?.destroy()
     if (!refCA.current) return
 
-    const caDisplay = currency === 'EUR'
-      ? caVals.map(v => +(v / eurRate).toFixed(0))
-      : caVals
+    const blancVals = (revenus.caJoursBlanc ?? []).map(v => currency === 'EUR' ? +(v / eurRate).toFixed(0) : v)
+    const noirVals  = (revenus.caJoursNoir  ?? []).map(v => currency === 'EUR' ? +(v / eurRate).toFixed(0) : v)
 
     chartRef.current = new Chart(refCA.current, {
       type: 'bar',
@@ -32,59 +33,61 @@ export default function Revenus({ data, month }) {
         labels,
         datasets: [
           {
-            // Axe gauche : tonnes APO livrées
-            label: 'Tonnes livrées (APO)',
-            data: poidsT,
-            backgroundColor: sarciOk.map(ok => ok ? 'rgba(242,140,40,0.55)' : 'rgba(242,140,40,0.22)'),
-            borderColor:     sarciOk.map(ok => ok ? 'rgba(242,140,40,0.9)' : 'rgba(242,140,40,0.5)'),
-            borderWidth: 1,
-            borderRadius: 3,
-            yAxisID: 'yPoids',
-            order: 2,
+            label: 'BLANC — chèque SARCI',
+            data: blancVals,
+            backgroundColor: 'rgba(63,163,77,0.55)',
+            borderColor: 'rgba(63,163,77,0.9)',
+            borderWidth: 1, borderRadius: 3,
+            yAxisID: 'yCA', order: 2,
           },
           {
-            // Axe droit : CA
+            label: 'NOIR — autres règlements',
+            data: noirVals,
+            backgroundColor: 'rgba(224,92,92,0.45)',
+            borderColor: 'rgba(224,92,92,0.8)',
+            borderWidth: 1, borderRadius: 3,
+            yAxisID: 'yCA', order: 2,
+          },
+          {
             type: 'line',
-            label: `CA Huile (${currency})`,
-            data: caDisplay,
-            borderColor: chartColors.green,
-            backgroundColor: 'rgba(63,163,77,0.06)',
-            fill: true, tension: 0.35,
-            pointBackgroundColor: sarciOk.map(ok => ok ? chartColors.green : 'rgba(242,140,40,0.7)'),
-            pointRadius: 5,
-            pointStyle: sarciOk.map(ok => ok ? 'circle' : 'triangle'),
-            yAxisID: 'yCA',
-            order: 1,
+            label: 'Tonnes livrées (APO)',
+            data: poidsT,
+            borderColor: chartColors.gold,
+            backgroundColor: 'rgba(242,140,40,0.06)',
+            fill: false, tension: 0.35,
+            pointBackgroundColor: sarciOk.map(ok => ok ? chartColors.gold : 'rgba(242,140,40,0.4)'),
+            pointRadius: 4, pointStyle: 'circle',
+            yAxisID: 'yPoids', order: 1,
           },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { font: { size: 11 } } },
           tooltip: {
             ...defaultTooltip,
             callbacks: {
               label: c => {
-                if (c.datasetIndex === 0) return `Livré APO : ${c.raw.toFixed(1)} T`
+                if (c.datasetIndex === 2) return `Tonnes : ${c.raw.toFixed(1)} T`
                 const fcfa = currency === 'EUR' ? c.raw * eurRate : c.raw
-                const confirmed = sarciOk[c.dataIndex]
-                return `CA : ${fmt.currency(fcfa, currency, eurRate)}${confirmed ? '' : ' ⏳ poids SARCI en attente'}`
+                const tag  = c.datasetIndex === 0 ? '✓ BLANC' : '○ NOIR'
+                return `${tag} : ${fmt.currency(fcfa, currency, eurRate)}`
               },
             },
           },
         },
         scales: {
-          x: { grid: { display: false } },
-          yPoids: {
-            position: 'left',
-            grid: { color: 'rgba(242,140,40,0.06)' },
-            ticks: { callback: v => v.toFixed(0) + ' T' },
-          },
+          x: { grid: { display: false }, stacked: true },
           yCA: {
-            position: 'right',
-            grid: { display: false },
-            ticks: { callback: v => currency === 'EUR' ? v.toFixed(0) + ' €' : (v / 1_000_000).toFixed(1) + ' M' },
+            position: 'left', stacked: true,
+            grid: { color: 'rgba(242,140,40,0.06)' },
+            ticks: { callback: v => currency === 'EUR' ? (v/1000).toFixed(0)+'k€' : (v/1_000_000).toFixed(0)+' M' },
+          },
+          yPoids: {
+            position: 'right', grid: { display: false },
+            ticks: { callback: v => v.toFixed(0) + ' T', font: { size: 10 } },
           },
         },
       },
@@ -92,21 +95,43 @@ export default function Revenus({ data, month }) {
     return () => chartRef.current?.destroy()
   }, [month, currency, eurRate])
 
+  const pctBlanc = kpis.caHuileFCFA > 0 ? (blanc.caFCFA / kpis.caHuileFCFA * 100).toFixed(1) : 0
+  const pctNoir  = kpis.caHuileFCFA > 0 ? (noir.caFCFA  / kpis.caHuileFCFA * 100).toFixed(1) : 0
+
   return (
     <section>
       <div className="section-title">Revenus & Ventes</div>
       <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {monthFull(data)}</div>
 
       <div className="kpi-grid">
-        <KPICard label="CA Total"           value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}  valueColor="green" sub={currency} accent="accent-green" />
-        <KPICard label="CA Huile de Palme"  value={fmt.kpiValue(kpis.caHuileFCFA, currency, eurRate)}  valueColor="gold"  sub={`${currency} · ${(kpis.caHuileFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
-        <KPICard label="CA Noix Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)}   sub={`${currency} · ${(kpis.caNoisFCFA / kpis.caTotalFCFA * 100).toFixed(1)}% du CA`} />
-        <KPICard label="Huile Vendue"       value={fmt.tonnes(kpis.huileVendueT)}              sub="tonnes livrées" />
+        <KPICard label="CA Total"          value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}        valueColor="green" sub={currency} accent="accent-green" />
+        <KPICard label="CA Huile BLANC"    value={fmt.kpiValue(blanc.caFCFA ?? 0, currency, eurRate)}        valueColor="green" sub={`${pctBlanc}% · ${(blanc.poidsT ?? 0).toFixed(1)} T · chèque SARCI`} accent="accent-green" />
+        <KPICard label="CA Huile NOIR"     value={fmt.kpiValue(noir.caFCFA ?? 0, currency, eurRate)}         valueColor="gold"  sub={`${pctNoir}% · ${(noir.poidsT ?? 0).toFixed(1)} T · autres règlements`} />
+        <KPICard label="Huile Vendue"      value={fmt.tonnes(kpis.huileVendueT)}                             sub={`${(blanc.poidsT ?? 0).toFixed(0)} T blanc + ${(noir.poidsT ?? 0).toFixed(0)} T noir`} />
       </div>
 
+      {/* Graines correspondantes */}
+      {(blanc.grainesT > 0 || noir.grainesT > 0) && (
+        <div className="chart-card" style={{ marginBottom: 16, padding: '12px 20px' }}>
+          <div className="chart-title" style={{ marginBottom: 8 }}>Graines correspondantes (via TE {kpis.tauxExtraction?.toFixed(1)}%)</div>
+          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', fontSize: 13 }}>
+            <span>
+              <span style={{ color: 'rgba(63,163,77,0.9)', fontWeight: 700 }}>BLANC</span>
+              {' — '}<strong>{(blanc.grainesT ?? 0).toFixed(0)} T</strong> de régimes
+              {blanc.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {blanc.prixMoyKg.toFixed(0)} F/kg huile</span>}
+            </span>
+            <span>
+              <span style={{ color: 'rgba(224,92,92,0.9)', fontWeight: 700 }}>NOIR</span>
+              {' — '}<strong>{(noir.grainesT ?? 0).toFixed(0)} T</strong> de régimes
+              {noir.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {noir.prixMoyKg.toFixed(0)} F/kg huile</span>}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="chart-card" style={{ marginBottom: 24 }}>
-        <div className="chart-title">Livraisons & CA Journalier Huile</div>
-        <div className="chart-subtitle">Barres = tonnes livrées (poids APO) · Ligne = CA ({currency}) · ⏳ triangle = poids SARCI en attente</div>
+        <div className="chart-title">CA Journalier — BLANC vs NOIR</div>
+        <div className="chart-subtitle">Barres empilées = CA par circuit · Ligne = tonnes livrées (APO)</div>
         <div className="chart-container" style={{ height: 260 }}>
           <canvas ref={refCA} />
         </div>
@@ -121,22 +146,22 @@ export default function Revenus({ data, month }) {
             <tr>
               <th>Produit</th>
               <th>Quantité</th>
-              <th>Prix Unitaire</th>
+              <th>Prix Moyen</th>
               <th style={{ textAlign: 'right' }}>Total {currency}</th>
-              <th style={{ textAlign: 'right' }}>% CA</th>
+              <th style={{ textAlign: 'right' }}>% CA Huile</th>
             </tr>
           </thead>
           <tbody>
             {revenus.produits.map((p, i) => (
-              <tr key={i}>
-                <td>{p.produit}</td>
+              <tr key={i} style={p.circuit ? { borderLeft: `3px solid ${p.circuit === 'blanc' ? 'rgba(63,163,77,0.7)' : 'rgba(224,92,92,0.6)'}` } : {}}>
+                <td style={{ fontWeight: p.circuit ? 600 : 400 }}>{p.produit}</td>
                 <td>{p.quantite}</td>
-                <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 13 }}>{p.prixUnitaire}</td>
-                <td className="num" style={{ color: 'var(--gold)' }}>
+                <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{p.prixUnitaire}</td>
+                <td className="num" style={{ color: p.circuit === 'blanc' ? 'var(--green)' : p.circuit === 'noir' ? 'rgba(224,92,92,0.9)' : 'var(--gold)' }}>
                   {p.totalFCFA > 0 ? fmt.currency(p.totalFCFA, currency, eurRate) : '—'}
                 </td>
                 <td className="num" style={{ color: 'var(--text-dim)' }}>
-                  {p.totalFCFA > 0 ? (p.totalFCFA / kpis.caTotalFCFA * 100).toFixed(1) + '%' : '—'}
+                  {p.totalFCFA > 0 && kpis.caHuileFCFA > 0 ? (p.totalFCFA / kpis.caHuileFCFA * 100).toFixed(1) + '%' : '—'}
                 </td>
               </tr>
             ))}

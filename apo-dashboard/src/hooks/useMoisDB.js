@@ -200,28 +200,57 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const stockHuileKg          = (lastProdJourAvecStock?.stock_huile_kg || 0)
   const TANK_CAPACITE_KG      = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
 
+  // ── Blanc / Noir split ────────────────────────────────────────────────────
+  const ventesHuileBloc = { blanc: [], noir: [] }
+  for (const r of ventesHuile) {
+    const c = r.circuit === 'blanc' ? 'blanc' : 'noir'
+    ventesHuileBloc[c].push(r)
+  }
+  const calcCA = rows => rows.reduce((s, r) => {
+    const p = r.poids_sarci_kg > 0 ? r.poids_sarci_kg : r.poids_apo_kg
+    return s + p * (r.prix_kg || 0)
+  }, 0)
+  const calcPoidsT = rows => rows.reduce((s, r) => s + (r.poids_apo_kg || 0), 0) / 1000
+
+  const caHuileBlancFCFA = calcCA(ventesHuileBloc.blanc)
+  const caHuileNoirFCFA  = calcCA(ventesHuileBloc.noir)
+  const poidsHuileBlancT = calcPoidsT(ventesHuileBloc.blanc)
+  const poidsHuileNoirT  = calcPoidsT(ventesHuileBloc.noir)
+
+  // Graines correspondantes (via TE) : blanc_graines = huile_blanc / TE
+  const teRatio         = te > 0 ? te / 100 : 0
+  const grainesBlancT   = teRatio > 0 ? +(poidsHuileBlancT / teRatio).toFixed(1) : 0
+  const grainesNoirT    = teRatio > 0 ? +(poidsHuileNoirT  / teRatio).toFixed(1) : 0
+  const prixMoyBlancKg  = ventesHuileBloc.blanc.length
+    ? ventesHuileBloc.blanc.reduce((s, r) => s + (r.prix_kg || 0), 0) / ventesHuileBloc.blanc.length
+    : 0
+  const prixMoyNoirKg   = ventesHuileBloc.noir.length
+    ? ventesHuileBloc.noir.reduce((s, r) => s + (r.prix_kg || 0), 0) / ventesHuileBloc.noir.length
+    : 0
+
   // CA journalier : agrégat par jour avec suivi confirmation SARCI
-  // montant_fcfa DB = poids_apo * prix_kg (colonne générée)
-  // CA correct = poids_sarci * prix_kg si SARCI confirmé, sinon poids_apo * prix_kg (provisoire)
   const joursData = {}
   for (const r of ventesHuile) {
     const d = r.date_vente || ''
-    if (!joursData[d]) joursData[d] = { ca: 0, poidsApo: 0, sarciOk: true }
+    if (!joursData[d]) joursData[d] = { ca: 0, poidsApo: 0, sarciOk: true, blanc: 0, noir: 0 }
     const poidsApo   = r.poids_apo_kg   || 0
     const poidsSarci = r.poids_sarci_kg || 0
     const prix       = r.prix_kg        || 0
     const sarciConfirme = poidsSarci > 0
-    // CA = poids SARCI si confirmé (facturé sur poids client), sinon poids APO (provisoire)
     const caLigne = sarciConfirme ? poidsSarci * prix : poidsApo * prix
     joursData[d].ca       += caLigne
     joursData[d].poidsApo += poidsApo
     if (!sarciConfirme) joursData[d].sarciOk = false
+    if (r.circuit === 'blanc') joursData[d].blanc += caLigne
+    else                       joursData[d].noir  += caLigne
   }
   const caJoursSorted  = Object.keys(joursData).sort()
   const caJoursLabels  = caJoursSorted.map(d => d.slice(8, 10))
   const caJoursVals    = caJoursSorted.map(d => joursData[d].ca)
   const caJoursPoidsT  = caJoursSorted.map(d => joursData[d].poidsApo / 1000)
   const caJoursSarciOk = caJoursSorted.map(d => joursData[d].sarciOk)
+  const caJoursBlanc   = caJoursSorted.map(d => joursData[d].blanc)
+  const caJoursNoir    = caJoursSorted.map(d => joursData[d].noir)
 
   // ── Top fournisseurs ──────────────────────────────────────────────────────
   const fournisseursItems = topFournisseurs.map(r => ({
@@ -278,6 +307,8 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     kpis: {
       caTotalFCFA:          caTotal,
       caHuileFCFA:          caHuile,
+      caHuileBlancFCFA:     caHuileBlancFCFA,
+      caHuileNoirFCFA:      caHuileNoirFCFA,
       caHuileDetail:        `${prixHuile.toFixed(0)} F/kg × ${huileVendueT} T livrées`,
       caNoisFCFA:           caPalmiste,
       caHuileFlorentinFCFA: caFlorentin,
@@ -403,15 +434,20 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     },
     revenus: {
       produits: [
-        { produit: 'Huile de Palme CPO', quantite: `${huileVendueT.toLocaleString('fr-FR')} T`,  prixUnitaire: `${prixHuile.toFixed(0)} F/kg`, totalFCFA: caHuile    },
-        { produit: 'Noix de Palmiste',   quantite: `${palmisteVendT.toLocaleString('fr-FR')} T`, prixUnitaire: '60 F/kg',                      totalFCFA: caPalmiste },
+        { produit: 'Huile CPO — BLANC (chèque SARCI)', quantite: `${poidsHuileBlancT.toFixed(1)} T`, prixUnitaire: prixMoyBlancKg > 0 ? `${prixMoyBlancKg.toFixed(0)} F/kg` : '—', totalFCFA: caHuileBlancFCFA, circuit: 'blanc' },
+        { produit: 'Huile CPO — NOIR (autres)',         quantite: `${poidsHuileNoirT.toFixed(1)} T`,  prixUnitaire: prixMoyNoirKg  > 0 ? `${prixMoyNoirKg.toFixed(0)} F/kg`  : '—', totalFCFA: caHuileNoirFCFA,  circuit: 'noir'  },
+        { produit: 'Noix de Palmiste',                  quantite: `${palmisteVendT.toLocaleString('fr-FR')} T`, prixUnitaire: '60 F/kg', totalFCFA: caPalmiste },
         ...(caFlorentin > 0 ? [{ produit: 'Huile Florentin', quantite: '—', prixUnitaire: '—', totalFCFA: caFlorentin }] : []),
         ...(caBassin    > 0 ? [{ produit: 'Huile Bassin',    quantite: '—', prixUnitaire: '—', totalFCFA: caBassin    }] : []),
       ],
+      blanc: { caFCFA: caHuileBlancFCFA, poidsT: poidsHuileBlancT, grainesT: grainesBlancT, prixMoyKg: prixMoyBlancKg },
+      noir:  { caFCFA: caHuileNoirFCFA,  poidsT: poidsHuileNoirT,  grainesT: grainesNoirT,  prixMoyKg: prixMoyNoirKg  },
       caJoursLabels,
       caJoursVals,
       caJoursPoidsT,
       caJoursSarciOk,
+      caJoursBlanc,
+      caJoursNoir,
     },
     charges: { topDepenses },
     fournisseurs: {
@@ -457,7 +493,7 @@ export function useMoisDB() {
                 .then(r => r.data || []),
 
               supabase.from('ventes_huile')
-                .select('date_vente, montant_fcfa, poids_apo_kg, poids_sarci_kg, prix_kg')
+                .select('date_vente, montant_fcfa, poids_apo_kg, poids_sarci_kg, prix_kg, circuit')
                 .eq('periode_id', periodeId)
                 .order('date_vente')
                 .then(r => r.data || []),
