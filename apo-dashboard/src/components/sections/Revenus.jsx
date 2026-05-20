@@ -118,12 +118,12 @@ export default function Revenus({ data, month }) {
           <div className="chart-title" style={{ marginBottom: 8 }}>Graines correspondantes (via TE {kpis.tauxExtraction?.toFixed(1)}%)</div>
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', fontSize: 13 }}>
             <span>
-              <span style={{ color: 'rgba(63,163,77,0.9)', fontWeight: 700 }}>BLANC</span>
+              <span style={{ color: 'rgba(210,180,80,0.9)', fontWeight: 700 }}>BLANC</span>
               {' — '}<strong>{(blanc.grainesT ?? 0).toFixed(0)} T</strong> de régimes
               {blanc.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {blanc.prixMoyKg.toFixed(0)} F/kg huile</span>}
             </span>
             <span>
-              <span style={{ color: 'rgba(224,92,92,0.9)', fontWeight: 700 }}>NOIR</span>
+              <span style={{ color: 'rgba(180,180,180,0.85)', fontWeight: 700 }}>NOIR</span>
               {' — '}<strong>{(noir.grainesT ?? 0).toFixed(0)} T</strong> de régimes
               {noir.prixMoyKg > 0 && <span style={{ color: 'var(--text-dim)' }}> · à {noir.prixMoyKg.toFixed(0)} F/kg huile</span>}
             </span>
