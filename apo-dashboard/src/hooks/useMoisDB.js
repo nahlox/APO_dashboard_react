@@ -343,10 +343,11 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
       // ── I. CA ──────────────────────────────────────────────────────────────
       produits: [
-        { label: `Huile de palme CPO (${prixHuile.toFixed(0)} F/kg × ${huileVendueT} T)`, pertonne: huileProduiteT ? Math.round(caHuile / huileProduiteT) : 0, total: caHuile },
-        { label: `Noix de palmiste (60 F/kg × ${palmisteVendT} T)`,                        pertonne: huileProduiteT ? Math.round(caPalmiste / huileProduiteT) : 0, total: caPalmiste },
-        { label: 'Huile florentin',                                                         pertonne: huileProduiteT ? Math.round(caFlorentin / huileProduiteT) : 0, total: caFlorentin },
-        ...(caBassin > 0 ? [{ label: 'Huile bassin lagunage', pertonne: huileProduiteT ? Math.round(caBassin / huileProduiteT) : 0, total: caBassin }] : []),
+        ...(caHuileBlancFCFA > 0 ? [{ label: `↳ BLANC — chèque SARCI (${prixMoyBlancKg.toFixed(0)} F/kg × ${poidsHuileBlancT.toFixed(1)} T)`, pertonne: huileProduiteT ? Math.round(caHuileBlancFCFA / huileProduiteT) : 0, total: caHuileBlancFCFA, circuit: 'blanc' }] : []),
+        ...(caHuileNoirFCFA  > 0 ? [{ label: `↳ NOIR  — autres règlements (${prixMoyNoirKg.toFixed(0)} F/kg × ${poidsHuileNoirT.toFixed(1)} T)`,  pertonne: huileProduiteT ? Math.round(caHuileNoirFCFA  / huileProduiteT) : 0, total: caHuileNoirFCFA,  circuit: 'noir'  }] : []),
+        { label: `Noix de palmiste (60 F/kg × ${palmisteVendT} T)`,  pertonne: huileProduiteT ? Math.round(caPalmiste / huileProduiteT) : 0, total: caPalmiste },
+        { label: 'Huile florentin',                                    pertonne: huileProduiteT ? Math.round(caFlorentin / huileProduiteT) : 0, total: caFlorentin },
+        ...(caBassin > 0 ? [{ label: 'Huile bassin lagunage',         pertonne: huileProduiteT ? Math.round(caBassin / huileProduiteT) : 0,    total: caBassin }] : []),
       ],
       totalProduitsTotal: caTotal,
       totalProduitsTonne: huileProduiteT ? Math.round(caTotal / huileProduiteT) : 0,
@@ -356,6 +357,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
         label:    `Graines/huile vendue (${prixRegime.toFixed(2)} F/kg × ${huileVendueT && te ? Math.round(huileVendueT / (te / 100)) : regTraitesT} T)`,
         pertonne: huileProduiteT ? Math.round(coutMP / huileProduiteT) : 0,
         total:    -coutMP,
+        // Répartition BLANC / NOIR via TE
+        blanc: grainesBlancT > 0 ? { label: `↳ BLANC — ${grainesBlancT.toFixed(0)} T régimes estimées`, pertonne: huileProduiteT ? Math.round((grainesBlancT * 1000 * prixRegime) / huileProduiteT) : 0, total: -(grainesBlancT * 1000 * prixRegime) } : null,
+        noir:  grainesNoirT  > 0 ? { label: `↳ NOIR  — ${grainesNoirT.toFixed(0)} T régimes estimées`,  pertonne: huileProduiteT ? Math.round((grainesNoirT  * 1000 * prixRegime) / huileProduiteT) : 0, total: -(grainesNoirT  * 1000 * prixRegime) } : null,
       },
       margeBruteTotal:  margeBrute,
       margeBruteTonne:  huileProduiteT ? Math.round(margeBrute / huileProduiteT) : 0,

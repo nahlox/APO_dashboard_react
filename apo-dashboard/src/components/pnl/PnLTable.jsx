@@ -126,7 +126,8 @@ export default function PnLTable({ pnl, data }) {
         <SectionHeader title="I. Chiffre d'affaires" color="var(--green)" />
         {pnl.produits.map((row, i) => (
           <DataRow key={i} label={row.label} pertonne={row.pertonne} total={row.total}
-            color={row.total > 0 ? 'var(--text)' : 'var(--text-dim)'} indent />
+            color={row.circuit === 'blanc' ? 'rgba(63,163,77,0.9)' : row.circuit === 'noir' ? 'rgba(224,92,92,0.85)' : row.total > 0 ? 'var(--text)' : 'var(--text-dim)'}
+            indent />
         ))}
         <div className="pnl-grid" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderTop: '1px solid rgba(76,175,122,0.2)', background: 'rgba(76,175,122,0.06)' }}>
           <span style={{ ...styles.totalLabel, color: 'var(--green)' }}>Total CA</span>
@@ -139,6 +140,8 @@ export default function PnLTable({ pnl, data }) {
       <div style={{ background: 'rgba(242,140,40,0.04)', borderRadius: 8, marginBottom: 4, overflow: 'hidden', border: '1px solid rgba(242,140,40,0.12)' }}>
         <SectionHeader title="II. Coût matière première" color="var(--gold)" />
         <DataRow label={pnl.coutMP.label} pertonne={pnl.coutMP.pertonne} total={pnl.coutMP.total} color="var(--gold)" indent />
+        {pnl.coutMP.blanc && <DataRow label={pnl.coutMP.blanc.label} pertonne={pnl.coutMP.blanc.pertonne} total={pnl.coutMP.blanc.total} color="rgba(63,163,77,0.85)" indent />}
+        {pnl.coutMP.noir  && <DataRow label={pnl.coutMP.noir.label}  pertonne={pnl.coutMP.noir.pertonne}  total={pnl.coutMP.noir.total}  color="rgba(224,92,92,0.75)"  indent />}
       </div>
 
       {/* ── MARGE BRUTE ────────────────────────────────────── */}
