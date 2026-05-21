@@ -39,9 +39,7 @@ export default function MonthRangeFilter({ allMois = [] }) {
   }
 
   const isFullRange = from === minDispo && to === maxDispo
-  const rangeLabel = from === to
-    ? MOIS_LIST[from - 1].label
-    : `${MOIS_LIST[from - 1].label} → ${MOIS_LIST[to - 1].label}`
+  const nbMois = to - from + 1
 
   return (
     <div className="month-range-filter">
@@ -65,7 +63,7 @@ export default function MonthRangeFilter({ allMois = [] }) {
         )}
       </div>
       <div className="mrf-summary">
-        {rangeLabel} · {to - from + 1} mois
+        {nbMois} mois
       </div>
     </div>
   )

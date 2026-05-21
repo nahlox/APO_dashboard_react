@@ -504,6 +504,7 @@ body.light .pnl-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0
   z-index: 60;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   padding: 10px clamp(16px, 3vw, 48px);
   background: var(--dark2);
@@ -549,7 +550,6 @@ body.light .mrf-select { background: #FFFFFF; }
 }
 .mrf-reset:hover { color: var(--gold); border-color: var(--gold); }
 .mrf-summary {
-  margin-left: auto;
   font-size: 12px;
   color: var(--gold);
   font-family: 'DM Mono', monospace;
@@ -562,7 +562,7 @@ body.light .mrf-select { background: #FFFFFF; }
     padding: 8px 14px;
     gap: 8px;
   }
-  .mrf-summary { width: 100%; margin-left: 0; text-align: right; }
+  .mrf-summary { width: 100%; text-align: center; }
 }
 
 /* ===== NAVIGATION TABS ===== */

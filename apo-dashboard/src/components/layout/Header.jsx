@@ -21,9 +21,7 @@ export default function Header() {
           <span>Agro Palm Oil — Tableau de Bord Global</span>
         </div>
       </div>
-      <div className="header-right">
-        <div className="updated">Données comptables consolidées</div>
-      </div>
+      <div className="header-right" />
     </header>
   )
 }

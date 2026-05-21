@@ -60,7 +60,6 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
   const range       = rangeLabel(filteredMois)
   const sum         = sumLabel(filteredMois)
   const year        = filteredMois[0]?.data._etl.annee ?? ''
-  const sectionSub  = `Comparaison mensuelle ${shortLabels.join(' · ')} ${year}`
 
   useEffect(() => {
     Object.values(charts.current).forEach(c => c?.destroy())
@@ -193,7 +192,6 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
   return (
     <div>
       <div className="section-title">Vue Globale — Performance</div>
-      <div className="section-subtitle">{sectionSub}</div>
 
       {/* KPIs cumulés */}
       <div className="kpi-grid">
