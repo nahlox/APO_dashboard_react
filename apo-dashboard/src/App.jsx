@@ -127,7 +127,7 @@ export default function App() {
                   <GlobalOverview filteredMois={filteredMois} aggregatedData={aggregatedData} />
                 )}
                 {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length > 1) && (
-                  <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} />
+                  <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} allMois={allMois} />
                 )}
               </>
             )}

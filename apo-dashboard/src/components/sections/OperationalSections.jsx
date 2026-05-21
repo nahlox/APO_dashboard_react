@@ -1,10 +1,258 @@
 import { useEffect, useRef } from 'react'
-import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
-import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
+import {
+  Chart, BarElement, BarController,
+  LineElement, LineController, PointElement, Filler,
+  CategoryScale, LinearScale, Tooltip, Legend,
+} from 'chart.js'
+import { fmt, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { monthFull } from '../../lib/monthUtils'
 
-Chart.register(BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend)
+Chart.register(
+  BarElement, BarController,
+  LineElement, LineController, PointElement, Filler,
+  CategoryScale, LinearScale, Tooltip, Legend,
+)
+
+// ── Palette fournisseurs ──────────────────────────────────────
+const F_PALETTE = [
+  ['rgba(242,140,40,1)',  'rgba(242,140,40,0.30)'],
+  ['rgba(100,190,100,1)','rgba(100,190,100,0.30)'],
+  ['rgba(90,155,220,1)', 'rgba(90,155,220,0.30)'],
+  ['rgba(210,100,130,1)','rgba(210,100,130,0.30)'],
+  ['rgba(160,120,220,1)','rgba(160,120,220,0.30)'],
+  ['rgba(60,195,180,1)', 'rgba(60,195,180,0.30)'],
+  ['rgba(240,185,60,1)', 'rgba(240,185,60,0.30)'],
+  ['rgba(190,130,90,1)', 'rgba(190,130,90,0.30)'],
+]
+
+const MONTH_LABELS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
+const MONTH_SHORT  = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc']
+
+function toShortMois(libelle) {
+  const idx = MONTH_LABELS.indexOf((libelle || '').toLowerCase())
+  return idx >= 0 ? MONTH_SHORT[idx] : (libelle ?? '').slice(0, 3)
+}
+
+// ── Sparkline SVG (mini inline chart) ────────────────────────
+function Sparkline({ values, width = 68, height = 26 }) {
+  const nonZero = values.filter(v => v > 0)
+  if (nonZero.length < 2) {
+    return <svg width={width} height={height}><text x="4" y="17" fill="var(--text-dim)" fontSize="9">—</text></svg>
+  }
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = max - min || 1
+  const pad = 4
+  const pts = values.map((v, i) => [
+    pad + (i / (values.length - 1)) * (width - pad * 2),
+    height - pad - ((v - min) / range) * (height - pad * 2),
+  ])
+  const dLine = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+  const dArea = `${dLine} L${pts[pts.length - 1][0].toFixed(1)},${height} L${pts[0][0].toFixed(1)},${height} Z`
+  const last   = pts[pts.length - 1]
+  const isUp   = values[values.length - 1] >= values[values.length - 2]
+  const dotCol = isUp ? 'var(--green)' : 'var(--red)'
+
+  return (
+    <svg width={width} height={height} style={{ overflow: 'visible', display: 'block' }}>
+      <path d={dArea} fill="rgba(242,140,40,0.12)" />
+      <path d={dLine} fill="none" stroke="rgba(242,140,40,0.9)" strokeWidth={1.5} strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r={2.5} fill={dotCol} />
+    </svg>
+  )
+}
+
+// ── Badge computation ─────────────────────────────────────────
+function getBadge(name, rankIndex, allMois) {
+  if (!allMois || allMois.length === 0) return null
+  const total       = allMois.length
+  const appearances = allMois.filter(m =>
+    m.data?.fournisseurs?.liste?.some(f => f.name === name)
+  ).length
+  const pct = appearances / total
+
+  // Trend check: last vs second-to-last month appearance
+  const history = allMois
+    .map(m => m.data?.fournisseurs?.liste?.find(f => f.name === name))
+    .filter(Boolean)
+  let atRisk = false
+  if (history.length >= 2) {
+    const last = history[history.length - 1].poids
+    const prev = history[history.length - 2].poids
+    if (prev > 0 && last < prev * 0.60) atRisk = true
+  }
+
+  if (atRisk)          return { emoji: '⚠️', label: 'À risque',  cls: 'badge-risk' }
+  if (rankIndex === 0) return { emoji: '🥇', label: 'Top',       cls: 'badge-top' }
+  if (rankIndex <= 2 && pct >= 0.75) return { emoji: '💎', label: 'Premium',  cls: 'badge-premium' }
+  if (pct >= 0.65)     return { emoji: '🔄', label: 'Régulier',  cls: 'badge-regular' }
+  if (appearances <= 1) return { emoji: '🆕', label: 'Nouveau',  cls: 'badge-new' }
+  return null
+}
+
+// ── Stacked area chart — évolution mensuelle ─────────────────
+function StackedAreaChart({ fournisseurs, allMois, month }) {
+  const canvasRef = useRef(null)
+  const chartRef  = useRef(null)
+
+  const topNames = fournisseurs.liste.slice(0, Math.min(6, fournisseurs.liste.length)).map(f => f.name)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    if (!canvasRef.current || topNames.length === 0 || allMois.length < 2) return
+
+    const labels   = allMois.map(m => toShortMois(m.data._etl?.mois))
+    const datasets = topNames.map((name, i) => ({
+      label:           name.length > 20 ? name.slice(0, 20) + '…' : name,
+      data:            allMois.map(m => {
+        const f = m.data?.fournisseurs?.liste?.find(f => f.name === name)
+        return f ? +(f.poids / 1000).toFixed(1) : 0
+      }),
+      borderColor:     F_PALETTE[i % F_PALETTE.length][0],
+      backgroundColor: F_PALETTE[i % F_PALETTE.length][1],
+      fill:            true,
+      tension:         0.4,
+      borderWidth:     2,
+      pointRadius:     3,
+      pointHoverRadius: 5,
+    }))
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display:  true,
+            position: 'top',
+            labels: { color: 'var(--text-dim)', font: { size: 11 }, padding: 10, boxWidth: 12 },
+          },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('fr-FR')} T`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: 'var(--text-dim)', font: { size: 11 } },
+          },
+          y: {
+            stacked: true,
+            grid:    { color: 'rgba(242,140,40,0.06)' },
+            ticks: {
+              color:    'var(--text-dim)',
+              callback: v => v.toLocaleString('fr-FR') + ' T',
+            },
+          },
+        },
+      },
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [month, allMois.length])
+
+  if (allMois.length < 2) return null
+
+  return (
+    <div className="chart-card">
+      <div className="chart-title">Évolution Mensuelle — Top Fournisseurs</div>
+      <div className="chart-subtitle">Volume livré mois par mois (en tonnes) — empilé par fournisseur</div>
+      <div className="chart-container" style={{ height: 280 }}>
+        <canvas ref={canvasRef} />
+      </div>
+    </div>
+  )
+}
+
+// ── Heatmap fournisseur × mois ────────────────────────────────
+function HeatmapGrid({ fournisseurs, allMois }) {
+  if (allMois.length < 2) return null
+
+  const topNames = fournisseurs.liste.slice(0, Math.min(8, fournisseurs.liste.length)).map(f => f.name)
+  const months   = allMois.map(m => toShortMois(m.data._etl?.mois))
+
+  const maxByRow = topNames.map(name =>
+    Math.max(1, ...allMois.map(m => m.data?.fournisseurs?.liste?.find(f => f.name === name)?.poids || 0))
+  )
+
+  return (
+    <div className="chart-card">
+      <div className="chart-title">Heatmap Fournisseurs × Mois</div>
+      <div className="chart-subtitle">Intensité relative par fournisseur — valeur en tonnes</div>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <div style={{
+          display:               'grid',
+          gridTemplateColumns:   `minmax(110px,160px) repeat(${months.length}, minmax(40px,1fr))`,
+          gap:                   3,
+          minWidth:              months.length * 52 + 170,
+        }}>
+          {/* Header */}
+          <div />
+          {months.map((m, ci) => (
+            <div key={ci} style={{
+              fontSize: 10, color: 'var(--text-dim)', textAlign: 'center',
+              padding: '3px 2px', fontFamily: "'DM Mono', monospace",
+            }}>
+              {m}
+            </div>
+          ))}
+
+          {/* Rows */}
+          {topNames.map((name, ri) => (
+            <>
+              <div
+                key={`lbl-${ri}`}
+                title={name}
+                style={{
+                  fontSize: 11, color: 'var(--text-primary)',
+                  padding: '6px 8px 6px 0', alignSelf: 'center',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+              >
+                {name.length > 20 ? name.slice(0, 20) + '…' : name}
+              </div>
+              {allMois.map((m, ci) => {
+                const val       = m.data?.fournisseurs?.liste?.find(f => f.name === name)?.poids || 0
+                const intensity = val / maxByRow[ri]
+                const alpha     = intensity > 0 ? 0.15 + intensity * 0.72 : 0
+                return (
+                  <div
+                    key={`cell-${ri}-${ci}`}
+                    title={`${name} — ${toShortMois(m.data._etl?.mois)}: ${Math.round(val / 1000)} T`}
+                    style={{
+                      height:          34,
+                      borderRadius:    5,
+                      background:      intensity > 0
+                        ? `rgba(242,140,40,${alpha.toFixed(2)})`
+                        : 'rgba(255,255,255,0.03)',
+                      display:         'flex',
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      fontSize:        9,
+                      color:           intensity > 0.55 ? 'rgba(255,255,255,0.92)' : 'var(--text-dim)',
+                      fontFamily:      "'DM Mono', monospace",
+                      cursor:          'default',
+                      transition:      'background 0.15s',
+                    }}
+                  >
+                    {val > 0 ? Math.round(val / 1000) + 'T' : '—'}
+                  </div>
+                )
+              })}
+            </>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── CHARGES ──────────────────────────────────────────────────
 export function Charges({ data, month }) {
@@ -169,51 +417,86 @@ export function Charges({ data, month }) {
 }
 
 // ── FOURNISSEURS ──────────────────────────────────────────────
-export function Fournisseurs({ data, month }) {
+export function Fournisseurs({ data, month, allMois = [] }) {
   const { currency, eurRate } = useDashboardStore()
   const { fournisseurs } = data
+
   return (
     <section>
       <div className="section-title">Fournisseurs</div>
-      <div className="section-subtitle">Classement et volumes d'achat — {monthFull(data)}</div>
+      <div className="section-subtitle">Analyse multi-dimensionnelle — {monthFull(data)}</div>
+
+      {/* ── Item 5 : Tableau enrichi badges + sparklines ── */}
       <div className="chart-card">
-        <div className="chart-title">Top Fournisseurs par Volume</div>
-        <div className="chart-subtitle">Poids (kg), prix unitaire et montant total payé</div>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Fournisseur</th>
-              <th style={{ textAlign: 'right' }}>Poids (kg)</th>
-              <th style={{ textAlign: 'right' }}>Prix F/kg</th>
-              <th style={{ textAlign: 'right' }}>Montant {currency}</th>
-              <th>Part</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fournisseurs.liste.map((f, i) => {
-              const pct = (f.poids / fournisseurs.totalPoidsKg * 100).toFixed(1)
-              return (
-                <tr key={i}>
-                  <td className="rank">{i + 1}</td>
-                  <td>{f.name}</td>
-                  <td className="num">{fmt.full(f.poids)}</td>
-                  <td className="num">{f.prix} F/kg</td>
-                  <td className="num" style={{ color: 'var(--gold)' }}>{fmt.currency(f.montant, currency, eurRate)}</td>
-                  <td>
-                    <div className="mini-bar-wrap" style={{ minWidth: 120 }}>
-                      <div className="mini-bar">
-                        <div className="mini-bar-fill" style={{ width: pct + '%' }} />
+        <div className="chart-title">Top Fournisseurs — Tableau Enrichi</div>
+        <div className="chart-subtitle">Badges de profil · tendance sparkline · volume et montant</div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fournisseur</th>
+                <th>Profil</th>
+                {allMois.length >= 2 && <th style={{ textAlign: 'center' }}>Tendance</th>}
+                <th style={{ textAlign: 'right' }}>Poids (kg)</th>
+                <th style={{ textAlign: 'right' }}>Prix F/kg</th>
+                <th style={{ textAlign: 'right' }}>Montant {currency}</th>
+                <th>Part</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fournisseurs.liste.map((f, i) => {
+                const pct       = (f.poids / fournisseurs.totalPoidsKg * 100).toFixed(1)
+                const badge     = getBadge(f.name, i, allMois)
+                const sparkVals = allMois.map(m =>
+                  m.data?.fournisseurs?.liste?.find(x => x.name === f.name)?.poids || 0
+                )
+                return (
+                  <tr key={i}>
+                    <td className="rank">{i + 1}</td>
+                    <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.name}
+                    </td>
+                    <td>
+                      {badge && (
+                        <span className={`fourn-badge ${badge.cls}`}>
+                          {badge.emoji} {badge.label}
+                        </span>
+                      )}
+                    </td>
+                    {allMois.length >= 2 && (
+                      <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                        <Sparkline values={sparkVals} />
+                      </td>
+                    )}
+                    <td className="num">{fmt.full(f.poids)}</td>
+                    <td className="num">{f.prix} F/kg</td>
+                    <td className="num" style={{ color: 'var(--gold)' }}>
+                      {fmt.currency(f.montant, currency, eurRate)}
+                    </td>
+                    <td>
+                      <div className="mini-bar-wrap" style={{ minWidth: 100 }}>
+                        <div className="mini-bar">
+                          <div className="mini-bar-fill" style={{ width: pct + '%' }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", width: 38 }}>
+                          {pct}%
+                        </span>
                       </div>
-                      <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", width: 40 }}>{pct}%</span>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* ── Item 4 : Stacked area chart mensuel ── */}
+      <StackedAreaChart fournisseurs={fournisseurs} allMois={allMois} month={month} />
+
+      {/* ── Item 3 : Heatmap fournisseur × mois ── */}
+      <HeatmapGrid fournisseurs={fournisseurs} allMois={allMois} />
     </section>
   )
 }
