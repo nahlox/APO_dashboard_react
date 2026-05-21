@@ -1,9 +1,9 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
 const MODULE_ICONS = [
-  { id: 'vue-ensemble', label: "Vue",     icon: '📊' },
   { id: 'production',   label: 'Prod',    icon: '🌴' },
   { id: 'revenus',      label: 'Revenus', icon: '💰' },
+  { id: 'vue-ensemble', label: "Vue",     icon: '📊', center: true },
   { id: 'charges',      label: 'Charges', icon: '💸' },
   { id: 'fournisseurs', label: 'Fourn.',  icon: '🚚' },
   { id: 'pepiniere',    label: 'Pépin.',  icon: '🌱' },
@@ -18,7 +18,7 @@ export default function MobileBottomNav() {
       {MODULE_ICONS.map(tab => (
         <button
           key={tab.id}
-          className={`mbn-item${currentTab === tab.id ? ' active' : ''}`}
+          className={`mbn-item${currentTab === tab.id ? ' active' : ''}${tab.center ? ' mbn-center' : ''}`}
           onClick={() => setActiveTab('global', tab.id)}
           aria-label={tab.label}
         >

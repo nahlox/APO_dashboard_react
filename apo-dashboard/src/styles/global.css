@@ -825,6 +825,33 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
     transform: scale(1.15);
     filter: drop-shadow(0 0 6px rgba(242,140,40,0.4));
   }
+
+  /* Item central (Vue) — légèrement surélevé pour le mettre en avant */
+  .mbn-item.mbn-center .mbn-icon {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+    color: #FFFFFF;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-top: -16px;
+    box-shadow: 0 4px 14px rgba(242,140,40,0.45);
+    transition: transform 0.18s, box-shadow 0.18s;
+  }
+  .mbn-item.mbn-center.active .mbn-icon {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(242,140,40,0.6);
+    filter: none;
+  }
+  .mbn-item.mbn-center .mbn-label {
+    color: var(--gold);
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .mbn-item.mbn-center.active .mbn-label { color: var(--gold); }
   .mbn-icon {
     font-size: 22px;
     line-height: 1;
