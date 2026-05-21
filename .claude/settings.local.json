@@ -39,7 +39,13 @@
       "Bash(git pull *)",
       "Bash(python3 -)",
       "Bash(python3 etl_cloud.py --mois 5)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /Users/rnahle/projects/APO_dashboard_react/.claude/commands)",
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
+      "Bash(curl -s http://localhost:5174)",
+      "Bash(pkill -f \"vite\")"
     ]
   }
 }
