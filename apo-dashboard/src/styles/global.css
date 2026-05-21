@@ -81,10 +81,14 @@ main {
   position: relative;
   z-index: 1;
   padding: clamp(16px, 2.5vw, 40px) clamp(16px, 3vw, 48px);
-  max-width: 1920px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
+
+/* Centrage des titres de section au-dessus des grilles */
+.section-title,
+.section-subtitle { text-align: center; }
 
 /* ===== HEADER ===== */
 header {
@@ -322,6 +326,52 @@ body.light .theme-indicator::before { transform: translateX(18px); }
 
 .rate-info { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
 .rate-info span { color: var(--gold); font-family: 'DM Mono', monospace; }
+
+/* ===== PNL CTA (lien vers document P&L depuis Vue d'Ensemble) ===== */
+.pnl-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  margin-top: 24px;
+  background: var(--dark2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+body.light .pnl-cta { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.pnl-cta-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+.pnl-cta-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  margin-top: 3px;
+}
+.pnl-cta-btn {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: none;
+  color: #FFFFFF;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 12px rgba(242,140,40,0.25);
+  transition: transform 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+.pnl-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(242,140,40,0.4);
+}
 
 /* ===== PNL DEDICATED VIEW ===== */
 .pnl-view {
@@ -923,9 +973,6 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
 }
 
 /* ===== SMALL PHONE (≤ 400px: iPhone SE, Galaxy A14 etc) ===== */
-@media (max-width: 900px) {
-  .mobile-refresh-btn { display: flex !important; align-items: center; justify-content: center; }
-}
 
 @media (max-width: 400px) {
   main { padding: 8px 10px 20px; }

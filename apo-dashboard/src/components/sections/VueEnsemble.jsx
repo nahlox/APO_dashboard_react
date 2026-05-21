@@ -2,10 +2,9 @@ import { useEffect, useRef } from 'react'
 import { Chart, ArcElement, DoughnutController, PieController, Tooltip, Legend } from 'chart.js'
 import KPICard from '../kpi/KPICard'
 import AlertBox from '../kpi/AlertBox'
-import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { monthFull } from '../../lib/monthUtils'
+import { monthFull, monthLabel } from '../../lib/monthUtils'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
 
@@ -21,8 +20,14 @@ const CHARGE_COLORS = [
 ]
 
 export default function VueEnsemble({ data, month }) {
-  const { currency, eurRate } = useDashboardStore()
-  const { kpis, pnl, alertes, charts } = data
+  const { currency, eurRate, moisData, setActivePnlMonth } = useDashboardStore()
+  const { kpis, alertes, charts } = data
+  // Détection : data agrégée ou mois unique ?
+  const isAggregate = data?._etl?.source === 'aggregate'
+  // Si mois unique, on trouve la clé pour pouvoir ouvrir le P&L détaillé via Documents
+  const singleMonthEntry = !isAggregate
+    ? moisData.find(m => m.data._etl.mois === data._etl.mois && m.data._etl.annee === data._etl.annee)
+    : null
 
   // Utilise directement les charges du mois (ou agrégées) plutôt que d'aller chercher ailleurs
   const combinedCharges = charts?.charges ?? { labels: [], values: [] }
@@ -134,14 +139,29 @@ export default function VueEnsemble({ data, month }) {
         </div>
       </div>
 
-      {/* P&L */}
-      <PnLTable pnl={pnl} data={data} />
+      {/* Lien vers le P&L détaillé (Documents) — mois unique seulement */}
+      {singleMonthEntry && (
+        <div className="pnl-cta">
+          <div className="pnl-cta-text">
+            <div className="pnl-cta-title">Compte de résultat détaillé</div>
+            <div className="pnl-cta-sub">Présentation OHADA complète · Téléchargeable en PDF</div>
+          </div>
+          <button
+            className="pnl-cta-btn"
+            onClick={() => setActivePnlMonth(singleMonthEntry.key)}
+          >
+            📄 Ouvrir P&L {monthLabel(data)}
+          </button>
+        </div>
+      )}
 
       {/* Alertes — en bas */}
-      <div style={{ marginTop: 24 }}>
-        <div className="chart-title" style={{ marginBottom: 12 }}>Alertes & Points d'Attention</div>
-        {alertes.map((a, i) => <AlertBox key={i} {...a} />)}
-      </div>
+      {alertes && alertes.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div className="chart-title" style={{ marginBottom: 12 }}>Alertes & Points d'Attention</div>
+          {alertes.map((a, i) => <AlertBox key={i} {...a} />)}
+        </div>
+      )}
     </section>
   )
 }
