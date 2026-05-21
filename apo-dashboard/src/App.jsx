@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { usePullToRefresh } from './hooks/usePullToRefresh'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
@@ -6,10 +6,11 @@ import { useDashboardStore } from './store/dashboardStore'
 import Header from './components/layout/Header'
 import Sidebar from './components/layout/Sidebar'
 import MobileBottomNav from './components/layout/MobileBottomNav'
-import GlobalPanel from './pages/GlobalPanel'
+import MonthRangeFilter from './components/layout/MonthRangeFilter'
 import MonthPanel from './pages/MonthPanel'
-import { MONTH_DATA } from './data/index'          // Jan/Fév/Mar — données statiques exactes
-import { useMoisDB } from './hooks/useMoisDB'       // Avr+ depuis Supabase
+import GlobalOverview from './pages/GlobalOverview'
+import { useMoisDB } from './hooks/useMoisDB'
+import { buildAggregateData, filterMonthsByRange } from './lib/aggregateData'
 
 import {
   Chart, CategoryScale, LinearScale,
@@ -30,20 +31,20 @@ Chart.defaults.borderColor = 'rgba(242,140,40,0.1)'
 Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
-const MONTH_TABS = [
+const MODULE_TABS = [
   { id: 'vue-ensemble', label: "Vue d'Ensemble" },
   { id: 'production',   label: 'Production & Graines' },
   { id: 'revenus',      label: 'Revenus & Ventes' },
   { id: 'charges',      label: 'Charges & Coûts' },
   { id: 'fournisseurs', label: 'Fournisseurs' },
-  { id: 'pepiniere',    label: 'Pépinière', janOnly: true },
+  { id: 'pepiniere',    label: 'Pépinière' },
 ]
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
-  const { activeMonth, activeTab, setActiveTab, theme, setMoisData, setEurRate } = useDashboardStore()
+  const { activeTab, setActiveTab, theme, setMoisData, setEurRate, monthRange } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
 
@@ -68,12 +69,27 @@ export default function App() {
 
   const { pullDistance } = usePullToRefresh()
 
-  const staticKeys = new Set(MONTH_DATA.map(m => m.key))
-  const allMois    = [...MONTH_DATA, ...moisSupp.filter(m => !staticKeys.has(m.key))]
+  // Tous les mois proviennent de Supabase (avec fallback statique pour Jan/Fév/Mars)
+  const allMois = moisSupp
 
-  const isMonthActive = activeMonth !== 'global'
-  const currentTab    = activeTab[activeMonth] ?? 'vue-ensemble'
-  const tabs          = MONTH_TABS.filter(t => !t.janOnly || activeMonth === 'jan')
+  // Filtre par plage de mois
+  const filteredMois = useMemo(
+    () => filterMonthsByRange(allMois, monthRange),
+    [allMois, monthRange]
+  )
+
+  // Données agrégées (sur la plage filtrée)
+  const aggregatedData = useMemo(
+    () => buildAggregateData(filteredMois),
+    [filteredMois]
+  )
+
+  const currentTab = activeTab['global'] ?? 'vue-ensemble'
+
+  // Clé unique pour forcer le re-render des sections quand la plage change
+  const rangeKey = filteredMois.length
+    ? `${filteredMois[0].key}-${filteredMois[filteredMois.length - 1].key}-${filteredMois.length}`
+    : 'empty'
 
   return (
     <>
@@ -104,17 +120,20 @@ export default function App() {
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
 
       <div className="app-layout">
-        <Sidebar allMois={allMois} />
+        <Sidebar />
         <div className="content-area">
           <Header />
 
-          {isMonthActive && (
+          {/* Filtre de plage + onglets modules — toujours visibles */}
+          <MonthRangeFilter allMois={allMois} />
+
+          {aggregatedData && (
             <nav className="nav-tabs">
-              {tabs.map(tab => (
+              {MODULE_TABS.map(tab => (
                 <div
                   key={tab.id}
                   className={`nav-tab${currentTab === tab.id ? ' active' : ''}`}
-                  onClick={() => setActiveTab(activeMonth, tab.id)}
+                  onClick={() => setActiveTab('global', tab.id)}
                 >
                   {tab.label}
                 </div>
@@ -123,13 +142,16 @@ export default function App() {
           )}
 
           <main>
-            {activeMonth === 'global' && (
-              <GlobalPanel moisData={moisSupp.filter(m => !staticKeys.has(m.key))} />
+            {!aggregatedData && (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)' }}>
+                Aucun mois ne correspond au filtre sélectionné.
+              </div>
             )}
-            {allMois.map(({ key, data }) =>
-              activeMonth === key && (
-                <MonthPanel key={key} data={data} month={key} activeTab={currentTab} />
-              )
+            {aggregatedData && currentTab === 'vue-ensemble' && filteredMois.length > 1 && (
+              <GlobalOverview filteredMois={filteredMois} aggregatedData={aggregatedData} />
+            )}
+            {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length > 1) && (
+              <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} />
             )}
           </main>
         </div>

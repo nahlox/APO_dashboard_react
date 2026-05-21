@@ -1,27 +1,12 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
-function cap(str) {
-  if (!str) return ''
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-function moisLabel(data) {
-  // Compatible avec les deux formats : statique (_etl.mois) et Supabase (_etl.mois)
-  return `${cap(data._etl.mois)} ${data._etl.annee}`
-}
-
-export default function Sidebar({ allMois = [] }) {
+export default function Sidebar() {
   const {
-    activeMonth, sidebarCollapsed, sidebarOpen,
+    sidebarCollapsed, sidebarOpen,
     theme, currency, eurRate, eurRateDate,
     toggleSidebar, toggleTheme, toggleCurrency,
-    setActiveMonth, closeMobileMenu,
+    closeMobileMenu,
   } = useDashboardStore()
-
-  const navigate = (month) => {
-    setActiveMonth(month)
-    closeMobileMenu()
-  }
 
   return (
     <>
@@ -49,24 +34,9 @@ export default function Sidebar({ allMois = [] }) {
         <div className="sidebar-section">
           <div className="sidebar-label">Navigation</div>
 
-          <div
-            className={`sidebar-month-btn global-btn${activeMonth === 'global' ? ' active' : ''}`}
-            onClick={() => navigate('global')}
-          >
+          <div className="sidebar-month-btn global-btn active">
             🌐 Vue Globale
           </div>
-
-          {allMois.map(({ key, data }) => (
-            <div key={key}>
-              <div className="sidebar-divider" />
-              <div
-                className={`sidebar-month-btn${activeMonth === key ? ' active' : ''}`}
-                onClick={() => navigate(key)}
-              >
-                📅 {moisLabel(data)}
-              </div>
-            </div>
-          ))}
         </div>
 
         <div className="sidebar-currency">

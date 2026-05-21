@@ -1,29 +1,25 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
 const MODULE_ICONS = [
-  { id: 'vue-ensemble', label: "Vue", icon: '📊' },
-  { id: 'production',   label: 'Prod',  icon: '🌴' },
+  { id: 'vue-ensemble', label: "Vue",     icon: '📊' },
+  { id: 'production',   label: 'Prod',    icon: '🌴' },
   { id: 'revenus',      label: 'Revenus', icon: '💰' },
   { id: 'charges',      label: 'Charges', icon: '💸' },
-  { id: 'fournisseurs', label: 'Fourn.', icon: '🚚' },
-  { id: 'pepiniere',    label: 'Pépin.', icon: '🌱', janOnly: true },
+  { id: 'fournisseurs', label: 'Fourn.',  icon: '🚚' },
+  { id: 'pepiniere',    label: 'Pépin.',  icon: '🌱' },
 ]
 
 export default function MobileBottomNav() {
-  const { activeMonth, activeTab, setActiveTab } = useDashboardStore()
-
-  if (activeMonth === 'global') return null
-
-  const currentTab = activeTab[activeMonth] ?? 'vue-ensemble'
-  const tabs = MODULE_ICONS.filter(t => !t.janOnly || activeMonth === 'jan')
+  const { activeTab, setActiveTab } = useDashboardStore()
+  const currentTab = activeTab['global'] ?? 'vue-ensemble'
 
   return (
     <nav className="mobile-bottom-nav" aria-label="Navigation modules">
-      {tabs.map(tab => (
+      {MODULE_ICONS.map(tab => (
         <button
           key={tab.id}
           className={`mbn-item${currentTab === tab.id ? ' active' : ''}`}
-          onClick={() => setActiveTab(activeMonth, tab.id)}
+          onClick={() => setActiveTab('global', tab.id)}
           aria-label={tab.label}
         >
           <span className="mbn-icon">{tab.icon}</span>

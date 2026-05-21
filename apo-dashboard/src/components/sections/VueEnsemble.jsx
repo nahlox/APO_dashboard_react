@@ -5,7 +5,6 @@ import AlertBox from '../kpi/AlertBox'
 import PnLTable from '../pnl/PnLTable'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { MONTH_DATA as MONTH_DATA_STATIC } from '../../data/index'
 import { monthFull } from '../../lib/monthUtils'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
@@ -21,20 +20,12 @@ const CHARGE_COLORS = [
   'rgba(90,160,210,0.80)',
 ]
 
-function buildMonthCharges(monthKey, MONTH_DATA) {
-  const entry = MONTH_DATA.find(m => m.key === monthKey)
-  if (!entry) return { labels: [], values: [] }
-  const labels = entry.data.charts.charges.labels
-  const values = entry.data.charts.charges.values
-  return { labels, values }
-}
-
 export default function VueEnsemble({ data, month }) {
-  const { currency, eurRate, moisData } = useDashboardStore()
+  const { currency, eurRate } = useDashboardStore()
   const { kpis, pnl, alertes, charts } = data
 
-  const allMois = [...MONTH_DATA_STATIC, ...moisData]
-  const combinedCharges = buildMonthCharges(month, allMois)
+  // Utilise directement les charges du mois (ou agrégées) plutôt que d'aller chercher ailleurs
+  const combinedCharges = charts?.charges ?? { labels: [], values: [] }
   const chargesSubtitle = `${monthFull(data)} — hors matières premières`
 
   const refCA      = useRef(null)
@@ -47,8 +38,7 @@ export default function VueEnsemble({ data, month }) {
     if (chartCharges.current) { chartCharges.current.destroy(); chartCharges.current = null }
 
     const cur = currency
-    const allMois = [...MONTH_DATA_STATIC, ...moisData]
-    const combinedCharges = buildMonthCharges(month, allMois)
+    const combinedCharges = charts?.charges ?? { labels: [], values: [] }
     const totalCharges = combinedCharges.values.reduce((a, b) => a + b, 0)
 
     // CA Mix — doughnut
