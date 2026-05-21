@@ -9,6 +9,7 @@ import MobileBottomNav from './components/layout/MobileBottomNav'
 import MonthRangeFilter from './components/layout/MonthRangeFilter'
 import MonthPanel from './pages/MonthPanel'
 import GlobalOverview from './pages/GlobalOverview'
+import PnLView from './pages/PnLView'
 import { useMoisDB } from './hooks/useMoisDB'
 import { buildAggregateData, filterMonthsByRange } from './lib/aggregateData'
 
@@ -35,7 +36,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
-  const { activeTab, theme, setMoisData, setEurRate, monthRange } = useDashboardStore()
+  const { activeTab, theme, setMoisData, setEurRate, monthRange, activePnlMonth } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
 
@@ -111,24 +112,33 @@ export default function App() {
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
 
       <div className="app-layout">
-        <Sidebar />
+        <Sidebar allMois={allMois} />
         <div className="content-area">
           <Header />
 
-          {/* Filtre de plage — toujours visible (modules désormais dans le sidebar) */}
-          <MonthRangeFilter allMois={allMois} />
+          {/* Filtre de plage — masqué en mode P&L (un seul mois fixe) */}
+          {!activePnlMonth && <MonthRangeFilter allMois={allMois} />}
 
           <main>
-            {!aggregatedData && (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)' }}>
-                Aucun mois ne correspond au filtre sélectionné.
-              </div>
-            )}
-            {aggregatedData && currentTab === 'vue-ensemble' && filteredMois.length > 1 && (
-              <GlobalOverview filteredMois={filteredMois} aggregatedData={aggregatedData} />
-            )}
-            {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length > 1) && (
-              <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} />
+            {activePnlMonth ? (
+              <PnLView
+                key={activePnlMonth}
+                data={allMois.find(m => m.key === activePnlMonth)?.data}
+              />
+            ) : (
+              <>
+                {!aggregatedData && (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)' }}>
+                    Aucun mois ne correspond au filtre sélectionné.
+                  </div>
+                )}
+                {aggregatedData && currentTab === 'vue-ensemble' && filteredMois.length > 1 && (
+                  <GlobalOverview filteredMois={filteredMois} aggregatedData={aggregatedData} />
+                )}
+                {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length > 1) && (
+                  <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} />
+                )}
+              </>
             )}
           </main>
         </div>

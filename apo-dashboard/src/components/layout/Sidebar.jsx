@@ -1,4 +1,5 @@
 import { useDashboardStore } from '../../store/dashboardStore'
+import { monthLabel } from '../../lib/monthUtils'
 
 const MODULES = [
   { id: 'vue-ensemble', label: "Vue d'Ensemble",      icon: '📊' },
@@ -9,19 +10,27 @@ const MODULES = [
   { id: 'pepiniere',    label: 'Pépinière',            icon: '🌱' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ allMois = [] }) {
   const {
     sidebarCollapsed, sidebarOpen,
     theme, currency, eurRate, eurRateDate,
     activeTab, setActiveTab,
+    activePnlMonth, setActivePnlMonth,
     toggleSidebar, toggleTheme, toggleCurrency,
     closeMobileMenu,
   } = useDashboardStore()
 
   const currentTab = activeTab['global'] ?? 'vue-ensemble'
+  // Quand on est sur un P&L, aucun module n'est actif
+  const isPnlOpen  = !!activePnlMonth
 
   const handleNav = (id) => {
     setActiveTab('global', id)
+    closeMobileMenu()
+  }
+
+  const handlePnl = (key) => {
+    setActivePnlMonth(key)
     closeMobileMenu()
   }
 
@@ -54,7 +63,7 @@ export default function Sidebar() {
           {MODULES.map(m => (
             <div
               key={m.id}
-              className={`sidebar-module-btn${currentTab === m.id ? ' active' : ''}`}
+              className={`sidebar-module-btn${!isPnlOpen && currentTab === m.id ? ' active' : ''}`}
               onClick={() => handleNav(m.id)}
             >
               <span className="sidebar-module-icon">{m.icon}</span>
@@ -62,6 +71,24 @@ export default function Sidebar() {
             </div>
           ))}
         </div>
+
+        {allMois.length > 0 && (
+          <div className="sidebar-section">
+            <div className="sidebar-label">Documents</div>
+
+            {allMois.map(({ key, data }) => (
+              <div
+                key={key}
+                className={`sidebar-module-btn${activePnlMonth === key ? ' active' : ''}`}
+                onClick={() => handlePnl(key)}
+                title={`Compte de résultat ${monthLabel(data)} ${data._etl.annee}`}
+              >
+                <span className="sidebar-module-icon">📄</span>
+                <span className="sidebar-module-label">P&L {monthLabel(data)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="sidebar-currency">
           <div className="sc-label">Apparence</div>

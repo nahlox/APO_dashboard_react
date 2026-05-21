@@ -5,6 +5,11 @@ export const useDashboardStore = create((set) => ({
   activeMonth: 'global',
   activeTab: {},
 
+  // Document P&L actuellement consulté (null = vue normale, sinon clé de mois)
+  activePnlMonth: null,
+  setActivePnlMonth: (key) => set({ activePnlMonth: key }),
+  closePnlView:     ()    => set({ activePnlMonth: null }),
+
   // Plage de mois filtrée (null = tous les mois disponibles)
   monthRange: { from: null, to: null },
   setMonthRange: (from, to) => set({ monthRange: { from, to } }),
@@ -25,7 +30,8 @@ export const useDashboardStore = create((set) => ({
   // Actions
   setActiveMonth: (month) => set({ activeMonth: month }),
   setActiveTab: (month, tab) => set((s) => ({
-    activeTab: { ...s.activeTab, [month]: tab }
+    activeTab:      { ...s.activeTab, [month]: tab },
+    activePnlMonth: null,   // sortir de la vue P&L quand on change de module
   })),
   toggleSidebar:    () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   toggleMobileMenu: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
