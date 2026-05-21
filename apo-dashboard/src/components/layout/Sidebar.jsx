@@ -57,7 +57,8 @@ export default function Sidebar({ allMois = [] }) {
           <span className="sidebar-brand">Menu</span>
         </div>
 
-        <div className="sidebar-section">
+        {/* Modules — masqués sur mobile (la bottom-nav prend le relais) */}
+        <div className="sidebar-section sidebar-section-modules">
           <div className="sidebar-label">Modules</div>
 
           {MODULES.map(m => (

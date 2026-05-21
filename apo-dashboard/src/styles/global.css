@@ -833,6 +833,30 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   .global-compare-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 }
 
+/* ===== MOBILE : masquer modules sidebar + centrer overview ===== */
+@media (max-width: 900px) {
+  /* Les modules sont accessibles via la bottom-nav, on retire la duplication */
+  .sidebar-section-modules { display: none !important; }
+
+  /* Centrage du contenu Vue Globale (KPIs, charts) */
+  .section-title,
+  .section-subtitle { text-align: center; }
+  main { text-align: center; }
+  main .kpi-card,
+  main .chart-card,
+  main .pnl-box,
+  main .month-summary-card,
+  main .alert-box { text-align: left; }  /* on garde le contenu interne aligné à gauche */
+
+  /* KPI cards : labels et valeurs centrés */
+  .kpi-card { text-align: center; }
+  .kpi-label, .kpi-value, .kpi-sub { text-align: center; }
+
+  /* Chart-card titres centrés */
+  .chart-card .chart-title,
+  .chart-card .chart-subtitle { text-align: center; }
+}
+
 /* ===== PHONE (≤ 600px) ===== */
 @media (max-width: 600px) {
   /* Content padding */
