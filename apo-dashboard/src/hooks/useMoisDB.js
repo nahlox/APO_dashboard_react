@@ -472,7 +472,9 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     charges: { topDepenses },
     fournisseurs: {
       totalPoidsKg: fournisseursItems.reduce((s, f) => s + f.poids, 0),
-      liste:        fournisseursItems,
+      nbActifs:     fournisseursItems.length,
+      liste:        fournisseursItems.slice(0, 10),   // top 10 pour les graphiques
+      allListe:     fournisseursItems,                // tous pour les KPIs
     },
     pepiniere: { clients: [] },
   }
@@ -546,7 +548,7 @@ export function useMoisDB() {
                 .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
                 .eq('annee', periode.annee)
                 .eq('mois', periode.mois)
-                .limit(10)
+                .order('montant_total_fcfa', { ascending: false })
                 .then(r => r.data || []),
 
               // Table amortissement_bancaire (fallback si pas dans banque_apo)

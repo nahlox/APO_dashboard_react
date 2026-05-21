@@ -208,7 +208,8 @@ export function buildAggregateData(monthArr) {
   // ── Fournisseurs agrégés ────────────────────────────────────────────
   const fournMerged = {}
   for (const d of dataArr) {
-    for (const f of (d.fournisseurs?.liste || [])) {
+    // Utiliser allListe (tous les fournisseurs) si disponible, sinon fallback liste
+    for (const f of (d.fournisseurs?.allListe || d.fournisseurs?.liste || [])) {
       const k = f.name
       if (!fournMerged[k]) fournMerged[k] = { name: k, poids: 0, montant: 0, prix: 0, nbCamions: 0 }
       fournMerged[k].poids     += (f.poids     || 0)
@@ -216,10 +217,10 @@ export function buildAggregateData(monthArr) {
       fournMerged[k].nbCamions += (f.nbCamions || 0)
     }
   }
-  const fournisseursListe = Object.values(fournMerged)
+  const allFournisseursListe = Object.values(fournMerged)
     .map(f => ({ ...f, prix: f.poids > 0 ? Math.round(f.montant / f.poids) : 0 }))
     .sort((a, b) => b.montant - a.montant)
-    .slice(0, 10)
+  const fournisseursListe = allFournisseursListe.slice(0, 10)
 
   // ── Charts agrégés (caMix, charges) ─────────────────────────────────
   const caMix    = aggregateChart(monthArr, d => d.charts?.caMix)
@@ -322,8 +323,10 @@ export function buildAggregateData(monthArr) {
     },
     charges: { topDepenses },
     fournisseurs: {
-      totalPoidsKg: fournisseursListe.reduce((s, f) => s + f.poids, 0),
-      liste:        fournisseursListe,
+      totalPoidsKg: allFournisseursListe.reduce((s, f) => s + f.poids, 0),
+      nbActifs:     allFournisseursListe.length,
+      liste:        fournisseursListe,      // top 10 pour graphiques
+      allListe:     allFournisseursListe,   // tous pour KPIs
     },
     pepiniere: { clients: [] },
   }

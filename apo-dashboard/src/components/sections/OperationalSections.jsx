@@ -298,7 +298,9 @@ function ActiveSuppliersChart({ allMois, month }) {
     if (!canvasRef.current || allMois.length < 2) return
 
     const labels = allMois.map(m => toShortMois(m.data._etl?.mois))
-    const counts = allMois.map(m => m.data?.fournisseurs?.liste?.length || 0)
+    const counts = allMois.map(m =>
+      m.data?.fournisseurs?.nbActifs ?? m.data?.fournisseurs?.liste?.length ?? 0
+    )
 
     chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
@@ -520,62 +522,68 @@ export function Fournisseurs({ data, month, allMois = [] }) {
   const { currency, eurRate } = useDashboardStore()
   const { fournisseurs } = data
 
-  // ── Section 3 — métriques activité / fréquence ──────────────
-  const totalCamions    = fournisseurs.liste.reduce((s, f) => s + (f.nbCamions || 0), 0)
+  // allListe = tous les fournisseurs (pas seulement top 10)
+  const allListe = fournisseurs.allListe || fournisseurs.liste
+
+  // ── Section 3 — métriques activité / fréquence (sur tous les fournisseurs) ──
+  const totalCamions    = allListe.reduce((s, f) => s + (f.nbCamions || 0), 0)
   const poidsMoyKg      = totalCamions > 0 ? Math.round(fournisseurs.totalPoidsKg / totalCamions) : 0
   const nbMoisCovered   = Math.max(1, allMois.length)
-  // Approx fréquence moyenne (jours entre 2 livraisons) par fournisseur sur la période
-  const avgCamionsPFourn = fournisseurs.liste.length > 0
-    ? totalCamions / fournisseurs.liste.length
-    : 0
+  // Fréquence moyenne : jours entre 2 livraisons par fournisseur sur la période
+  const avgCamionsPFourn = allListe.length > 0 ? totalCamions / allListe.length : 0
   const freqMoyJours    = avgCamionsPFourn > 0
     ? Math.round((nbMoisCovered * 30) / avgCamionsPFourn)
     : null
-  // % fournisseurs livrant >1×/semaine (approx : nb_camions > nb_semaines)
-  const nbSemaines      = nbMoisCovered * 4.3
-  const nbFrequents     = fournisseurs.liste.filter(f => (f.nbCamions || 0) > nbSemaines).length
-  const pctFrequents    = fournisseurs.liste.length > 0
-    ? Math.round(nbFrequents / fournisseurs.liste.length * 100)
+  // % fournisseurs livrant >5 livraisons/semaine
+  const nbSemaines   = nbMoisCovered * 4.3
+  const nbFrequents  = allListe.filter(f => (f.nbCamions || 0) > 5 * nbSemaines).length
+  const pctFrequents = allListe.length > 0
+    ? Math.round(nbFrequents / allListe.length * 100)
     : 0
 
-  // Bar camions — sorted by nbCamions desc
+  // Bar camions — top 10 par nb_camions (graphique)
   const sortedByCamions = [...fournisseurs.liste]
     .filter(f => (f.nbCamions || 0) > 0)
     .sort((a, b) => (b.nbCamions || 0) - (a.nbCamions || 0))
-    .slice(0, 10)
   const camionsLabels = sortedByCamions.map(f => f.name.length > 22 ? f.name.slice(0, 22) + '…' : f.name)
   const camionsVals   = sortedByCamions.map(f => f.nbCamions || 0)
 
-  // Bar poids/camion — sorted desc
+  // Bar poids/camion — top 10 (graphique)
   const sortedByPCam = [...fournisseurs.liste]
     .filter(f => (f.nbCamions || 0) > 0)
     .map(f => ({ ...f, poidsPCam: Math.round(f.poids / f.nbCamions) }))
     .sort((a, b) => b.poidsPCam - a.poidsPCam)
-    .slice(0, 10)
   const pCamLabels = sortedByPCam.map(f => f.name.length > 22 ? f.name.slice(0, 22) + '…' : f.name)
   const pCamVals   = sortedByPCam.map(f => f.poidsPCam)
 
-  // ── Section 4 — métriques évolution temporelle ──────────────
+  // ── Section 4 — métriques évolution temporelle (sur TOUS les fournisseurs) ──
   const hasMulti = allMois.length >= 2
-  const lastMoisList  = allMois[allMois.length - 1]?.data?.fournisseurs?.liste || []
-  const prevMoisList  = allMois[allMois.length - 2]?.data?.fournisseurs?.liste || []
-  const lastNames = new Set(lastMoisList.map(f => f.name))
-  const prevNames = new Set(prevMoisList.map(f => f.name))
-  const allNames  = new Set(allMois.flatMap(m => (m.data?.fournisseurs?.liste || []).map(f => f.name)))
+  // Utiliser allListe de chaque mois pour des comptages exacts
+  const lastMoisAll  = allMois[allMois.length - 1]?.data?.fournisseurs?.allListe
+                    || allMois[allMois.length - 1]?.data?.fournisseurs?.liste || []
+  const prevMoisAll  = allMois[allMois.length - 2]?.data?.fournisseurs?.allListe
+                    || allMois[allMois.length - 2]?.data?.fournisseurs?.liste || []
+  const lastNames = new Set(lastMoisAll.map(f => f.name))
+  const prevNames = new Set(prevMoisAll.map(f => f.name))
+  const allNames  = new Set(allMois.flatMap(m =>
+    (m.data?.fournisseurs?.allListe || m.data?.fournisseurs?.liste || []).map(f => f.name)
+  ))
 
   // Nouveaux : dans le dernier mois mais absents de TOUS les mois précédents
   const nouveaux = hasMulti
-    ? [...lastNames].filter(n => allMois.slice(0, -1).every(m =>
-        !m.data?.fournisseurs?.liste?.some(f => f.name === n)
-      )).length
+    ? [...lastNames].filter(n => allMois.slice(0, -1).every(m => {
+        const src = m.data?.fournisseurs?.allListe || m.data?.fournisseurs?.liste || []
+        return !src.some(f => f.name === n)
+      })).length
     : 0
   // Perdus : dans avant-dernier mois mais absents du dernier
-  const perdus = hasMulti
-    ? [...prevNames].filter(n => !lastNames.has(n)).length
-    : 0
+  const perdus = hasMulti ? [...prevNames].filter(n => !lastNames.has(n)).length : 0
   // Taux fidélité : % fournisseurs présents dans ≥ 3 mois (sur allMois)
   const fidels = [...allNames].filter(name =>
-    allMois.filter(m => m.data?.fournisseurs?.liste?.some(f => f.name === name)).length >= 3
+    allMois.filter(m => {
+      const src = m.data?.fournisseurs?.allListe || m.data?.fournisseurs?.liste || []
+      return src.some(f => f.name === name)
+    }).length >= 3
   ).length
   const tauxFidelite = allNames.size > 0 ? Math.round(fidels / allNames.size * 100) : 0
 
@@ -659,7 +667,7 @@ export function Fournisseurs({ data, month, allMois = [] }) {
         <div className="kpi-card">
           <div className="kpi-label">Livraisons (camions)</div>
           <div className="kpi-value gold">{totalCamions.toLocaleString('fr-FR')}</div>
-          <div className="kpi-sub">{fournisseurs.liste.length} fournisseurs actifs</div>
+          <div className="kpi-sub">{fournisseurs.nbActifs ?? allListe.length} fournisseurs actifs</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Poids Moyen / Camion</div>
@@ -672,9 +680,9 @@ export function Fournisseurs({ data, month, allMois = [] }) {
           <div className="kpi-sub">entre 2 livraisons (approx.)</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">&gt;1 livraison/semaine</div>
+          <div className="kpi-label">&gt;5 livraisons/semaine</div>
           <div className="kpi-value gold">{pctFrequents}%</div>
-          <div className="kpi-sub">{nbFrequents} / {fournisseurs.liste.length} fournisseurs</div>
+          <div className="kpi-sub">{nbFrequents} / {fournisseurs.nbActifs ?? allListe.length} fournisseurs</div>
         </div>
       </div>
 
@@ -715,7 +723,9 @@ export function Fournisseurs({ data, month, allMois = [] }) {
           <div className="kpi-grid" style={{ marginBottom: 24 }}>
             <div className="kpi-card">
               <div className="kpi-label">Fournisseurs Actifs</div>
-              <div className="kpi-value gold">{lastNames.size}</div>
+              <div className="kpi-value gold">
+                {allMois[allMois.length - 1]?.data?.fournisseurs?.nbActifs ?? lastNames.size}
+              </div>
               <div className="kpi-sub">dernier mois disponible</div>
             </div>
             <div className="kpi-card accent-green">
