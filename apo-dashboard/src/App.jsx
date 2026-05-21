@@ -5,6 +5,7 @@ import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
 import Header from './components/layout/Header'
 import Sidebar from './components/layout/Sidebar'
+import MobileBottomNav from './components/layout/MobileBottomNav'
 import GlobalPanel from './pages/GlobalPanel'
 import MonthPanel from './pages/MonthPanel'
 import { MONTH_DATA } from './data/index'          // Jan/Fév/Mar — données statiques exactes
@@ -101,26 +102,26 @@ export default function App() {
         title="Actualiser"
       >↻</button>
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
-      <Header />
-
-      {/* Nav tabs — sibling of header, always flush against APO banner */}
-      {isMonthActive && (
-        <nav className="nav-tabs">
-          {tabs.map(tab => (
-            <div
-              key={tab.id}
-              className={`nav-tab${currentTab === tab.id ? ' active' : ''}`}
-              onClick={() => setActiveTab(activeMonth, tab.id)}
-            >
-              {tab.label}
-            </div>
-          ))}
-        </nav>
-      )}
 
       <div className="app-layout">
         <Sidebar allMois={allMois} />
         <div className="content-area">
+          <Header />
+
+          {isMonthActive && (
+            <nav className="nav-tabs">
+              {tabs.map(tab => (
+                <div
+                  key={tab.id}
+                  className={`nav-tab${currentTab === tab.id ? ' active' : ''}`}
+                  onClick={() => setActiveTab(activeMonth, tab.id)}
+                >
+                  {tab.label}
+                </div>
+              ))}
+            </nav>
+          )}
+
           <main>
             {activeMonth === 'global' && (
               <GlobalPanel moisData={moisSupp.filter(m => !staticKeys.has(m.key))} />
@@ -133,6 +134,8 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      <MobileBottomNav />
     </>
   )
 }

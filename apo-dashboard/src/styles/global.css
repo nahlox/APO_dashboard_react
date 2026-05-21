@@ -66,13 +66,15 @@ body::before {
 /* ===== LAYOUT ===== */
 .app-layout {
   display: flex;
-  min-height: calc(100vh - 57px);
+  min-height: 100vh;
 }
 
 .content-area {
   flex: 1;
   min-width: 0;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 main {
@@ -131,9 +133,9 @@ body.light header { background: rgba(245,245,240,0.95); }
   flex-direction: column;
   position: sticky;
   top: 0;
-  height: calc(100vh - 57px);
+  height: 100vh;
   overflow-x: hidden;
-  overflow-y: auto;  /* allows sidebar content to scroll on short screens */
+  overflow-y: auto;
   z-index: 20;
   transition: width 0.3s cubic-bezier(0.4,0,0.2,1), min-width 0.3s cubic-bezier(0.4,0,0.2,1);
 }
@@ -281,7 +283,9 @@ body.light .theme-indicator::before { transform: translateX(18px); }
   position: sticky;
   top: 57px;
   z-index: 50;
-  display: flex; gap: 0; padding: 0 clamp(16px, 3vw, 48px);
+  display: flex; gap: 0;
+  justify-content: flex-end;
+  padding: 0 clamp(16px, 3vw, 48px);
   background: var(--dark2); border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
@@ -490,6 +494,71 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   background: rgba(0,0,0,0.55);
   z-index: 999;
   backdrop-filter: blur(2px);
+}
+
+/* ===== MOBILE BOTTOM NAV ===== */
+.mobile-bottom-nav { display: none; }
+
+@media (max-width: 900px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 998;
+    background: rgba(15,42,29,0.96);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px max(6px, env(safe-area-inset-bottom)) 4px;
+    justify-content: space-around;
+    align-items: stretch;
+    gap: 2px;
+  }
+  body.light .mobile-bottom-nav { background: rgba(255,255,255,0.96); }
+
+  .mbn-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.18s, color 0.18s;
+  }
+  .mbn-item:active { background: rgba(242,140,40,0.1); }
+  .mbn-item.active { color: var(--gold); }
+  .mbn-item.active .mbn-icon {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 6px rgba(242,140,40,0.4));
+  }
+  .mbn-icon {
+    font-size: 22px;
+    line-height: 1;
+    transition: transform 0.2s, filter 0.2s;
+  }
+  .mbn-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Hide top nav-tabs on mobile — replaced by bottom nav */
+  .nav-tabs { display: none !important; }
+
+  /* Reserve space at bottom so content isn't hidden behind bottom nav */
+  .content-area { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
 
 /* ===== TABLET / LARGE PHONE (≤ 900px) ===== */
