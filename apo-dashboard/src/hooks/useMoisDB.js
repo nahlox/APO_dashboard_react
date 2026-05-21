@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
+import { STATIC_PROD_DAILY } from '../data/staticProdDaily'
 // ── Labels d'affichage (nomenclature OHADA — compte de résultat APO) ──────────
 export const CAT_LABELS = {
   fournitures_usine:   "Fournitures de l'usine et des bureaux",
@@ -188,17 +189,28 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     .sort((a, b) => b.mt - a.mt)
 
   // ── Graphiques journaliers ────────────────────────────────────────────────
-  const grainesDailyLabels = prodJour.map(r => r.date_production?.slice(8, 10))
-  const grainesDailyKg     = prodJour.map(r => r.regime_recu_kg || 0)
-  const teDailyLabels      = prodJour.map(r => r.date_production?.slice(8, 10))
-  const teDailyVals        = prodJour.map(r => ((r.taux_extraction || 0) * 100).toFixed(2))
+  // Fallback statique pour les mois antérieurs où production_journaliere est vide
+  const staticKey      = `${periode.annee}-${periode.mois}`
+  const staticFallback = STATIC_PROD_DAILY[staticKey]
+  const useFallback    = prodJour.length === 0 && staticFallback
 
-  // Stock huile : dernière ligne avec stock renseigné (≠ 0)
-  // L'Excel pré-remplit tout le mois — les jours futurs ont stock = copie du dernier jour réel
-  // On prend la dernière ligne où stock_huile_kg > 0 (= dernier jour avec données réelles)
-  const lastProdJourAvecStock = [...prodJour].reverse().find(r => (r.stock_huile_kg || 0) > 0)
-  const stockHuileKg          = (lastProdJourAvecStock?.stock_huile_kg || 0)
-  const TANK_CAPACITE_KG      = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
+  let grainesDailyLabels, grainesDailyKg, teDailyLabels, teDailyVals, stockHuileKg
+  if (useFallback) {
+    grainesDailyLabels = staticFallback.grainesDailyLabels
+    grainesDailyKg     = staticFallback.grainesDailyKg
+    teDailyLabels      = staticFallback.teDailyLabels
+    teDailyVals        = staticFallback.teDailyVals.map(v => v.toFixed(2))
+    stockHuileKg       = staticFallback.stockHuileKg ?? 0
+  } else {
+    grainesDailyLabels = prodJour.map(r => r.date_production?.slice(8, 10))
+    grainesDailyKg     = prodJour.map(r => r.regime_recu_kg || 0)
+    teDailyLabels      = prodJour.map(r => r.date_production?.slice(8, 10))
+    teDailyVals        = prodJour.map(r => ((r.taux_extraction || 0) * 100).toFixed(2))
+    // Stock huile : dernière ligne avec stock renseigné (≠ 0)
+    const lastProdJourAvecStock = [...prodJour].reverse().find(r => (r.stock_huile_kg || 0) > 0)
+    stockHuileKg = lastProdJourAvecStock?.stock_huile_kg || 0
+  }
+  const TANK_CAPACITE_KG = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
 
   // ── Blanc / Noir split ────────────────────────────────────────────────────
   const ventesHuileBloc = { blanc: [], noir: [] }
@@ -433,7 +445,10 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       stockHuileKg,
       tankCapaciteKg: TANK_CAPACITE_KG,
       comparAnnuelLabels: ['Rég. Reçus (T)', 'Rég. Traités (T)', 'Huile Prod. (T)', 'Vente Huile (T)'],
-      comparAnnuel: [{ label: `${periode.libelle} ${periode.annee}`, values: [regRecusT, regTraitesT, huileProduiteT, huileVendueT] }],
+      comparAnnuel: [
+        ...(staticFallback?.comparAnnuel || []),
+        { label: `${periode.libelle.slice(0,3)} ${periode.annee}`, values: [regRecusT, regTraitesT, huileProduiteT, huileVendueT] },
+      ],
       qualite: { ffaRate: null, humidite: null, impuretes: null },
     },
     revenus: {
