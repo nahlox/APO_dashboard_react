@@ -266,10 +266,11 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
   // ── Top fournisseurs ──────────────────────────────────────────────────────
   const fournisseursItems = topFournisseurs.map(r => ({
-    name:    r.nom || r.reference,
-    poids:   r.poids_total_kg     || 0,
-    prix:    Math.round(r.prix_moyen_kg   || 0),
-    montant: r.montant_total_fcfa || 0,
+    name:      r.nom || r.reference,
+    poids:     r.poids_total_kg     || 0,
+    prix:      Math.round(r.prix_moyen_kg   || 0),
+    montant:   r.montant_total_fcfa || 0,
+    nbCamions: r.nb_camions         || 0,
   }))
 
   // ── Section IV — amortissements ───────────────────────────────────────────

@@ -210,9 +210,10 @@ export function buildAggregateData(monthArr) {
   for (const d of dataArr) {
     for (const f of (d.fournisseurs?.liste || [])) {
       const k = f.name
-      if (!fournMerged[k]) fournMerged[k] = { name: k, poids: 0, montant: 0, prix: 0 }
-      fournMerged[k].poids   += (f.poids   || 0)
-      fournMerged[k].montant += (f.montant || 0)
+      if (!fournMerged[k]) fournMerged[k] = { name: k, poids: 0, montant: 0, prix: 0, nbCamions: 0 }
+      fournMerged[k].poids     += (f.poids     || 0)
+      fournMerged[k].montant   += (f.montant   || 0)
+      fournMerged[k].nbCamions += (f.nbCamions || 0)
     }
   }
   const fournisseursListe = Object.values(fournMerged)

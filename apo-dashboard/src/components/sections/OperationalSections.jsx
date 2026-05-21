@@ -4,7 +4,7 @@ import {
   LineElement, LineController, PointElement, Filler,
   CategoryScale, LinearScale, Tooltip, Legend,
 } from 'chart.js'
-import { fmt, defaultTooltip } from '../../lib/kpiEngine'
+import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { monthFull } from '../../lib/monthUtils'
 
@@ -61,34 +61,6 @@ function Sparkline({ values, width = 68, height = 26 }) {
       <circle cx={last[0]} cy={last[1]} r={2.5} fill={dotCol} />
     </svg>
   )
-}
-
-// ── Badge computation ─────────────────────────────────────────
-function getBadge(name, rankIndex, allMois) {
-  if (!allMois || allMois.length === 0) return null
-  const total       = allMois.length
-  const appearances = allMois.filter(m =>
-    m.data?.fournisseurs?.liste?.some(f => f.name === name)
-  ).length
-  const pct = appearances / total
-
-  // Trend check: last vs second-to-last month appearance
-  const history = allMois
-    .map(m => m.data?.fournisseurs?.liste?.find(f => f.name === name))
-    .filter(Boolean)
-  let atRisk = false
-  if (history.length >= 2) {
-    const last = history[history.length - 1].poids
-    const prev = history[history.length - 2].poids
-    if (prev > 0 && last < prev * 0.60) atRisk = true
-  }
-
-  if (atRisk)          return { emoji: '⚠️', label: 'À risque',  cls: 'badge-risk' }
-  if (rankIndex === 0) return { emoji: '🥇', label: 'Top',       cls: 'badge-top' }
-  if (rankIndex <= 2 && pct >= 0.75) return { emoji: '💎', label: 'Premium',  cls: 'badge-premium' }
-  if (pct >= 0.65)     return { emoji: '🔄', label: 'Régulier',  cls: 'badge-regular' }
-  if (appearances <= 1) return { emoji: '🆕', label: 'Nouveau',  cls: 'badge-new' }
-  return null
 }
 
 // ── Stacked area chart — évolution mensuelle ─────────────────
@@ -249,6 +221,133 @@ function HeatmapGrid({ fournisseurs, allMois }) {
             </>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Bar chart horizontal (camions ou poids/camion) ────────────
+function HBarChart({ title, subtitle, labels, values, unit, color, month }) {
+  const canvasRef = useRef(null)
+  const chartRef  = useRef(null)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    if (!canvasRef.current || labels.length === 0) return
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data:            values,
+          backgroundColor: color ?? 'rgba(242,140,40,0.75)',
+          borderRadius:    4,
+          borderWidth:     0,
+        }],
+      },
+      options: {
+        indexAxis:           'y',
+        responsive:          true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: ctx => `${ctx.parsed.x.toLocaleString('fr-FR')} ${unit}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid:  { color: 'rgba(242,140,40,0.06)' },
+            ticks: { color: 'var(--text-dim)', font: { size: 10 }, callback: v => v.toLocaleString('fr-FR') },
+          },
+          y: {
+            grid:  { display: false },
+            ticks: { color: 'var(--text-primary)', font: { size: 10 } },
+          },
+        },
+      },
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [month, JSON.stringify(values)])
+
+  const h = Math.max(180, labels.length * 32 + 40)
+
+  return (
+    <div className="chart-card">
+      <div className="chart-title">{title}</div>
+      <div className="chart-subtitle">{subtitle}</div>
+      <div className="chart-container" style={{ height: h }}>
+        <canvas ref={canvasRef} />
+      </div>
+    </div>
+  )
+}
+
+// ── Line chart — fournisseurs actifs par mois ─────────────────
+function ActiveSuppliersChart({ allMois, month }) {
+  const canvasRef = useRef(null)
+  const chartRef  = useRef(null)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    if (!canvasRef.current || allMois.length < 2) return
+
+    const labels = allMois.map(m => toShortMois(m.data._etl?.mois))
+    const counts = allMois.map(m => m.data?.fournisseurs?.liste?.length || 0)
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label:           'Fournisseurs actifs',
+          data:            counts,
+          borderColor:     'rgba(90,155,220,1)',
+          backgroundColor: 'rgba(90,155,220,0.15)',
+          fill:            true,
+          tension:         0.3,
+          borderWidth:     2,
+          pointRadius:     4,
+          pointHoverRadius: 6,
+        }],
+      },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: { label: ctx => `${ctx.parsed.y} fournisseurs` },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: 'var(--text-dim)', font: { size: 11 } } },
+          y: {
+            grid:       { color: 'rgba(242,140,40,0.06)' },
+            ticks:      { color: 'var(--text-dim)', stepSize: 1 },
+            beginAtZero: true,
+          },
+        },
+      },
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [month, allMois.length])
+
+  if (allMois.length < 2) return null
+
+  return (
+    <div className="chart-card">
+      <div className="chart-title">Nombre de Fournisseurs Actifs par Mois</div>
+      <div className="chart-subtitle">Évolution du panel fournisseurs dans la base de données</div>
+      <div className="chart-container" style={{ height: 200 }}>
+        <canvas ref={canvasRef} />
       </div>
     </div>
   )
@@ -421,24 +520,86 @@ export function Fournisseurs({ data, month, allMois = [] }) {
   const { currency, eurRate } = useDashboardStore()
   const { fournisseurs } = data
 
+  // ── Section 3 — métriques activité / fréquence ──────────────
+  const totalCamions    = fournisseurs.liste.reduce((s, f) => s + (f.nbCamions || 0), 0)
+  const poidsMoyKg      = totalCamions > 0 ? Math.round(fournisseurs.totalPoidsKg / totalCamions) : 0
+  const nbMoisCovered   = Math.max(1, allMois.length)
+  // Approx fréquence moyenne (jours entre 2 livraisons) par fournisseur sur la période
+  const avgCamionsPFourn = fournisseurs.liste.length > 0
+    ? totalCamions / fournisseurs.liste.length
+    : 0
+  const freqMoyJours    = avgCamionsPFourn > 0
+    ? Math.round((nbMoisCovered * 30) / avgCamionsPFourn)
+    : null
+  // % fournisseurs livrant >1×/semaine (approx : nb_camions > nb_semaines)
+  const nbSemaines      = nbMoisCovered * 4.3
+  const nbFrequents     = fournisseurs.liste.filter(f => (f.nbCamions || 0) > nbSemaines).length
+  const pctFrequents    = fournisseurs.liste.length > 0
+    ? Math.round(nbFrequents / fournisseurs.liste.length * 100)
+    : 0
+
+  // Bar camions — sorted by nbCamions desc
+  const sortedByCamions = [...fournisseurs.liste]
+    .filter(f => (f.nbCamions || 0) > 0)
+    .sort((a, b) => (b.nbCamions || 0) - (a.nbCamions || 0))
+    .slice(0, 10)
+  const camionsLabels = sortedByCamions.map(f => f.name.length > 22 ? f.name.slice(0, 22) + '…' : f.name)
+  const camionsVals   = sortedByCamions.map(f => f.nbCamions || 0)
+
+  // Bar poids/camion — sorted desc
+  const sortedByPCam = [...fournisseurs.liste]
+    .filter(f => (f.nbCamions || 0) > 0)
+    .map(f => ({ ...f, poidsPCam: Math.round(f.poids / f.nbCamions) }))
+    .sort((a, b) => b.poidsPCam - a.poidsPCam)
+    .slice(0, 10)
+  const pCamLabels = sortedByPCam.map(f => f.name.length > 22 ? f.name.slice(0, 22) + '…' : f.name)
+  const pCamVals   = sortedByPCam.map(f => f.poidsPCam)
+
+  // ── Section 4 — métriques évolution temporelle ──────────────
+  const hasMulti = allMois.length >= 2
+  const lastMoisList  = allMois[allMois.length - 1]?.data?.fournisseurs?.liste || []
+  const prevMoisList  = allMois[allMois.length - 2]?.data?.fournisseurs?.liste || []
+  const lastNames = new Set(lastMoisList.map(f => f.name))
+  const prevNames = new Set(prevMoisList.map(f => f.name))
+  const allNames  = new Set(allMois.flatMap(m => (m.data?.fournisseurs?.liste || []).map(f => f.name)))
+
+  // Nouveaux : dans le dernier mois mais absents de TOUS les mois précédents
+  const nouveaux = hasMulti
+    ? [...lastNames].filter(n => allMois.slice(0, -1).every(m =>
+        !m.data?.fournisseurs?.liste?.some(f => f.name === n)
+      )).length
+    : 0
+  // Perdus : dans avant-dernier mois mais absents du dernier
+  const perdus = hasMulti
+    ? [...prevNames].filter(n => !lastNames.has(n)).length
+    : 0
+  // Taux fidélité : % fournisseurs présents dans ≥ 3 mois (sur allMois)
+  const fidels = [...allNames].filter(name =>
+    allMois.filter(m => m.data?.fournisseurs?.liste?.some(f => f.name === name)).length >= 3
+  ).length
+  const tauxFidelite = allNames.size > 0 ? Math.round(fidels / allNames.size * 100) : 0
+
   return (
     <section>
       <div className="section-title">Fournisseurs</div>
       <div className="section-subtitle">Analyse multi-dimensionnelle — {monthFull(data)}</div>
 
-      {/* ── Item 5 : Tableau enrichi badges + sparklines ── */}
+      {/* ── Tableau principal avec sparklines ── */}
       <div className="chart-card">
-        <div className="chart-title">Top Fournisseurs — Tableau Enrichi</div>
-        <div className="chart-subtitle">Badges de profil · tendance sparkline · volume et montant</div>
+        <div className="chart-title">Top Fournisseurs par Volume</div>
+        <div className="chart-subtitle">
+          Poids, prix, montant et tendance multi-mois
+          {allMois.length >= 2 ? ` (${allMois.length} mois)` : ''}
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Fournisseur</th>
-                <th>Profil</th>
                 {allMois.length >= 2 && <th style={{ textAlign: 'center' }}>Tendance</th>}
                 <th style={{ textAlign: 'right' }}>Poids (kg)</th>
+                <th style={{ textAlign: 'right' }}>Camions</th>
                 <th style={{ textAlign: 'right' }}>Prix F/kg</th>
                 <th style={{ textAlign: 'right' }}>Montant {currency}</th>
                 <th>Part</th>
@@ -447,22 +608,14 @@ export function Fournisseurs({ data, month, allMois = [] }) {
             <tbody>
               {fournisseurs.liste.map((f, i) => {
                 const pct       = (f.poids / fournisseurs.totalPoidsKg * 100).toFixed(1)
-                const badge     = getBadge(f.name, i, allMois)
                 const sparkVals = allMois.map(m =>
                   m.data?.fournisseurs?.liste?.find(x => x.name === f.name)?.poids || 0
                 )
                 return (
                   <tr key={i}>
                     <td className="rank">{i + 1}</td>
-                    <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {f.name}
-                    </td>
-                    <td>
-                      {badge && (
-                        <span className={`fourn-badge ${badge.cls}`}>
-                          {badge.emoji} {badge.label}
-                        </span>
-                      )}
                     </td>
                     {allMois.length >= 2 && (
                       <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
@@ -470,6 +623,9 @@ export function Fournisseurs({ data, month, allMois = [] }) {
                       </td>
                     )}
                     <td className="num">{fmt.full(f.poids)}</td>
+                    <td className="num" style={{ color: 'var(--text-dim)' }}>
+                      {f.nbCamions || '—'}
+                    </td>
                     <td className="num">{f.prix} F/kg</td>
                     <td className="num" style={{ color: 'var(--gold)' }}>
                       {fmt.currency(f.montant, currency, eurRate)}
@@ -492,11 +648,98 @@ export function Fournisseurs({ data, month, allMois = [] }) {
         </div>
       </div>
 
-      {/* ── Item 4 : Stacked area chart mensuel ── */}
-      <StackedAreaChart fournisseurs={fournisseurs} allMois={allMois} month={month} />
+      {/* ── Section 3 — Activité & Fréquence ── */}
+      <div className="section-divider" style={{ margin: '28px 0 18px', borderTop: '1px solid rgba(242,140,40,0.12)', paddingTop: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
+          📦 Activité &amp; Fréquence
+        </div>
+      </div>
 
-      {/* ── Item 3 : Heatmap fournisseur × mois ── */}
-      <HeatmapGrid fournisseurs={fournisseurs} allMois={allMois} />
+      <div className="kpi-grid" style={{ marginBottom: 24 }}>
+        <div className="kpi-card">
+          <div className="kpi-label">Livraisons (camions)</div>
+          <div className="kpi-value gold">{totalCamions.toLocaleString('fr-FR')}</div>
+          <div className="kpi-sub">{fournisseurs.liste.length} fournisseurs actifs</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Poids Moyen / Camion</div>
+          <div className="kpi-value gold">{(poidsMoyKg / 1000).toFixed(1)} T</div>
+          <div className="kpi-sub">{poidsMoyKg.toLocaleString('fr-FR')} kg par livraison</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Fréquence Moyenne</div>
+          <div className="kpi-value gold">{freqMoyJours !== null ? `${freqMoyJours}j` : '—'}</div>
+          <div className="kpi-sub">entre 2 livraisons (approx.)</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">&gt;1 livraison/semaine</div>
+          <div className="kpi-value gold">{pctFrequents}%</div>
+          <div className="kpi-sub">{nbFrequents} / {fournisseurs.liste.length} fournisseurs</div>
+        </div>
+      </div>
+
+      <div className="charts-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: 16 }}>
+        {camionsVals.length > 0 && (
+          <HBarChart
+            title="Camions par Fournisseur"
+            subtitle="Nombre total de livraisons — trié décroissant"
+            labels={camionsLabels}
+            values={camionsVals}
+            unit="camions"
+            color="rgba(242,140,40,0.75)"
+            month={month}
+          />
+        )}
+        {pCamVals.length > 0 && (
+          <HBarChart
+            title="Poids Moyen par Livraison"
+            subtitle="kg / camion — identifier sous-chargements et livraisons exceptionnelles"
+            labels={pCamLabels}
+            values={pCamVals}
+            unit="kg / camion"
+            color="rgba(100,190,100,0.75)"
+            month={month}
+          />
+        )}
+      </div>
+
+      {/* ── Section 4 — Évolution temporelle ── */}
+      {hasMulti && (
+        <>
+          <div className="section-divider" style={{ margin: '28px 0 18px', borderTop: '1px solid rgba(242,140,40,0.12)', paddingTop: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
+              📈 Évolution Temporelle
+            </div>
+          </div>
+
+          <div className="kpi-grid" style={{ marginBottom: 24 }}>
+            <div className="kpi-card">
+              <div className="kpi-label">Fournisseurs Actifs</div>
+              <div className="kpi-value gold">{lastNames.size}</div>
+              <div className="kpi-sub">dernier mois disponible</div>
+            </div>
+            <div className="kpi-card accent-green">
+              <div className="kpi-label">Nouveaux Fournisseurs</div>
+              <div className="kpi-value green">{nouveaux > 0 ? `+${nouveaux}` : '0'}</div>
+              <div className="kpi-sub">apparus ce dernier mois</div>
+            </div>
+            <div className="kpi-card accent-red">
+              <div className="kpi-label">Fournisseurs Perdus</div>
+              <div className="kpi-value red">{perdus > 0 ? `−${perdus}` : '0'}</div>
+              <div className="kpi-sub">absents du dernier mois</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-label">Taux de Fidélité</div>
+              <div className="kpi-value gold">{tauxFidelite}%</div>
+              <div className="kpi-sub">présents ≥ 3 mois sur {allMois.length}</div>
+            </div>
+          </div>
+
+          <ActiveSuppliersChart allMois={allMois} month={month} />
+          <StackedAreaChart fournisseurs={fournisseurs} allMois={allMois} month={month} />
+          <HeatmapGrid fournisseurs={fournisseurs} allMois={allMois} />
+        </>
+      )}
     </section>
   )
 }
