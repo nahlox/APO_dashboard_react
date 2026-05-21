@@ -1,12 +1,29 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
+const MODULES = [
+  { id: 'vue-ensemble', label: "Vue d'Ensemble",      icon: '📊' },
+  { id: 'production',   label: 'Production & Graines', icon: '🌴' },
+  { id: 'revenus',      label: 'Revenus & Ventes',     icon: '💰' },
+  { id: 'charges',      label: 'Charges & Coûts',      icon: '💸' },
+  { id: 'fournisseurs', label: 'Fournisseurs',         icon: '🚚' },
+  { id: 'pepiniere',    label: 'Pépinière',            icon: '🌱' },
+]
+
 export default function Sidebar() {
   const {
     sidebarCollapsed, sidebarOpen,
     theme, currency, eurRate, eurRateDate,
+    activeTab, setActiveTab,
     toggleSidebar, toggleTheme, toggleCurrency,
     closeMobileMenu,
   } = useDashboardStore()
+
+  const currentTab = activeTab['global'] ?? 'vue-ensemble'
+
+  const handleNav = (id) => {
+    setActiveTab('global', id)
+    closeMobileMenu()
+  }
 
   return (
     <>
@@ -32,11 +49,18 @@ export default function Sidebar() {
         </div>
 
         <div className="sidebar-section">
-          <div className="sidebar-label">Navigation</div>
+          <div className="sidebar-label">Modules</div>
 
-          <div className="sidebar-month-btn global-btn active">
-            🌐 Vue Globale
-          </div>
+          {MODULES.map(m => (
+            <div
+              key={m.id}
+              className={`sidebar-module-btn${currentTab === m.id ? ' active' : ''}`}
+              onClick={() => handleNav(m.id)}
+            >
+              <span className="sidebar-module-icon">{m.icon}</span>
+              <span className="sidebar-module-label">{m.label}</span>
+            </div>
+          ))}
         </div>
 
         <div className="sidebar-currency">

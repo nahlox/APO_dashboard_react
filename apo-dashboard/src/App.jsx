@@ -31,20 +31,11 @@ Chart.defaults.borderColor = 'rgba(242,140,40,0.1)'
 Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
-const MODULE_TABS = [
-  { id: 'vue-ensemble', label: "Vue d'Ensemble" },
-  { id: 'production',   label: 'Production & Graines' },
-  { id: 'revenus',      label: 'Revenus & Ventes' },
-  { id: 'charges',      label: 'Charges & Coûts' },
-  { id: 'fournisseurs', label: 'Fournisseurs' },
-  { id: 'pepiniere',    label: 'Pépinière' },
-]
-
 export default function App() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
-  const { activeTab, setActiveTab, theme, setMoisData, setEurRate, monthRange } = useDashboardStore()
+  const { activeTab, theme, setMoisData, setEurRate, monthRange } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
 
@@ -124,22 +115,8 @@ export default function App() {
         <div className="content-area">
           <Header />
 
-          {/* Filtre de plage + onglets modules — toujours visibles */}
+          {/* Filtre de plage — toujours visible (modules désormais dans le sidebar) */}
           <MonthRangeFilter allMois={allMois} />
-
-          {aggregatedData && (
-            <nav className="nav-tabs">
-              {MODULE_TABS.map(tab => (
-                <div
-                  key={tab.id}
-                  className={`nav-tab${currentTab === tab.id ? ' active' : ''}`}
-                  onClick={() => setActiveTab('global', tab.id)}
-                >
-                  {tab.label}
-                </div>
-              ))}
-            </nav>
-          )}
 
           <main>
             {!aggregatedData && (
