@@ -6,7 +6,6 @@ const MODULE_ICONS = [
   { id: 'vue-ensemble', label: "Vue",     icon: '📊', center: true },
   { id: 'charges',      label: 'Charges', icon: '💸' },
   { id: 'fournisseurs', label: 'Fourn.',  icon: '🚚' },
-  { id: 'pepiniere',    label: 'Pépin.',  icon: '🌱' },
 ]
 
 export default function MobileBottomNav() {

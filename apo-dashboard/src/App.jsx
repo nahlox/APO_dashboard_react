@@ -76,7 +76,10 @@ export default function App() {
     [filteredMois]
   )
 
-  const currentTab = activeTab['global'] ?? 'vue-ensemble'
+  // Pépinière retirée → fallback Vue d'Ensemble si tab obsolète
+  const VALID_TABS = ['vue-ensemble', 'production', 'revenus', 'charges', 'fournisseurs']
+  const savedTab   = activeTab['global']
+  const currentTab = VALID_TABS.includes(savedTab) ? savedTab : 'vue-ensemble'
 
   // Clé unique pour forcer le re-render des sections quand la plage change
   const rangeKey = filteredMois.length

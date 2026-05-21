@@ -2,12 +2,11 @@ import { useDashboardStore } from '../../store/dashboardStore'
 import { monthLabel } from '../../lib/monthUtils'
 
 const MODULES = [
-  { id: 'vue-ensemble', label: "Vue d'Ensemble",      icon: '📊' },
+  { id: 'vue-ensemble', label: "Vue d'Ensemble",       icon: '📊' },
   { id: 'production',   label: 'Production & Graines', icon: '🌴' },
   { id: 'revenus',      label: 'Revenus & Ventes',     icon: '💰' },
   { id: 'charges',      label: 'Charges & Coûts',      icon: '💸' },
   { id: 'fournisseurs', label: 'Fournisseurs',         icon: '🚚' },
-  { id: 'pepiniere',    label: 'Pépinière',            icon: '🌱' },
 ]
 
 export default function Sidebar({ allMois = [] }) {
