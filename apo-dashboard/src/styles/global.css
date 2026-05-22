@@ -245,6 +245,67 @@ body.light .sidebar-header { background: #FFFFFF; }
 .sidebar.collapsed .sidebar-module-label { display: none; }
 .sidebar.collapsed .sidebar-module-btn { padding: 12px 0; justify-content: center; gap: 0; }
 
+/* ===== SIDEBAR FOLDER TREE ===== */
+.sidebar-folder {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: color 0.16s, background 0.16s;
+  user-select: none;
+}
+.sidebar-folder:hover { color: var(--text); background: rgba(242,140,40,0.05); }
+.sidebar-folder.open  { color: var(--text); }
+
+/* Dossier année légèrement indenté */
+.sidebar-folder.sf-year { padding-left: 32px; font-size: 12.5px; font-weight: 500; }
+
+.sf-chevron { font-size: 10px; width: 10px; flex-shrink: 0; opacity: 0.7; }
+.sf-icon    { font-size: 16px; line-height: 1; flex-shrink: 0; }
+.sf-label   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Enfants : padding gauche pour simuler l'arbre */
+.sf-children { border-left: 1px dashed rgba(242,140,40,0.18); margin-left: 27px; }
+
+/* Document feuille */
+.sf-doc {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px 7px 10px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  margin-left: -1px;
+  transition: color 0.16s, background 0.16s, border-color 0.16s;
+  user-select: none;
+}
+.sf-doc:hover  { color: var(--text); background: rgba(242,140,40,0.05); }
+.sf-doc.active {
+  color: var(--gold);
+  border-left-color: var(--gold);
+  background: rgba(242,140,40,0.09);
+  font-weight: 600;
+}
+.sf-doc-icon  { font-size: 14px; flex-shrink: 0; }
+.sf-doc-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Masquer les labels des dossiers en mode réduit */
+.sidebar.collapsed .sf-label,
+.sidebar.collapsed .sf-doc-label,
+.sidebar.collapsed .sf-chevron,
+.sidebar.collapsed .sf-children { display: none; }
+.sidebar.collapsed .sidebar-folder,
+.sidebar.collapsed .sf-doc { padding: 10px 0; justify-content: center; gap: 0; }
+
 .sidebar-currency {
   margin-top: auto;
   padding: 16px 20px;

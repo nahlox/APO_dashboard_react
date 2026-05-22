@@ -1,5 +1,17 @@
+import { useState, useMemo, useEffect } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { monthLabel } from '../../lib/monthUtils'
+
+/** Regroupe allMois par année → [['2026', [{key, data}, …]], …] */
+function groupByYear(allMois) {
+  const map = {}
+  allMois.forEach(item => {
+    const year = String(item.data._etl.annee)
+    if (!map[year]) map[year] = []
+    map[year].push(item)
+  })
+  return Object.entries(map).sort(([a], [b]) => Number(a) - Number(b))
+}
 
 const MODULES = [
   { id: 'vue-ensemble', label: "Vue d'Ensemble",       icon: '📊' },
@@ -18,6 +30,25 @@ export default function Sidebar({ allMois = [] }) {
     toggleSidebar, toggleTheme, toggleCurrency,
     closeMobileMenu,
   } = useDashboardStore()
+
+  // État des dossiers — ouverts par défaut
+  const [pnlOpen, setPnlOpen]   = useState(true)
+  const [openYears, setOpenYears] = useState({})   // { '2026': true }
+
+  const yearGroups = useMemo(() => groupByYear(allMois), [allMois])
+
+  // Initialise les années ouvertes dès qu'on a des données
+  useEffect(() => {
+    if (yearGroups.length) {
+      setOpenYears(prev => {
+        const next = { ...prev }
+        yearGroups.forEach(([y]) => { if (next[y] === undefined) next[y] = true })
+        return next
+      })
+    }
+  }, [yearGroups])
+
+  const toggleYear = (y) => setOpenYears(prev => ({ ...prev, [y]: !prev[y] }))
 
   const currentTab = activeTab['global'] ?? 'vue-ensemble'
   // Quand on est sur un P&L, aucun module n'est actif
@@ -72,21 +103,53 @@ export default function Sidebar({ allMois = [] }) {
           ))}
         </div>
 
-        {allMois.length > 0 && (
+        {yearGroups.length > 0 && (
           <div className="sidebar-section">
             <div className="sidebar-label">Documents</div>
 
-            {allMois.map(({ key, data }) => (
-              <div
-                key={key}
-                className={`sidebar-module-btn${activePnlMonth === key ? ' active' : ''}`}
-                onClick={() => handlePnl(key)}
-                title={`Compte de résultat ${monthLabel(data)} ${data._etl.annee}`}
-              >
-                <span className="sidebar-module-icon">📄</span>
-                <span className="sidebar-module-label">P&L {monthLabel(data)}</span>
+            {/* Dossier racine : P&L */}
+            <div
+              className={`sidebar-folder${pnlOpen ? ' open' : ''}`}
+              onClick={() => setPnlOpen(o => !o)}
+            >
+              <span className="sf-chevron">{pnlOpen ? '▾' : '▸'}</span>
+              <span className="sf-icon">📁</span>
+              <span className="sf-label">P&amp;L</span>
+            </div>
+
+            {pnlOpen && (
+              <div className="sf-children">
+                {yearGroups.map(([year, months]) => (
+                  <div key={year}>
+                    {/* Dossier année */}
+                    <div
+                      className={`sidebar-folder sf-year${openYears[year] ? ' open' : ''}`}
+                      onClick={() => toggleYear(year)}
+                    >
+                      <span className="sf-chevron">{openYears[year] ? '▾' : '▸'}</span>
+                      <span className="sf-icon">📁</span>
+                      <span className="sf-label">{year}</span>
+                    </div>
+
+                    {openYears[year] && (
+                      <div className="sf-children sf-months">
+                        {months.map(({ key, data }) => (
+                          <div
+                            key={key}
+                            className={`sf-doc${activePnlMonth === key ? ' active' : ''}`}
+                            onClick={() => handlePnl(key)}
+                            title={`Compte de résultat ${monthLabel(data)} ${data._etl.annee}`}
+                          >
+                            <span className="sf-doc-icon">📄</span>
+                            <span className="sf-doc-label">{monthLabel(data)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
