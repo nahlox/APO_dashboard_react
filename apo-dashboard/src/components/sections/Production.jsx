@@ -68,15 +68,40 @@ export default function Production({ data, month }) {
     })
 
     // ── Taux d'extraction journalier ──────────────────────────────────────
+    const isMultiMonth = teDailyLabels.length > 31
     const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
     const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
     const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
     const dataMin   = teValides.length > 0 ? Math.min(...teValides) : 18
     const dataMax   = teValides.length > 0 ? p95 : 22
-    const teYMin    = Math.min(Math.floor(dataMin - 1), 16)   // toujours ≤ 16 pour voir 18 avec marge
-    const teYMax    = Math.max(Math.ceil(dataMax + 1), 24)    // toujours ≥ 24 pour voir 22 avec marge
+    const teYMin    = Math.min(Math.floor(dataMin - 1), 16)
+    const teYMax    = Math.max(Math.ceil(dataMax + 1), 24)
     const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
     const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
+
+    // Multi-mois : courbe lisse sans points (sauf outliers discrets)
+    // Mois seul  : points colorés par seuil (vert/or/rouge)
+    const tePointRadius = isMultiMonth
+      ? teRaw.map((v, i) => outlierIdx.has(i) ? 4 : 0)
+      : teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4)
+    const tePointStyle = isMultiMonth
+      ? teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle')
+      : teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle')
+    const tePointColor = isMultiMonth
+      ? teRaw.map((v, i) => outlierIdx.has(i) ? 'rgba(224,92,92,0.9)' : chartColors.gold)
+      : teRaw.map((v, i) =>
+          outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
+          : v >= 19.5 ? chartColors.green
+          : v >= 18   ? chartColors.gold
+          : chartColors.red
+        )
+    // Tick labels : en multi-mois, n'afficher que les étiquettes "Mois-01" (1er jour)
+    const xTickCallback = isMultiMonth
+      ? (val, i) => {
+          const lbl = teDailyLabels[i] ?? ''
+          return lbl.endsWith('-01') ? lbl.replace('-01', '') : ''
+        }
+      : undefined
 
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
@@ -85,16 +110,14 @@ export default function Production({ data, month }) {
         datasets: [
           {
             label: 'TE%', data: teAff,
-            borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)',
-            fill: true, tension: 0.3,
-            pointBackgroundColor: teRaw.map((v, i) =>
-              outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
-              : v >= 19.5 ? chartColors.green
-              : v >= 18   ? chartColors.gold
-              : chartColors.red
-            ),
-            pointRadius: teRaw.map((v, i) => outlierIdx.has(i) ? 6 : 4),
-            pointStyle:  teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle'),
+            borderColor: chartColors.gold,
+            backgroundColor: isMultiMonth ? 'rgba(242,140,40,0.06)' : 'rgba(242,140,40,0.08)',
+            fill: true,
+            tension: isMultiMonth ? 0.45 : 0.3,
+            pointBackgroundColor: tePointColor,
+            pointRadius:          tePointRadius,
+            pointStyle:           tePointStyle,
+            borderWidth:          isMultiMonth ? 1.5 : 2,
           },
           { label: 'Min 18%',   data: Array(teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
           { label: 'Cible 22%', data: Array(teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
@@ -110,7 +133,14 @@ export default function Production({ data, month }) {
           }}},
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+          x: {
+            grid: { display: false },
+            ticks: {
+              font: { size: 9 },
+              ...(xTickCallback ? { callback: xTickCallback } : {}),
+              maxRotation: 0,
+            },
+          },
           y: { min: teYMin, max: teYMax, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
         },
       },

@@ -1022,13 +1022,14 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   .nav-tabs { padding: 0 10px; -webkit-overflow-scrolling: touch; }
   .nav-tab { padding: 13px 11px; font-size: 10px; letter-spacing: 0.6px; }
 
-  /* KPI grid: 2 columns */
+  /* KPI grid: 2 columns, hauteur collée au contenu */
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
     margin-bottom: 14px;
+    align-items: start;
   }
-  .kpi-card { padding: 14px 16px; }
+  .kpi-card { padding: 12px 14px; }
   /* kpi-value size handled by clamp() */
   .kpi-label { font-size: 10px; letter-spacing: 1.5px; margin-bottom: 6px; }
   .kpi-sub { font-size: 11px; }
