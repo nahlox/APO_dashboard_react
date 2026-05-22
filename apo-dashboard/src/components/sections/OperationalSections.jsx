@@ -534,9 +534,9 @@ export function Fournisseurs({ data, month, allMois = [] }) {
   const freqMoyJours    = avgCamionsPFourn > 0
     ? Math.round((nbMoisCovered * 30) / avgCamionsPFourn)
     : null
-  // % fournisseurs livrant >5 livraisons/semaine
+  // % fournisseurs livrant >4 livraisons/semaine
   const nbSemaines   = nbMoisCovered * 4.3
-  const nbFrequents  = allListe.filter(f => (f.nbCamions || 0) > 5 * nbSemaines).length
+  const nbFrequents  = allListe.filter(f => (f.nbCamions || 0) > 4 * nbSemaines).length
   const pctFrequents = allListe.length > 0
     ? Math.round(nbFrequents / allListe.length * 100)
     : 0
@@ -675,12 +675,7 @@ export function Fournisseurs({ data, month, allMois = [] }) {
           <div className="kpi-sub">{poidsMoyKg.toLocaleString('fr-FR')} kg par livraison</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Fréquence Moyenne</div>
-          <div className="kpi-value gold">{freqMoyJours !== null ? `${freqMoyJours}j` : '—'}</div>
-          <div className="kpi-sub">entre 2 livraisons (approx.)</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">&gt;5 livraisons/semaine</div>
+          <div className="kpi-label">&gt;4 livraisons/semaine</div>
           <div className="kpi-value gold">{pctFrequents}%</div>
           <div className="kpi-sub">{nbFrequents} / {fournisseurs.nbActifs ?? allListe.length} fournisseurs</div>
         </div>
