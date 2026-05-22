@@ -245,6 +245,76 @@ body.light .sidebar-header { background: #FFFFFF; }
 .sidebar.collapsed .sidebar-module-label { display: none; }
 .sidebar.collapsed .sidebar-module-btn { padding: 12px 0; justify-content: center; gap: 0; }
 
+/* ===== CHARGES — EXPANDABLE ROWS ===== */
+.charges-cat-row.clickable { cursor: pointer; }
+.charges-cat-row.clickable:hover { background: rgba(242,140,40,0.05); }
+.charges-cat-row.expanded td { color: var(--text); }
+.row-expand-icon { display: inline-block; width: 14px; font-size: 9px; color: var(--text-dim); }
+
+.charges-detail-row td { background: rgba(0,0,0,0.12); border-bottom: 1px solid rgba(242,140,40,0.06); }
+body.light .charges-detail-row td { background: rgba(0,0,0,0.025); }
+.charges-detail-lib { font-size: 12px; color: var(--text-dim) !important; padding-left: 20px !important; }
+.charges-detail-bullet { margin-right: 6px; color: rgba(242,140,40,0.4); }
+.charges-detail-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim) !important; }
+.charges-detail-mt { font-size: 12px; color: var(--red) !important; }
+.charges-detail-more { font-size: 11px; color: var(--text-dim); font-style: italic; padding-left: 24px !important; }
+
+/* Feature 5 — badges fréquence */
+.freq-badge {
+  display: inline-block; margin-left: 8px;
+  padding: 2px 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  vertical-align: middle; line-height: 1.4;
+}
+.badge-recurrent    { background: rgba(63,163,77,0.15);    color: var(--green); }
+.badge-exceptionnel { background: rgba(138,154,142,0.15);  color: var(--text-dim); }
+
+/* ===== CHARGES — HEATMAP CALENDRIER ===== */
+.heatmap-months {
+  display: flex; flex-wrap: wrap; gap: 24px;
+  padding-top: 8px;
+}
+.heatmap-month { flex-shrink: 0; }
+.heatmap-month-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 30px);
+  gap: 3px;
+}
+.heatmap-day-hdr {
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  text-align: center; padding: 2px 0;
+}
+.heatmap-cell {
+  width: 30px; height: 30px;
+  border-radius: 4px;
+  background: rgba(242,140,40,0.06);
+  display: flex; align-items: center; justify-content: center;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+.heatmap-cell:hover { opacity: 0.8; }
+.heatmap-empty { background: transparent !important; }
+.heatmap-day-num { font-size: 9px; color: var(--text-dim); pointer-events: none; }
+.heatmap-legend {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 12px; flex-basis: 100%;
+}
+.heatmap-legend-swatch {
+  width: 18px; height: 12px; border-radius: 2px; flex-shrink: 0;
+}
+.heatmap-legend-label { font-size: 10px; color: var(--text-dim); }
+
+@media (max-width: 600px) {
+  .heatmap-grid { grid-template-columns: repeat(7, 26px); }
+  .heatmap-cell { width: 26px; height: 26px; }
+  .heatmap-months { gap: 16px; }
+}
+
 /* ===== SIDEBAR FOLDER TREE ===== */
 .sidebar-folder {
   display: flex;

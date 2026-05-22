@@ -11,7 +11,7 @@ export default function MonthPanel({ data, month, activeTab = 'vue-ensemble', al
         {activeTab === 'vue-ensemble' && <VueEnsemble data={data} month={month} />}
         {activeTab === 'production'   && <Production   data={data} month={month} />}
         {activeTab === 'revenus'      && <Revenus       data={data} month={month} />}
-        {activeTab === 'charges'      && <Charges       data={data} month={month} />}
+        {activeTab === 'charges'      && <Charges       data={data} month={month} allMois={allMois} />}
         {activeTab === 'fournisseurs' && <Fournisseurs  data={data} month={month} allMois={allMois} />}
         {activeTab === 'pepiniere'    && <Pepiniere     data={data} month={month} />}
       </ErrorBoundary>

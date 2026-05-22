@@ -188,6 +188,29 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     .map(([cat, mt]) => ({ lib: CAT_LABELS[cat] || cat, cat, mt, date: '' }))
     .sort((a, b) => b.mt - a.mt)
 
+  // ── Détails par catégorie — lignes individuelles (Feature 3) ──────────────
+  const detailsParCat = {}
+  for (const r of (caisseRows || [])) {
+    const cat = r.categorie || categorizeLibelle(r.libelle || '')
+    if (!detailsParCat[cat]) detailsParCat[cat] = []
+    detailsParCat[cat].push({
+      lib:  r.libelle        || '',
+      date: r.date_mouvement || '',
+      mt:   r.credit_fcfa    || 0,
+    })
+  }
+  for (const cat of Object.keys(detailsParCat)) {
+    detailsParCat[cat].sort((a, b) => b.mt - a.mt)
+  }
+
+  // ── Décaissements par jour — heatmap (Feature 4) ──────────────────────────
+  const decaissementsParJour = {}
+  for (const r of (caisseRows || [])) {
+    if (!r.date_mouvement) continue
+    const dk = r.date_mouvement.slice(0, 10)
+    decaissementsParJour[dk] = (decaissementsParJour[dk] || 0) + (r.credit_fcfa || 0)
+  }
+
   // ── Graphiques journaliers ────────────────────────────────────────────────
   // Fallback statique pour les mois antérieurs où production_journaliere est vide
   const staticKey      = `${periode.annee}-${periode.mois}`
@@ -469,7 +492,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       caJoursBlanc,
       caJoursNoir,
     },
-    charges: { topDepenses },
+    charges: { topDepenses, detailsParCat, decaissementsParJour },
     fournisseurs: {
       totalPoidsKg: fournisseursItems.reduce((s, f) => s + f.poids, 0),
       nbActifs:     fournisseursItems.length,
@@ -523,7 +546,7 @@ export function useMoisDB() {
               // Caisse 1 + Caisse 2 (débits, hors transferts internes)
               Promise.all([
                 supabase.from('caisse_apo')
-                  .select('libelle, credit_fcfa, categorie')
+                  .select('libelle, credit_fcfa, categorie, date_mouvement')
                   .eq('periode_id', periodeId)
                   .gt('credit_fcfa', 0)
                   .not('libelle', 'ilike', 'TRANSFERT%')
@@ -533,7 +556,7 @@ export function useMoisDB() {
                   .not('libelle', 'ilike', 'APPRO%')
                   .then(r => r.data || []),
                 supabase.from('caisse_apo2')
-                  .select('libelle, credit_fcfa, categorie')
+                  .select('libelle, credit_fcfa, categorie, date_mouvement')
                   .eq('periode_id', periodeId)
                   .gt('credit_fcfa', 0)
                   .not('libelle', 'ilike', 'TRANSFERT%')

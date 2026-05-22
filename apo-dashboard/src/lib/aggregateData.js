@@ -205,6 +205,26 @@ export function buildAggregateData(monthArr) {
   }
   const topDepenses = Object.values(topDepensesMerged).sort((a, b) => b.mt - a.mt)
 
+  // Détails par catégorie — concat + tri montant desc (Feature 3)
+  const detailsParCat = {}
+  for (const d of dataArr) {
+    for (const [cat, items] of Object.entries(d.charges?.detailsParCat || {})) {
+      if (!detailsParCat[cat]) detailsParCat[cat] = []
+      detailsParCat[cat].push(...items)
+    }
+  }
+  for (const cat of Object.keys(detailsParCat)) {
+    detailsParCat[cat].sort((a, b) => b.mt - a.mt)
+  }
+
+  // Décaissements par jour — fusion des maps date→montant (Feature 4)
+  const decaissementsParJour = {}
+  for (const d of dataArr) {
+    for (const [dk, mt] of Object.entries(d.charges?.decaissementsParJour || {})) {
+      decaissementsParJour[dk] = (decaissementsParJour[dk] || 0) + mt
+    }
+  }
+
   // ── Fournisseurs agrégés ────────────────────────────────────────────
   const fournMerged = {}
   for (const d of dataArr) {
@@ -321,7 +341,7 @@ export function buildAggregateData(monthArr) {
       caJoursBlanc:   dailyBlanc.vals,
       caJoursNoir:    dailyNoir.vals,
     },
-    charges: { topDepenses },
+    charges: { topDepenses, detailsParCat, decaissementsParJour },
     fournisseurs: {
       totalPoidsKg: allFournisseursListe.reduce((s, f) => s + f.poids, 0),
       nbActifs:     allFournisseursListe.length,

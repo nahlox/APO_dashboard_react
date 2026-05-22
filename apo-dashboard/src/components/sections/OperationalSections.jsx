@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Chart, BarElement, BarController,
   LineElement, LineController, PointElement, Filler,
@@ -356,14 +356,108 @@ function ActiveSuppliersChart({ allMois, month }) {
 }
 
 // ── CHARGES ──────────────────────────────────────────────────
-export function Charges({ data, month }) {
+// ─── Heatmap décaissements (Feature 4) ───────────────────────────────────────
+const JOURS_HDR = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const MOIS_FR   = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+
+function ChargesHeatmap({ decaissementsParJour }) {
+  const entries = Object.entries(decaissementsParJour)
+  if (entries.length === 0) return null
+
+  // Grouper par YYYY-MM
+  const byMonth = {}
+  for (const [dk, mt] of entries) {
+    const ym = dk.slice(0, 7)
+    if (!byMonth[ym]) byMonth[ym] = {}
+    byMonth[ym][dk] = mt
+  }
+  const months = Object.keys(byMonth).sort()
+  const allMts = entries.map(([, mt]) => mt)
+  const maxMt  = Math.max(...allMts, 1)
+
+  return (
+    <div className="heatmap-months">
+      {months.map(ym => {
+        const [yr, mo] = ym.split('-').map(Number)
+        const daysInMonth = new Date(yr, mo, 0).getDate()
+        const firstDow    = (new Date(yr, mo - 1, 1).getDay() + 6) % 7 // Lun=0
+
+        const cells = []
+        for (let i = 0; i < firstDow; i++) cells.push(null)
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dk = `${ym}-${String(d).padStart(2, '0')}`
+          cells.push({ day: d, mt: byMonth[ym][dk] || 0 })
+        }
+
+        return (
+          <div key={ym} className="heatmap-month">
+            <div className="heatmap-month-label">{MOIS_FR[mo - 1]} {yr}</div>
+            <div className="heatmap-grid">
+              {JOURS_HDR.map((j, i) => (
+                <div key={i} className="heatmap-day-hdr">{j}</div>
+              ))}
+              {cells.map((cell, i) =>
+                cell === null
+                  ? <div key={i} className="heatmap-cell heatmap-empty" />
+                  : (
+                    <div
+                      key={i}
+                      className="heatmap-cell"
+                      title={cell.mt > 0 ? `${cell.day}/${mo} — ${Math.round(cell.mt / 1000).toLocaleString('fr-FR')} K FCFA` : `${cell.day}/${mo} — aucun décaissement`}
+                      style={cell.mt > 0 ? {
+                        backgroundColor: `rgba(224,92,92,${(0.15 + 0.75 * (cell.mt / maxMt)).toFixed(2)})`,
+                      } : {}}
+                    >
+                      <span className="heatmap-day-num">{cell.day}</span>
+                    </div>
+                  )
+              )}
+            </div>
+          </div>
+        )
+      })}
+      <div className="heatmap-legend">
+        <span className="heatmap-legend-label">0</span>
+        {[0.15, 0.35, 0.55, 0.75, 0.90].map(o => (
+          <div key={o} className="heatmap-legend-swatch" style={{ backgroundColor: `rgba(224,92,92,${o})` }} />
+        ))}
+        <span className="heatmap-legend-label">Max</span>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+export function Charges({ data, month, allMois = [] }) {
   const { currency, eurRate } = useDashboardStore()
   const { charges, kpis } = data
   const refWaterfall = useRef(null)
   const chartRef     = useRef(null)
 
-  const isCategorized = charges.topDepenses.length > 0 && charges.topDepenses[0].date === ''
-  const total = charges.topDepenses.reduce((s, r) => s + r.mt, 0)
+  const [expandedCat, setExpandedCat] = useState(null)
+
+  const isCategorized       = charges.topDepenses.length > 0 && charges.topDepenses[0].date === ''
+  const total               = charges.topDepenses.reduce((s, r) => s + r.mt, 0)
+  const detailsParCat       = charges.detailsParCat        || {}
+  const decaissementsParJour = charges.decaissementsParJour || {}
+  const isMultiMois          = allMois.length > 1
+
+  // Feature 5 — fréquence par catégorie sur les mois sélectionnés
+  const freqParLib = {}
+  if (isMultiMois) {
+    for (const { data: d } of allMois) {
+      for (const dep of (d.charges?.topDepenses || [])) {
+        freqParLib[dep.lib] = (freqParLib[dep.lib] || 0) + 1
+      }
+    }
+  }
+  const getFreqBadge = (lib) => {
+    if (!isMultiMois) return null
+    const f = freqParLib[lib] || 0
+    if (f >= 3) return { label: 'RÉCURRENT',    cls: 'badge-recurrent'    }
+    if (f === 1) return { label: 'EXCEPTIONNEL', cls: 'badge-exceptionnel' }
+    return null
+  }
 
   useEffect(() => {
     chartRef.current?.destroy()
@@ -481,7 +575,7 @@ export function Charges({ data, month }) {
         <div className="chart-title">{isCategorized ? 'Répartition par Catégorie' : 'Top Dépenses du Mois'}</div>
         <div className="chart-subtitle">
           {isCategorized
-            ? "Charges d'exploitation classées par catégorie (hors achats graines)"
+            ? "Charges d'exploitation par catégorie — cliquer pour voir le détail"
             : 'Classées par montant décroissant (hors achats graines)'}
         </div>
         <table className="data-table">
@@ -495,24 +589,76 @@ export function Charges({ data, month }) {
             </tr>
           </thead>
           <tbody>
-            {charges.topDepenses.map((r, i) => (
-              <tr key={i}>
-                <td className="rank">{i + 1}</td>
-                <td>{r.lib}</td>
-                {!isCategorized && (
-                  <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>{r.date}</td>
-                )}
-                {isCategorized && (
-                  <td className="num" style={{ color: 'var(--text-dim)', fontSize: 11 }}>
-                    {total > 0 ? (r.mt / total * 100).toFixed(1) + '%' : '—'}
+            {charges.topDepenses.flatMap((r, i) => {
+              const isOpen    = isCategorized && expandedCat === r.cat
+              const details   = (detailsParCat[r.cat] || [])
+              const freqBadge = getFreqBadge(r.lib)
+              const rows = [
+                <tr
+                  key={`cat-${i}`}
+                  className={`charges-cat-row${isCategorized ? ' clickable' : ''}${isOpen ? ' expanded' : ''}`}
+                  onClick={() => isCategorized && setExpandedCat(isOpen ? null : r.cat)}
+                >
+                  <td className="rank">{i + 1}</td>
+                  <td>
+                    {isCategorized && (
+                      <span className="row-expand-icon">{isOpen ? '▾' : '▸'}</span>
+                    )}
+                    {r.lib}
+                    {freqBadge && (
+                      <span className={`freq-badge ${freqBadge.cls}`}>{freqBadge.label}</span>
+                    )}
                   </td>
-                )}
-                <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency, eurRate)}</td>
-              </tr>
-            ))}
+                  {!isCategorized && (
+                    <td style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>{r.date}</td>
+                  )}
+                  {isCategorized && (
+                    <td className="num" style={{ color: 'var(--text-dim)', fontSize: 11 }}>
+                      {total > 0 ? (r.mt / total * 100).toFixed(1) + '%' : '—'}
+                    </td>
+                  )}
+                  <td className="num" style={{ color: 'var(--red)' }}>– {fmt.currency(r.mt, currency, eurRate)}</td>
+                </tr>,
+              ]
+              if (isOpen) {
+                details.slice(0, 20).forEach((d, j) => {
+                  rows.push(
+                    <tr key={`detail-${i}-${j}`} className="charges-detail-row">
+                      <td />
+                      <td className="charges-detail-lib">
+                        <span className="charges-detail-bullet">↳</span>{d.lib}
+                      </td>
+                      <td className="num charges-detail-date">
+                        {d.date ? d.date.slice(8, 10) + '/' + d.date.slice(5, 7) : '—'}
+                      </td>
+                      <td className="num charges-detail-mt">– {fmt.currency(d.mt, currency, eurRate)}</td>
+                    </tr>
+                  )
+                })
+                if (details.length > 20) {
+                  rows.push(
+                    <tr key={`more-${i}`} className="charges-detail-row">
+                      <td /><td colSpan={3} className="charges-detail-more">
+                        … {details.length - 20} ligne{details.length - 20 > 1 ? 's' : ''} supplémentaire{details.length - 20 > 1 ? 's' : ''}
+                      </td>
+                    </tr>
+                  )
+                }
+              }
+              return rows
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Feature 4 — Heatmap décaissements (caisse uniquement) */}
+      {Object.keys(decaissementsParJour).length > 0 && (
+        <div className="chart-card">
+          <div className="chart-title">Calendrier des Décaissements</div>
+          <div className="chart-subtitle">Intensité journalière des dépenses caisse — survol pour le montant</div>
+          <ChargesHeatmap decaissementsParJour={decaissementsParJour} />
+        </div>
+      )}
     </section>
   )
 }
