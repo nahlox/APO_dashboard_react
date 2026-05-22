@@ -45,7 +45,12 @@
       "Bash(mkdir -p /Users/rnahle/projects/APO_dashboard_react/.claude/commands)",
       "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
       "Bash(curl -s http://localhost:5174)",
-      "Bash(pkill -f \"vite\")"
+      "Bash(pkill -f \"vite\")",
+      "Bash(xargs cat)",
+      "Bash(npx vite *)",
+      "Bash(git -C /Users/rnahle/projects/APO_dashboard_react status)",
+      "Bash(git -C /Users/rnahle/projects/APO_dashboard_react diff)",
+      "Bash(git -C /Users/rnahle/projects/APO_dashboard_react log --oneline -5)"
     ]
   }
 }
