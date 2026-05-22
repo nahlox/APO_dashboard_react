@@ -13,7 +13,6 @@ export default function KPICard({ label, value, valueColor = '', sub, accent = '
     <div className={`kpi-card fade-in${accent ? ` ${accent}` : ''}`}>
       <div className="kpi-label">{label}</div>
       <div className={`kpi-value${valueColor ? ` ${valueColor}` : ''}`}>{value}</div>
-      {sub && <div className="kpi-sub">{sub}</div>}
       {badge && (
         <div style={{ marginTop: 8 }}>
           <span className={`kpi-badge badge-${badgeType}`}>{badge}</span>
