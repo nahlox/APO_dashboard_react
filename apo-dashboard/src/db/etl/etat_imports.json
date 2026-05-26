@@ -15,13 +15,13 @@
     "fichier": "CAISSE 2 APO 2026.xlsx"
   },
   "vente_huile": {
-    "md5": "1f78b1ddaa4c3beabed2ca4df292ace0",
-    "date": "2026-05-20T12:15:26.733221",
+    "md5": "f13b3fab44028db55d9d8e046012d5b9",
+    "date": "2026-05-23T07:05:04.668968",
     "fichier": "VENTE D'HUILE APO SARCI 2026.xlsx"
   },
   "vente_palmiste": {
-    "md5": "d2f18d100577ae01645ab932d82b760a",
-    "date": "2026-05-20T12:15:27.014792",
+    "md5": "760417ee93a6ee6d5cc697fa26728c25",
+    "date": "2026-05-23T07:05:05.144238",
     "fichier": "VENTE NOIX DE PALMISTE 2026.xlsx"
   },
   "vente_florentin": {
@@ -40,8 +40,8 @@
     "fichier": "CLIENTS PEPINIERE PALMIER A HUILE.xlsx"
   },
   "production": {
-    "md5": "5f6113e696067825e7e235143cf13c95",
-    "date": "2026-05-22T07:09:26.316622",
+    "md5": "b1fc557b7a8cdb5e91c4c1f3dba5331c",
+    "date": "2026-05-23T07:05:05.592787",
     "fichier": "Tableau de production APO 2026.xlsx"
   }
 }
