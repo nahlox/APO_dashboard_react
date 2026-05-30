@@ -78,16 +78,17 @@ function StackedAreaChart({ fournisseurs, allMois, month }) {
     const datasets = topNames.map((name, i) => ({
       label:           name.length > 20 ? name.slice(0, 20) + '…' : name,
       data:            allMois.map(m => {
-        const f = m.data?.fournisseurs?.liste?.find(f => f.name === name)
+        const src = m.data?.fournisseurs?.allListe || m.data?.fournisseurs?.liste || []
+        const f = src.find(f => f.name === name)
         return f ? +(f.poids / 1000).toFixed(1) : 0
       }),
       borderColor:     F_PALETTE[i % F_PALETTE.length][0],
-      backgroundColor: F_PALETTE[i % F_PALETTE.length][1],
-      fill:            true,
-      tension:         0.4,
-      borderWidth:     2,
-      pointRadius:     3,
-      pointHoverRadius: 5,
+      backgroundColor: 'transparent',
+      fill:            false,
+      tension:         0.35,
+      borderWidth:     2.5,
+      pointRadius:     4,
+      pointHoverRadius: 6,
     }))
 
     chartRef.current = new Chart(canvasRef.current, {
@@ -116,12 +117,12 @@ function StackedAreaChart({ fournisseurs, allMois, month }) {
             ticks: { color: 'var(--text-dim)', font: { size: 11 } },
           },
           y: {
-            stacked: true,
-            grid:    { color: 'rgba(242,140,40,0.06)' },
+            grid:  { color: 'rgba(242,140,40,0.06)' },
             ticks: {
               color:    'var(--text-dim)',
               callback: v => v.toLocaleString('fr-FR') + ' T',
             },
+            beginAtZero: true,
           },
         },
       },
@@ -135,7 +136,7 @@ function StackedAreaChart({ fournisseurs, allMois, month }) {
   return (
     <div className="chart-card">
       <div className="chart-title">Évolution Mensuelle — Top Fournisseurs</div>
-      <div className="chart-subtitle">Volume livré mois par mois (en tonnes) — empilé par fournisseur</div>
+      <div className="chart-subtitle">Volume livré mois par mois (en tonnes) — une courbe par fournisseur</div>
       <div className="chart-container" style={{ height: 280 }}>
         <canvas ref={canvasRef} />
       </div>
