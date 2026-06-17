@@ -163,9 +163,9 @@ export default function Sidebar({ allMois = [] }) {
             const THEMES = ['light', 'auto', 'dark']
             const idx = THEMES.indexOf(theme)
             const options = [
-              { value: 'light', icon: '☀️', label: 'Clair' },
-              { value: 'auto',  icon: '◑',  label: 'Auto'  },
-              { value: 'dark',  icon: '🌙', label: 'Sombre' },
+              { value: 'light', icon: '○' },
+              { value: 'auto',  icon: '◑' },
+              { value: 'dark',  icon: '●' },
             ]
             return (
               <div className="theme-flick">
@@ -173,14 +173,13 @@ export default function Sidebar({ allMois = [] }) {
                   className="theme-flick-pill"
                   style={{ transform: `translateX(${idx * 100}%)` }}
                 />
-                {options.map(({ value, icon, label }) => (
+                {options.map(({ value, icon }) => (
                   <button
                     key={value}
                     className={`theme-flick-btn${theme === value ? ' active' : ''}`}
                     onClick={() => setTheme(value)}
                   >
                     <span className="tf-icon">{icon}</span>
-                    <span className="tf-label">{label}</span>
                   </button>
                 ))}
               </div>
