@@ -3,6 +3,8 @@ import { usePullToRefresh } from './hooks/usePullToRefresh'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
+import { useAuth } from './contexts/AuthContext'
+import LoginPage from './pages/LoginPage'
 import Header from './components/layout/Header'
 import Sidebar from './components/layout/Sidebar'
 import MobileBottomNav from './components/layout/MobileBottomNav'
@@ -33,6 +35,17 @@ Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
 export default function App() {
+  const { user } = useAuth()
+
+  // user === undefined : session en cours de chargement → rien à afficher
+  if (user === undefined) return null
+  // user === null : non connecté → page de login
+  if (user === null) return <LoginPage />
+
+  return <AppDashboard />
+}
+
+function AppDashboard() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
