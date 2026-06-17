@@ -3,13 +3,13 @@ APO Dashboard — ETL Cloud (sans Mac)
 =====================================
 Télécharge les fichiers Excel depuis l'API Dropbox → parse en mémoire → Supabase.
 
-Aucune dépendance au système local : tourne sur Anthropic cloud, GitHub Actions,
-Railway, ou tout autre serveur — sans que le Mac soit allumé.
+Aucune dépendance au système local : tourne sur GitHub Actions, Railway, ou tout
+autre serveur — sans que le Mac soit allumé.
 
 Usage :
-  python etl_cloud.py          # import complet (tous les mois jusqu'au mois actuel)
-  python etl_cloud.py --mois 4 # importe seulement un mois précis
-  python etl_cloud.py --dry    # simulation : télécharge mais n'écrit pas dans Supabase
+  python etl_cloud.py --tenant apo           # import complet pour le tenant 'apo'
+  python etl_cloud.py --tenant apo --mois 4  # importe seulement avril
+  python etl_cloud.py --tenant apo --dry     # simulation sans écriture Supabase
 
 Prérequis (.env) :
   SUPABASE_URL     = https://xxxx.supabase.co
@@ -110,7 +110,8 @@ def sheet_vente_bassin(mois):    return f"VENTE BASSIN {NOMS_MOIS_FR[mois]}"
 
 # ── UTILITAIRES ───────────────────────────────────────────────
 
-DRY_RUN = False  # modifié par argparse
+DRY_RUN   = False  # modifié par argparse
+TENANT_ID = None   # modifié par argparse (obligatoire)
 
 def log(msg: str):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
@@ -207,22 +208,32 @@ def lire_sheet(content: bytes, sheet_name: str):
 CHUNK_SIZE = 200
 
 def inserer(table: str, rows: list, periode_id: int | None = None, label: str = ""):
-    """Supprime les anciennes lignes du mois puis insère les nouvelles par blocs."""
+    """Supprime les anciennes lignes du mois puis insère les nouvelles par blocs.
+    Injecte automatiquement tenant_id dans chaque row si TENANT_ID est défini."""
     if not rows:
         log(f"  ℹ️  {table} : aucune ligne à insérer {label}")
         return
+    if TENANT_ID:
+        for r in rows:
+            r["tenant_id"] = TENANT_ID
     if DRY_RUN:
         log(f"  [DRY] {table} : {len(rows)} lignes (période {periode_id}) {label}")
         return
     if periode_id is not None:
-        sb.table(table).delete().eq("periode_id", periode_id).execute()
+        q = sb.table(table).delete().eq("periode_id", periode_id)
+        if TENANT_ID:
+            q = q.eq("tenant_id", TENANT_ID)
+        q.execute()
     for i in range(0, len(rows), CHUNK_SIZE):
         sb.table(table).insert(rows[i:i + CHUNK_SIZE]).execute()
     log(f"  ✅ {table} : {len(rows)} lignes insérées {label}")
 
 
 def get_periode_id(annee: int, mois: int) -> int | None:
-    r = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois).execute()
+    q = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois)
+    if TENANT_ID:
+        q = q.eq("tenant_id", TENANT_ID)
+    r = q.execute()
     return r.data[0]["id"] if r.data else None
 
 
@@ -237,11 +248,10 @@ def assurer_periodes() -> dict:
         if not pid:
             log(f"  📅 Création période {LIBELLES_FR[mois]} {ANNEE_COURANTE}...")
             if not DRY_RUN:
-                sb.table("periodes").insert({
-                    "annee":   ANNEE_COURANTE,
-                    "mois":    mois,
-                    "libelle": LIBELLES_FR[mois],
-                }).execute()
+                row = {"annee": ANNEE_COURANTE, "mois": mois, "libelle": LIBELLES_FR[mois]}
+                if TENANT_ID:
+                    row["tenant_id"] = TENANT_ID
+                sb.table("periodes").insert(row).execute()
                 pid = get_periode_id(ANNEE_COURANTE, mois)
         periodes[mois] = pid
     return periodes
@@ -252,8 +262,11 @@ def assurer_periodes() -> dict:
 def parse_production_tous_mois(content: bytes, periodes: dict):
     """Parse et insère toutes les données de production depuis le fichier de production."""
     if not DRY_RUN:
-        sb.table("production_journaliere").delete().gte("id", 0).execute()
-        log("  🗑  production_journaliere vidée")
+        q = sb.table("production_journaliere").delete().gte("id", 0)
+        if TENANT_ID:
+            q = q.eq("tenant_id", TENANT_ID)
+        q.execute()
+        log(f"  🗑  production_journaliere vidée (tenant: {TENANT_ID})")
 
     total = 0
     for mois, periode_id in periodes.items():
@@ -317,6 +330,9 @@ def parse_production_tous_mois(content: bytes, periodes: dict):
 
         rows = list(rows_par_date.values())
         if rows and not DRY_RUN:
+            if TENANT_ID:
+                for r in rows:
+                    r["tenant_id"] = TENANT_ID
             for i in range(0, len(rows), CHUNK_SIZE):
                 sb.table("production_journaliere").insert(rows[i:i + CHUNK_SIZE]).execute()
             log(f"  ✅ production_journaliere : {len(rows)} lignes (mois {mois})")
@@ -331,7 +347,10 @@ def parse_ventes_huile(content: bytes, mois: int, periode_id: int):
     lignes = lire_sheet(content, SHEETS_PAR_MOIS["vente_huile"][mois])
     if not lignes: return
 
-    sarci = sb.table("clients").select("id").eq("reference", "SARCI").single().execute()
+    q = sb.table("clients").select("id").eq("reference", "SARCI")
+    if TENANT_ID:
+        q = q.eq("tenant_id", TENANT_ID)
+    sarci = q.single().execute()
     client_id = sarci.data["id"] if sarci.data else None
 
     rows = []
@@ -459,11 +478,17 @@ def parse_achats_regimes(content: bytes, mois: int, periode_id: int):
 
     if not DRY_RUN:
         for ref in refs_vues:
-            sb.table("fournisseurs").upsert({"reference": ref, "nom": ref}, on_conflict="reference").execute()
+            row = {"reference": ref, "nom": ref}
+            if TENANT_ID:
+                row["tenant_id"] = TENANT_ID
+            sb.table("fournisseurs").upsert(row, on_conflict="reference,tenant_id").execute()
 
     fournisseurs_map = {}
     for ref in refs_vues:
-        r = sb.table("fournisseurs").select("id").eq("reference", ref).single().execute()
+        q = sb.table("fournisseurs").select("id").eq("reference", ref)
+        if TENANT_ID:
+            q = q.eq("tenant_id", TENANT_ID)
+        r = q.single().execute()
         if r.data:
             fournisseurs_map[ref] = r.data["id"]
 
@@ -513,12 +538,24 @@ def parse_pepiniere(content: bytes):
 
     if not DRY_RUN:
         for rc in rows_clients:
-            sb.table("clients").upsert(rc, on_conflict="reference").execute()
-        sb.table("contrats_pepiniere").delete().neq("id", 0).execute()
+            if TENANT_ID:
+                rc["tenant_id"] = TENANT_ID
+            sb.table("clients").upsert(rc, on_conflict="reference,tenant_id").execute()
+
+        q = sb.table("contrats_pepiniere").delete().neq("id", 0)
+        if TENANT_ID:
+            q = q.eq("tenant_id", TENANT_ID)
+        q.execute()
+
         for rc in rows_contrats:
             nom_ref = rc.pop("_nom_client")
-            cl = sb.table("clients").select("id").eq("reference", nom_ref).single().execute()
+            cq = sb.table("clients").select("id").eq("reference", nom_ref)
+            if TENANT_ID:
+                cq = cq.eq("tenant_id", TENANT_ID)
+            cl = cq.single().execute()
             rc["client_id"] = cl.data["id"] if cl.data else None
+            if TENANT_ID:
+                rc["tenant_id"] = TENANT_ID
             sb.table("contrats_pepiniere").insert(rc).execute()
 
     log(f"  ✅ contrats_pepiniere : {len(rows_contrats)} lignes insérées")
@@ -535,7 +572,10 @@ def recalculer_kpis(mois: int, periode_id: int):
     bq  = sb.table("banque_apo").select("montant_fcfa,categorie").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
     ar  = sb.table("achats_regimes").select("poids_kg,montant_total").eq("periode_id", periode_id).execute()
-    pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
+    pep_q = sb.table("contrats_pepiniere").select("montant_total,net_encaisse")
+    if TENANT_ID:
+        pep_q = pep_q.eq("tenant_id", TENANT_ID)
+    pep = pep_q.execute()
 
     # Patterns de transferts inter-caisses à exclure des charges
     SKIP = ("TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO")
@@ -598,6 +638,7 @@ def recalculer_kpis(mois: int, periode_id: int):
 
     payload = {
         "periode_id":              periode_id,
+        **({"tenant_id": TENANT_ID} if TENANT_ID else {}),
         "ca_huile_fcfa":           ca_huile,
         "ca_palmiste_fcfa":        ca_palmiste,
         "ca_florentin_fcfa":       ca_florentin,
@@ -718,11 +759,14 @@ def run(mois_cible: int | None = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="APO ETL Cloud — Dropbox → Supabase")
-    parser.add_argument("--mois",  type=int, help="Importer seulement ce mois (1-12)")
-    parser.add_argument("--dry",   action="store_true", help="Simulation — ne pas écrire dans Supabase")
+    parser.add_argument("--tenant", required=True, help="Identifiant du tenant (ex: apo, huilerie_xyz)")
+    parser.add_argument("--mois",   type=int,      help="Importer seulement ce mois (1-12)")
+    parser.add_argument("--dry",    action="store_true", help="Simulation — ne pas écrire dans Supabase")
     args = parser.parse_args()
 
-    DRY_RUN = args.dry
+    DRY_RUN   = args.dry
+    TENANT_ID = args.tenant
+
     if args.mois and args.mois in MOIS_STATIQUES:
         print(f"❌ Mois {args.mois} ({LIBELLES_FR[args.mois]}) est géré par les fichiers statiques JS — ETL non nécessaire.")
         exit(1)
