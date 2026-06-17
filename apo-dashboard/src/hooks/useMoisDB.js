@@ -573,7 +573,6 @@ export function useMoisDB() {
 
               supabase.from('vue_top_fournisseurs')
                 .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
-                .eq('tenant_id', tenantId)
                 .eq('annee', periode.annee)
                 .eq('mois', periode.mois)
                 .order('montant_total_fcfa', { ascending: false })
