@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { STATIC_PROD_DAILY } from '../data/staticProdDaily'
 // ── Labels d'affichage (nomenclature OHADA — compte de résultat APO) ──────────
 export const CAT_LABELS = {
@@ -509,8 +510,11 @@ export function useMoisDB() {
   const [moisData, setMoisData] = useState([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
+  const { tenantId } = useAuth()
 
   useEffect(() => {
+    if (!tenantId) return   // attendre que le tenant soit connu avant de fetcher
+
     async function fetchTout() {
       try {
         const { data: kpisRows, error: e1 } = await supabase
@@ -569,6 +573,7 @@ export function useMoisDB() {
 
               supabase.from('vue_top_fournisseurs')
                 .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
+                .eq('tenant_id', tenantId)
                 .eq('annee', periode.annee)
                 .eq('mois', periode.mois)
                 .order('montant_total_fcfa', { ascending: false })
@@ -606,7 +611,7 @@ export function useMoisDB() {
     }
 
     fetchTout()
-  }, [])
+  }, [tenantId])
 
   return { moisData, loading, error }
 }
