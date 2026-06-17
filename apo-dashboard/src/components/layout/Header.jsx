@@ -73,7 +73,7 @@ export default function Header() {
             }}>
               {initial}
             </div>
-            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }} className="header-user-text">
+            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }} className="header-user-text header-user-desktop">
               <span style={{ fontSize: 12, color: 'var(--text-1, #e8eaf0)', fontWeight: 600, lineHeight: 1.2 }}>
                 {email.split('@')[0]}
               </span>

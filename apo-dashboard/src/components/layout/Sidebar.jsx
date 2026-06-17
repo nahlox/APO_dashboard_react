@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { useAuth } from '../../contexts/AuthContext'
 import { monthLabel } from '../../lib/monthUtils'
 
 /** Regroupe allMois par année → [['2026', [{key, data}, …]], …] */
@@ -27,9 +28,10 @@ export default function Sidebar({ allMois = [] }) {
     theme, currency, eurRate, eurRateDate,
     activeTab, setActiveTab,
     activePnlMonth, setActivePnlMonth,
-    toggleSidebar, toggleTheme, toggleCurrency,
+    toggleSidebar, setTheme, toggleCurrency,
     closeMobileMenu,
   } = useDashboardStore()
+  const { user, role, signOut } = useAuth()
 
   // État des dossiers — ouverts par défaut
   const [pnlOpen, setPnlOpen]   = useState(true)
@@ -79,8 +81,8 @@ export default function Sidebar({ allMois = [] }) {
         <div className="sidebar-header">
           <button
             className={`hamburger${sidebarCollapsed ? '' : ' open'}`}
-            onClick={toggleSidebar}
-            aria-label="Réduire le menu"
+            onClick={sidebarOpen ? closeMobileMenu : toggleSidebar}
+            aria-label={sidebarOpen ? 'Fermer le menu' : 'Réduire le menu'}
           >
             <span /><span /><span />
           </button>
@@ -155,11 +157,25 @@ export default function Sidebar({ allMois = [] }) {
 
         <div className="sidebar-currency">
           <div className="sc-label">Apparence</div>
-          <button className="theme-toggle-btn" onClick={toggleTheme}>
-            <span className="theme-icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
-            <span className="theme-text">{theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}</span>
-            <span className="theme-indicator" />
-          </button>
+
+          {/* 3 boutons thème : Clair / Sombre / Auto */}
+          <div className="theme-selector">
+            {[
+              { value: 'light', icon: '☀️', label: 'Clair' },
+              { value: 'dark',  icon: '🌙', label: 'Sombre' },
+              { value: 'auto',  icon: '⬤',  label: 'Auto' },
+            ].map(({ value, icon, label }) => (
+              <button
+                key={value}
+                className={`theme-btn${theme === value ? ' active' : ''}`}
+                onClick={() => setTheme(value)}
+                title={label}
+              >
+                <span className="theme-btn-icon">{icon}</span>
+                <span className="theme-btn-label">{label}</span>
+              </button>
+            ))}
+          </div>
 
           <div className="sc-label" style={{ marginTop: 14 }}>Devise</div>
           <div className="toggle-wrap">
@@ -174,6 +190,24 @@ export default function Sidebar({ allMois = [] }) {
             1 € = <span>{eurRate.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} XOF</span>
             <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCF'}
           </div>
+
+          {/* Avatar utilisateur en bas du menu */}
+          {user && (
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar">
+                {user.email?.[0]?.toUpperCase()}
+              </div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-email">{user.email}</span>
+                <span className="sidebar-user-role">{role}</span>
+              </div>
+              <button
+                className="sidebar-logout-btn"
+                onClick={signOut}
+                title="Se déconnecter"
+              >⎋</button>
+            </div>
+          )}
         </div>
       </aside>
     </>

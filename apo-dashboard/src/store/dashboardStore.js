@@ -22,7 +22,7 @@ export const useDashboardStore = create((set) => ({
   // UI
   sidebarCollapsed: false,
   sidebarOpen: false,
-  theme: 'light',
+  theme: 'auto',   // 'light' | 'dark' | 'auto'
   currency: 'FCFA',
   eurRate: 655.957,        // taux live XOF→EUR (mis à jour au démarrage)
   eurRateDate: null,       // date du taux (ex: "2026-05-07")
@@ -36,11 +36,7 @@ export const useDashboardStore = create((set) => ({
   toggleSidebar:    () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   toggleMobileMenu: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   closeMobileMenu:  () => set({ sidebarOpen: false }),
-  toggleTheme: () => set((s) => {
-    const next = s.theme === 'dark' ? 'light' : 'dark'
-    document.body.classList.toggle('light', next === 'light')
-    return { theme: next }
-  }),
+  setTheme: (t) => set({ theme: t }),
   toggleCurrency: () => set((s) => ({
     currency: s.currency === 'FCFA' ? 'EUR' : 'FCFA'
   })),

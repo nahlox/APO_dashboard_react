@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { usePullToRefresh } from './hooks/usePullToRefresh'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
@@ -57,8 +56,17 @@ function AppDashboard() {
     setMoisData(moisSupp)
   }, [moisSupp, setMoisData])
 
+  // Thème : light / dark / auto (suit les préférences système)
   useEffect(() => {
-    document.body.classList.toggle('light', theme === 'light')
+    if (theme !== 'auto') {
+      document.body.classList.toggle('light', theme === 'light')
+      return
+    }
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const apply = (e) => document.body.classList.toggle('light', e.matches)
+    apply(mq)
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
   }, [theme])
 
   // Taux EUR live — XOF est arrimé à 655,957 mais on vérifie via l'API
@@ -71,8 +79,6 @@ function AppDashboard() {
       })
       .catch(() => { /* utilise le taux par défaut 655,957 */ })
   }, [setEurRate])
-
-  const { pullDistance } = usePullToRefresh()
 
   // Tous les mois proviennent de Supabase (avec fallback statique pour Jan/Fév/Mars)
   const allMois = moisSupp
@@ -101,18 +107,6 @@ function AppDashboard() {
 
   return (
     <>
-      {pullDistance > 10 && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          height: pullDistance, background: 'rgba(19,37,25,0.92)',
-          transition: 'height 0.1s', pointerEvents: 'none',
-          color: pullDistance >= 80 ? 'var(--gold)' : 'var(--text-dim)',
-          fontSize: 13, letterSpacing: 1,
-        }}>
-          {pullDistance >= 80 ? '↑ Relâchez pour actualiser' : '↓ Tirez pour actualiser'}
-        </div>
-      )}
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
 
       <div className="app-layout">
