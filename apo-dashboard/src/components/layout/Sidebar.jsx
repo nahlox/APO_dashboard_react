@@ -158,24 +158,34 @@ export default function Sidebar({ allMois = [] }) {
         <div className="sidebar-currency">
           <div className="sc-label">Apparence</div>
 
-          {/* 3 boutons thème : Clair / Sombre / Auto */}
-          <div className="theme-selector">
-            {[
+          {/* Slider thème : ☀️ Clair — ◑ Auto — 🌙 Sombre */}
+          {(() => {
+            const THEMES = ['light', 'auto', 'dark']
+            const idx = THEMES.indexOf(theme)
+            const options = [
               { value: 'light', icon: '☀️', label: 'Clair' },
+              { value: 'auto',  icon: '◑',  label: 'Auto'  },
               { value: 'dark',  icon: '🌙', label: 'Sombre' },
-              { value: 'auto',  icon: '⬤',  label: 'Auto' },
-            ].map(({ value, icon, label }) => (
-              <button
-                key={value}
-                className={`theme-btn${theme === value ? ' active' : ''}`}
-                onClick={() => setTheme(value)}
-                title={label}
-              >
-                <span className="theme-btn-icon">{icon}</span>
-                <span className="theme-btn-label">{label}</span>
-              </button>
-            ))}
-          </div>
+            ]
+            return (
+              <div className="theme-flick">
+                <div
+                  className="theme-flick-pill"
+                  style={{ transform: `translateX(${idx * 100}%)` }}
+                />
+                {options.map(({ value, icon, label }) => (
+                  <button
+                    key={value}
+                    className={`theme-flick-btn${theme === value ? ' active' : ''}`}
+                    onClick={() => setTheme(value)}
+                  >
+                    <span className="tf-icon">{icon}</span>
+                    <span className="tf-label">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
           <div className="sc-label" style={{ marginTop: 14 }}>Devise</div>
           <div className="toggle-wrap">
