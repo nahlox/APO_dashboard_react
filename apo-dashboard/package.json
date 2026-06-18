@@ -23,6 +23,10 @@
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.1.0",
     "vite-plugin-pwa": "^1.2.0",
+    "workbox-expiration": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1",
     "xlsx": "^0.18.5"
   }
 }

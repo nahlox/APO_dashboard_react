@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useAuth } from '../../contexts/AuthContext'
 import { monthLabel } from '../../lib/monthUtils'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
+import { supabase } from '../../db/supabase'
 
 /** Regroupe allMois par année → [['2026', [{key, data}, …]], …] */
 function groupByYear(allMois) {
@@ -32,6 +34,7 @@ export default function Sidebar({ allMois = [] }) {
     closeMobileMenu,
   } = useDashboardStore()
   const { user, role, signOut } = useAuth()
+  const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase)
 
   // État des dossiers — ouverts par défaut
   const [pnlOpen, setPnlOpen]   = useState(true)
@@ -199,6 +202,33 @@ export default function Sidebar({ allMois = [] }) {
             1 € = <span>{eurRate.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} XOF</span>
             <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCF'}
           </div>
+
+          {/* Notifications push quotidiennes */}
+          {pushStatus !== 'unsupported' && (
+            <div style={{ marginTop: 14 }}>
+              <div className="sc-label">Notifications</div>
+              <button
+                onClick={pushStatus === 'subscribed' ? unsubscribe : subscribe}
+                disabled={pushStatus === 'requesting' || pushStatus === 'denied'}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                  background: pushStatus === 'subscribed' ? 'rgba(63,163,77,0.12)' : 'rgba(242,140,40,0.1)',
+                  border: `1px solid ${pushStatus === 'subscribed' ? 'var(--green)' : 'var(--gold)'}`,
+                  borderRadius: 8, padding: '7px 10px', cursor: pushStatus === 'denied' ? 'not-allowed' : 'pointer',
+                  color: pushStatus === 'subscribed' ? 'var(--green)' : pushStatus === 'denied' ? 'var(--text-dim)' : 'var(--gold)',
+                  fontSize: 12, fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: 15 }}>
+                  {pushStatus === 'subscribed' ? '🔔' : pushStatus === 'requesting' ? '⏳' : pushStatus === 'denied' ? '🔕' : '🔔'}
+                </span>
+                {pushStatus === 'subscribed'  ? 'Notif 19h00 active'   :
+                 pushStatus === 'requesting'  ? 'Activation…'          :
+                 pushStatus === 'denied'      ? 'Bloqué (navigateur)'  :
+                                               'Activer bilan 19h00'}
+              </button>
+            </div>
+          )}
 
           {/* Avatar utilisateur en bas du menu */}
           {user && (
