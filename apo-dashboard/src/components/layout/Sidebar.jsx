@@ -227,6 +227,30 @@ export default function Sidebar({ allMois = [] }) {
                  pushStatus === 'denied'      ? 'Bloqué (navigateur)'  :
                                                'Activer bilan 19h00'}
               </button>
+
+              {/* BOUTON TEST — à supprimer après validation */}
+              {pushStatus === 'subscribed' && (
+                <button
+                  onClick={async () => {
+                    const SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3Zmd2aGVucXpkdXRqY3hodWlwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjI5ODk2MSwiZXhwIjoyMDkxODc0OTYxfQ.3_kNu864JFiKy1G7kWr5jZ04sLOUNW8ZPttuA1rhRUY'
+                    const r = await fetch('https://iwfgvhenqzdutjcxhuip.supabase.co/functions/v1/daily-push', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tenant_id: 'apo' }),
+                    })
+                    const d = await r.json()
+                    alert(r.ok ? `✓ Envoyé — ${d.body}` : `Erreur : ${JSON.stringify(d)}`)
+                  }}
+                  style={{
+                    marginTop: 6, width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'rgba(242,140,40,0.08)', border: '1px dashed var(--gold)',
+                    borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
+                    color: 'var(--gold)', fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>🧪</span> Envoyer notif maintenant
+                </button>
+              )}
             </div>
           )}
 
