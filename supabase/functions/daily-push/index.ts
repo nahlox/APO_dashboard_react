@@ -21,11 +21,13 @@ Deno.serve(async (req) => {
     const { tenant_id = 'apo' } = await req.json().catch(() => ({}))
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-    // ── 1. Dernier jour avec données ─────────────────────────────────────
+    // ── 1. Dernier jour avec données (≤ aujourd'hui, pas de dates futures) ──
+    const today = new Date().toISOString().slice(0, 10)
     const { data: prod } = await sb
       .from('production_journaliere')
       .select('date_production, taux_extraction, regime_recu_kg')
       .eq('tenant_id', tenant_id)
+      .lte('date_production', today)
       .order('date_production', { ascending: false })
       .limit(1)
       .single()
@@ -49,6 +51,7 @@ Deno.serve(async (req) => {
       .from('production_journaliere')
       .select('date_production, taux_extraction, regime_recu_kg')
       .eq('tenant_id', tenant_id)
+      .lte('date_production', today)
       .order('date_production', { ascending: false })
       .limit(7)
 
