@@ -68,7 +68,7 @@ const FEATURES = [
 ]
 
 const STATS = [
-  { value: '21%', label: 'TE moyen suivi', sub: 'en temps réel' },
+  { value: '12', label: 'Sources compatibles', sub: 'ERP, Excel, comptabilité…' },
   { value: '< 5s', label: 'Mise à jour', sub: 'des données' },
   { value: '100%', label: 'Web & Mobile', sub: 'aucune installation' },
 ]
@@ -125,21 +125,6 @@ function LogoMarquee() {
 /* ─── 3 modèles de service ─── */
 const MODELS = [
   {
-    icon: <Puzzle size={22} style={{ color: '#4ade80' }} />,
-    badge: 'Connecté',
-    title: 'Intégration ERP & logiciels existants',
-    desc: "Vous utilisez déjà un ERP ou un logiciel de comptabilité ? Palmeo se connecte directement à votre système actuel et en extrait les données automatiquement.",
-    sources: ['Odoo', 'Sage', 'SAP', 'Dynamics 365', 'Cegid', 'EBP', 'QuickBooks', 'API sur mesure'],
-    points: [
-      'Synchronisation automatique des données',
-      'Aucune saisie manuelle',
-      'Mise à jour en temps réel',
-      'Compatible avec les principaux ERP du marché',
-    ],
-    accent: '#4ade80',
-    featured: false,
-  },
-  {
     icon: <Database size={22} style={{ color: '#60a5fa' }} />,
     badge: 'Données internes',
     title: 'Comptabilité & fichiers maison',
@@ -152,6 +137,21 @@ const MODELS = [
       'Aucun ERP requis',
     ],
     accent: '#60a5fa',
+    featured: false,
+  },
+  {
+    icon: <Puzzle size={22} style={{ color: '#4ade80' }} />,
+    badge: 'Connecté',
+    title: 'Intégration ERP & logiciels existants',
+    desc: "Vous utilisez déjà un ERP ou un logiciel de comptabilité ? Palmeo se connecte directement à votre système actuel et en extrait les données automatiquement.",
+    sources: ['Odoo', 'Sage', 'SAP', 'Dynamics 365', 'Cegid', 'EBP', 'QuickBooks', 'API sur mesure'],
+    points: [
+      'Synchronisation automatique des données',
+      'Aucune saisie manuelle',
+      'Mise à jour en temps réel',
+      'Compatible avec les principaux ERP du marché',
+    ],
+    accent: '#4ade80',
     featured: true,
   },
   {
@@ -500,47 +500,18 @@ export default function App() {
           <a href="https://app.palmeo.co" className="btn-secondary" style={{ fontSize: 16, padding: '14px 28px' }}>Voir l'application</a>
         </motion.div>
 
-        {/* Hero mockup */}
+        {/* Hero mockup — dashboard complet + phone */}
         <motion.div initial={{ opacity: 0, y: 32, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.8, delay: 0.55, ease: [0.22,1,0.36,1] }}
-          style={{ position: 'relative', maxWidth: 880, margin: '60px auto 0' }}>
-          <div style={{ position: 'absolute', inset: -1, background: 'linear-gradient(135deg,rgba(22,163,74,0.3),transparent 50%,rgba(251,191,36,0.15))', borderRadius: 20, filter: 'blur(20px)' }} />
-          <div style={{ position: 'relative', borderRadius: 20, background: 'rgba(10,11,15,0.9)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {['#ff5f57','#febc2e','#28c840'].map(c => <div key={c} style={{ width: 12, height: 12, borderRadius: '50%', background: c }} />)}
-              </div>
-              <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 6, height: 24, maxWidth: 240, display: 'flex', alignItems: 'center', paddingLeft: 10, fontSize: 11, color: '#3f3f46' }}>app.palmeo.co</div>
-            </div>
-            <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-              {[
-                { label: 'TE du jour', value: '21.3%', delta: '+0.4% vs hier', ok: true },
-                { label: 'Régimes reçus', value: '847 T', delta: "aujourd'hui", ok: null },
-                { label: 'Huile produite', value: '168 T', delta: '+3T vs hier', ok: true },
-              ].map(({ label, value, delta, ok }) => (
-                <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16, textAlign: 'left' }}>
-                  <div style={{ fontSize: 11, color: '#3f3f46', marginBottom: 8 }}>{label}</div>
-                  <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -1, color: '#fff' }}>{value}</div>
-                  <div style={{ fontSize: 11, marginTop: 6, fontWeight: 600, color: ok === true ? '#4ade80' : ok === false ? '#f87171' : '#52525b' }}>{delta}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ padding: '0 20px 20px' }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16, height: 130, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ fontSize: 11, color: '#3f3f46' }}>Taux d'extraction — Juin 2026</div>
-                <svg viewBox="0 0 800 80" width="100%" height="80" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#16a34a" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#16a34a" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <line x1="0" y1="30" x2="800" y2="30" stroke="#4ade80" strokeWidth="1" strokeDasharray="4,4" opacity="0.25" />
-                  <path d="M0,52 C50,48 100,44 160,40 C200,36 250,33 300,36 C350,40 400,46 450,42 C500,38 550,33 600,30 C640,27 680,25 760,22 L760,80 L0,80 Z" fill="url(#chartGrad)" />
-                  <path d="M0,52 C50,48 100,44 160,40 C200,36 250,33 300,36 C350,40 400,46 450,42 C500,38 550,33 600,30 C640,27 680,25 760,22" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinejoin="round" />
-                </svg>
-              </div>
+          style={{ position: 'relative', maxWidth: 1060, margin: '60px auto 0', display: 'grid', gridTemplateColumns: '1fr auto', gap: 24, alignItems: 'center' }}>
+          <div style={{ position: 'relative', minWidth: 0 }}>
+            <div style={{ position: 'absolute', inset: -1, background: 'linear-gradient(135deg,rgba(22,163,74,0.25),transparent 60%,rgba(96,165,250,0.1))', borderRadius: 18, filter: 'blur(16px)' }} />
+            <div style={{ position: 'relative' }}>
+              <DashboardDesktopMockup />
             </div>
           </div>
+          <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ flexShrink: 0 }}>
+            <PhoneMockup />
+          </motion.div>
         </motion.div>
       </section>
 
@@ -654,43 +625,6 @@ export default function App() {
               </div>
             </AnimateIn>
           ))}
-        </div>
-      </section>
-
-      {/* ══════════ MOCKUPS DESKTOP + MOBILE ══════════ */}
-      <section style={{ position: 'relative', zIndex: 10, padding: '0 24px 96px', maxWidth: 1100, margin: '0 auto' }}>
-        <AnimateIn style={{ textAlign: 'center', marginBottom: 52 }}>
-          <div className="tag" style={{ display: 'inline-flex', marginBottom: 16 }}>
-            <Monitor size={11} /> Aperçu de l'application
-          </div>
-          <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 'clamp(26px,4vw,40px)', letterSpacing: -1, marginBottom: 12 }}>
-            Sur ordinateur et sur téléphone
-          </h2>
-          <p style={{ color: '#71717a', maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontSize: 15 }}>
-            Un dashboard complet sur grand écran, et les alertes essentielles directement dans votre poche.
-          </p>
-        </AnimateIn>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 32, alignItems: 'center' }}>
-          {/* Desktop mockup */}
-          <AnimateIn style={{ minWidth: 0 }}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: -1, background: 'linear-gradient(135deg,rgba(74,222,128,0.2),transparent 60%,rgba(96,165,250,0.1))', borderRadius: 18, filter: 'blur(16px)' }} />
-              <div style={{ position: 'relative' }}>
-                <DashboardDesktopMockup />
-              </div>
-            </div>
-          </AnimateIn>
-
-          {/* Phone mockup */}
-          <AnimateIn i={1} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <PhoneMockup />
-            </motion.div>
-          </AnimateIn>
         </div>
       </section>
 
