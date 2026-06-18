@@ -58,7 +58,7 @@ const FEATURES = [
   {
     icon: <Bell size={20} className="text-emerald-400" />,
     title: 'Notifications push',
-    desc: "Bilan quotidien directement sur votre téléphone à 19h. Soyez informé même quand vous n'êtes pas devant un écran.",
+    desc: "Recevez les alertes et bilans clés directement sur votre téléphone, où que vous soyez.",
   },
   {
     icon: <Shield size={20} className="text-emerald-400" />,
