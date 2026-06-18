@@ -115,11 +115,15 @@ export default function Production({ data, month }) {
       : chartColors.red
     )
     const xTickCallback = isMultiMonth
-      ? (val, i) => {
-          const lbl = teLabels[i] ?? ''
-          return lbl.endsWith('-01') ? lbl.replace('-01', '').toUpperCase() : null
-        }
-      : (val, i) => teLabels[i] ?? null
+      ? (() => {
+          const seen = new Set()
+          return (val, i) => {
+            const prefix = String(teLabels[i] ?? '').split('-')[0]
+            if (prefix && !seen.has(prefix)) { seen.add(prefix); return prefix }
+            return ''
+          }
+        })()
+      : (val, i) => teLabels[i] ?? ''
 
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
