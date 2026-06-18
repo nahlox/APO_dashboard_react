@@ -92,13 +92,15 @@ export default function Production({ data, month }) {
       : v >= 20 ? chartColors.green
       : chartColors.red
     )
-    // Tick labels : en multi-mois, n'afficher que les étiquettes "Mois-01" (1er jour)
+    // Tick labels :
+    //   multi-mois → nom du mois uniquement au 1er jour, autoSkip désactivé
+    //   mois seul  → tous les jours (labels courts '01'…'31')
     const xTickCallback = isMultiMonth
       ? (val, i) => {
           const lbl = teDailyLabels[i] ?? ''
-          return lbl.endsWith('-01') ? lbl.replace('-01', '') : ''
+          return lbl.endsWith('-01') ? lbl.replace('-01', '').toUpperCase() : null
         }
-      : undefined
+      : (val, i) => teDailyLabels[i] ?? ''
 
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
@@ -132,9 +134,10 @@ export default function Production({ data, month }) {
           x: {
             grid: { display: false },
             ticks: {
-              font: { size: 9 },
-              ...(xTickCallback ? { callback: xTickCallback } : {}),
+              callback: xTickCallback,
+              autoSkip: false,
               maxRotation: 0,
+              font: { size: isMultiMonth ? 11 : 9 },
             },
           },
           y: { min: teYMin, max: teYMax, grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v + '%' } },
