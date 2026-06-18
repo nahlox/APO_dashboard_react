@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-EXCEL_PATH  = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Desktop/BANQUE APO 26.xlsx')
+EXCEL_PATH  = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Dropbox/APO/Compta/2026/BANK APO/BANK APO 2026.xlsx')
 DB_HOST     = os.getenv('DB_HOST', 'db.iwfgvhenqzdutjcxhuip.supabase.co')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_USER     = 'postgres'
@@ -49,13 +49,22 @@ def categorize_banque(libelle: str) -> str:
 
     # ── À ignorer ─────────────────────────────────────────────────────────────
     # Appros internes (la dépense est déjà enregistrée dans caisse_apo)
-    if 'APPRO CAISSE' in l:
+    # Couvre APPRO CAISSE, APPROV CAISSE, RETRAIT APPROV CAISSE, RETRAIT POUR APPROV CAISSE…
+    if 'APPRO' in l and 'CAISSE' in l:
+        return '_skip'
+    if 'RETRAIT' in l and 'CAISSE' in l:
+        return '_skip'
+    # Gérants de caisse connus — tous leurs virements sont des appros caisse
+    if any(k in l for k in ['AMANDE SIKA FRANCOIS', 'ASSAMOI ASSOUA', 'TA BI DJE']):
         return '_skip'
     # Appros SARCI (avance sur livraisons futures, pas une charge)
     if 'APPRO SARCI' in l:
         return '_skip'
     # Reversement d'un chèque impayé (annule un crédit)
     if 'COMPENSATION CHQ IMPAYEE' in l:
+        return '_skip'
+    # Cellules Excel en erreur
+    if l.startswith('#VALUE') or l.startswith('#REF') or l.startswith('#N/A'):
         return '_skip'
     # Lignes techniques des relevés (totaux, soldes)
     skip_markers = ['SOLDE FINAL', 'SOLDE INITIAL', 'TOTAL MOUVEMENTS',
@@ -76,7 +85,7 @@ def categorize_banque(libelle: str) -> str:
         return 'charges_patronales'
 
     # ── Électricité (CIE) ─────────────────────────────────────────────────────
-    if '/CIE/' in l or '/ CIE /' in l or (' CIE' in l and ('CONSOMMATION' in l or 'FACT' in l)):
+    if '/CIE/' in l or '/ CIE/' in l or '/ CIE /' in l or (' CIE' in l and ('CONSOMMATION' in l or 'CONSO' in l or 'FACT' in l)):
         return 'electricite'
 
     # ── Taxes & impôts ────────────────────────────────────────────────────────
@@ -84,7 +93,7 @@ def categorize_banque(libelle: str) -> str:
         'ITS-FDFP', 'ITS FDFP', 'RIBIC', 'FIRCA', 'TSE',
         'TELEPAIEMENT ITS', 'TELEPAIEMENT TSE', 'TELEPAIEMENT IMPOT',
         'IMPOT FONCIER', 'IMPOTS BIC', 'BIC 1ER TIERS', 'PATENTE',
-        'PENALITES', "REDEVANCE D'OCCUPATION", 'REDEVANCE D\u2019OCCUPATION',
+        'PENALITES', 'PENALITE', "REDEVANCE D'OCCUPATION", 'REDEVANCE D\u2019OCCUPATION',
         'TIERS 2025',
     ]
     if any(k in l for k in taxes_keys):
@@ -124,7 +133,7 @@ def categorize_banque(libelle: str) -> str:
 
     # ── Véhicules ────────────────────────────────────────────────────────────
     if any(k in l for k in ['UNICARS', 'VEHICULE', 'SOCIETE RAHAL', 'MEITE LADJI',
-                              'TRANSPORT PIECES']):
+                              'TRANSPORT PIECES', 'JANTE', 'PNEU']):
         return 'vehicules'
 
     # ── Entretien & réparation ────────────────────────────────────────────────
@@ -132,7 +141,8 @@ def categorize_banque(libelle: str) -> str:
         'TM&FRERES', 'ETS TM', 'SAM&SONS', 'O RING', 'GARNITURE',
         'SPRIINT TECH', 'JOINT COTIERE', 'POMPE ASPIRATEUR',
         'ENTRETIEN DES ORDINATEURS', 'ENTRETIEN ORDINATEURS',
-        'ELECTROTECH',   # electrical installation → construction/entretien
+        'ELECTROTECH', 'TOLETOILE', 'FIM/', 'FILTRE A CHARBON',
+        'VIS AUTO', 'JOINT RONDELLE',
     ]
     if any(k in l for k in entretien_keys):
         # Travaux d'électricité solaire/pont bascule → construction
@@ -211,7 +221,9 @@ def parse_sgci(ws, annee=2026):
         # Débit = col[4], Crédit = col[5]
         debit  = row[4]
         credit = row[5]
-        libelle = (row[3] or '').strip()
+        if not isinstance(row[3], str):
+            continue
+        libelle = row[3].strip()
 
         if not libelle:
             continue
@@ -255,7 +267,9 @@ def parse_bda(ws, annee=2026):
             continue
 
         debit   = row[4]
-        libelle = (row[3] or '').strip()
+        if not isinstance(row[3], str):
+            continue
+        libelle = row[3].strip()
 
         if not libelle:
             continue
