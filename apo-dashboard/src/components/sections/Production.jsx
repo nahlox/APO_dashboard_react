@@ -93,14 +93,17 @@ export default function Production({ data, month }) {
       : chartColors.red
     )
     // Tick labels :
-    //   multi-mois → nom du mois uniquement au 1er jour, autoSkip désactivé
-    //   mois seul  → tous les jours (labels courts '01'…'31')
+    //   multi-mois → nom du mois au 1er jour uniquement, autoSkip off
+    //   mois seul  → premier nombre du label ('04a' → '04', '15b–19a' → '15')
     const xTickCallback = isMultiMonth
       ? (val, i) => {
           const lbl = teDailyLabels[i] ?? ''
           return lbl.endsWith('-01') ? lbl.replace('-01', '').toUpperCase() : null
         }
-      : (val, i) => teDailyLabels[i] ?? ''
+      : (val, i) => {
+          const lbl = String(teDailyLabels[i] ?? '')
+          return lbl.match(/^(\d+)/)?.[1] ?? null
+        }
 
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
@@ -135,7 +138,7 @@ export default function Production({ data, month }) {
             grid: { display: false },
             ticks: {
               callback: xTickCallback,
-              autoSkip: false,
+              autoSkip: !isMultiMonth,
               maxRotation: 0,
               font: { size: isMultiMonth ? 11 : 9 },
             },
