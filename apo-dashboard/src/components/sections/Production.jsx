@@ -69,7 +69,29 @@ export default function Production({ data, month }) {
 
     // ── Taux d'extraction journalier ──────────────────────────────────────
     const isMultiMonth = teDailyLabels.length > 31
-    const teRaw     = teDailyVals.map(v => parseFloat(v) || 0)
+
+    // Fusion des périodes avec même numéro de jour ('04a' + '04b–09' → '04', TE moyenné)
+    let teLabels = teDailyLabels
+    let teMergedVals = teDailyVals
+    if (!isMultiMonth) {
+      const lbls = [], sums = [], cnts = [], seen = new Map()
+      teDailyLabels.forEach((lbl, i) => {
+        const key = String(lbl).match(/^(\d+)/)?.[1] ?? String(lbl)
+        if (seen.has(key)) {
+          const idx = seen.get(key)
+          sums[idx] += parseFloat(teDailyVals[i]) || 0
+          cnts[idx]++
+        } else {
+          seen.set(key, lbls.length)
+          lbls.push(key)
+          sums.push(parseFloat(teDailyVals[i]) || 0)
+          cnts.push(1)
+        }
+      })
+      teLabels = lbls
+      teMergedVals = sums.map((s, i) => s / cnts[i])
+    }
+    const teRaw = teMergedVals.map(v => parseFloat(v) || 0)
     const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
     const p95       = teValides.length ? teValides[Math.floor(teValides.length * 0.95)] : 25
     const dataMin   = teValides.length > 0 ? Math.min(...teValides) : 18
@@ -92,23 +114,17 @@ export default function Production({ data, month }) {
       : v >= 20 ? chartColors.green
       : chartColors.red
     )
-    // Tick labels :
-    //   multi-mois → nom du mois au 1er jour uniquement, autoSkip off
-    //   mois seul  → premier nombre du label ('04a' → '04', '15b–19a' → '15')
     const xTickCallback = isMultiMonth
       ? (val, i) => {
-          const lbl = teDailyLabels[i] ?? ''
+          const lbl = teLabels[i] ?? ''
           return lbl.endsWith('-01') ? lbl.replace('-01', '').toUpperCase() : null
         }
-      : (val, i) => {
-          const lbl = String(teDailyLabels[i] ?? '')
-          return lbl.match(/^(\d+)/)?.[1] ?? null
-        }
+      : (val, i) => teLabels[i] ?? null
 
     charts.current.te = new Chart(refTE.current, {
       type: 'line',
       data: {
-        labels: teDailyLabels,
+        labels: teLabels,
         datasets: [
           {
             label: 'TE%', data: teAff,
@@ -121,7 +137,7 @@ export default function Production({ data, month }) {
             pointStyle:           tePointStyle,
             borderWidth:          isMultiMonth ? 1.5 : 2,
           },
-          { label: 'Seuil 20%', data: Array(teDailyLabels.length).fill(20), borderColor: 'rgba(242,140,40,0.7)', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false },
+          { label: 'Seuil 20%', data: Array(teLabels.length).fill(20), borderColor: 'rgba(242,140,40,0.7)', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false },
         ],
       },
       options: {
