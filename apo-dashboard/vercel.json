@@ -1,12 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "palmeo.co" }],
-      "destination": "https://app.palmeo.co/$1",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
       "source": "/sw.js",
