@@ -70,26 +70,40 @@ export default function Production({ data, month }) {
     // ── Taux d'extraction journalier ──────────────────────────────────────
     const isMultiMonth = teDailyLabels.length > 31
 
-    // Fusion des périodes avec même numéro de jour ('04a' + '04b–09' → '04', TE moyenné)
-    let teLabels = teDailyLabels
-    let teMergedVals = teDailyVals
-    if (!isMultiMonth) {
+    let teLabels, teMergedVals
+    if (isMultiMonth) {
+      // Normaliser chaque mois à 31 slots fixes → espacement uniforme en X
+      const months = new Map(), monthOrder = []
+      teDailyLabels.forEach((lbl, i) => {
+        const [prefix, ...rest] = String(lbl).split('-')
+        const dayNum = rest.join('-').match(/^(\d+)/)?.[1]?.padStart(2, '0')
+        if (!prefix || !dayNum) return
+        if (!months.has(prefix)) { months.set(prefix, new Map()); monthOrder.push(prefix) }
+        const dayMap = months.get(prefix)
+        const v = parseFloat(teDailyVals[i])
+        if (!dayMap.has(dayNum)) dayMap.set(dayNum, [])
+        if (!isNaN(v) && v > 0) dayMap.get(dayNum).push(v)
+      })
+      const lbls = [], vs = []
+      for (const prefix of monthOrder) {
+        const dayMap = months.get(prefix)
+        for (let d = 1; d <= 31; d++) {
+          const key = String(d).padStart(2, '0')
+          lbls.push(`${prefix}-${key}`)
+          const dv = dayMap.get(key)
+          vs.push(dv?.length ? dv.reduce((a, b) => a + b, 0) / dv.length : 0)
+        }
+      }
+      teLabels = lbls; teMergedVals = vs
+    } else {
+      // Mois seul : fusionner les périodes avec même numéro de jour ('04a' + '04b–09' → '04')
       const lbls = [], sums = [], cnts = [], seen = new Map()
       teDailyLabels.forEach((lbl, i) => {
         const key = String(lbl).match(/^(\d+)/)?.[1] ?? String(lbl)
-        if (seen.has(key)) {
-          const idx = seen.get(key)
-          sums[idx] += parseFloat(teDailyVals[i]) || 0
-          cnts[idx]++
-        } else {
-          seen.set(key, lbls.length)
-          lbls.push(key)
-          sums.push(parseFloat(teDailyVals[i]) || 0)
-          cnts.push(1)
-        }
+        if (seen.has(key)) { const idx = seen.get(key); sums[idx] += parseFloat(teDailyVals[i]) || 0; cnts[idx]++ }
+        else { seen.set(key, lbls.length); lbls.push(key); sums.push(parseFloat(teDailyVals[i]) || 0); cnts.push(1) }
       })
-      teLabels = lbls
-      teMergedVals = sums.map((s, i) => s / cnts[i])
+      teLabels = lbls; teMergedVals = sums.map((s, i) => s / cnts[i])
     }
     const teRaw = teMergedVals.map(v => parseFloat(v) || 0)
     const teValides = teRaw.filter(v => v > 0).sort((a, b) => a - b)
@@ -98,7 +112,7 @@ export default function Production({ data, month }) {
     const dataMax   = teValides.length > 0 ? p95 : 22
     const teYMin    = Math.min(Math.floor(dataMin - 1), 16)
     const teYMax    = Math.max(Math.ceil(dataMax + 1), 24)
-    const teAff     = teRaw.map(v => v > teYMax ? teYMax : v)
+    const teAff     = teRaw.map(v => v === 0 ? null : v > teYMax ? teYMax : v)
     const outlierIdx = new Set(teRaw.map((v, i) => v > teYMax ? i : -1).filter(i => i >= 0))
 
     // Multi-mois : courbe lisse sans points (sauf outliers discrets)
@@ -115,14 +129,10 @@ export default function Production({ data, month }) {
       : chartColors.red
     )
     const xTickCallback = isMultiMonth
-      ? (() => {
-          const seen = new Set()
-          return (val, i) => {
-            const prefix = String(teLabels[i] ?? '').split('-')[0]
-            if (prefix && !seen.has(prefix)) { seen.add(prefix); return prefix }
-            return ''
-          }
-        })()
+      ? (val, i) => {
+          const lbl = teLabels[i] ?? ''
+          return lbl.endsWith('-01') ? lbl.split('-')[0] : ''
+        }
       : (val, i) => teLabels[i] ?? ''
 
     charts.current.te = new Chart(refTE.current, {
@@ -131,7 +141,7 @@ export default function Production({ data, month }) {
         labels: teLabels,
         datasets: [
           {
-            label: 'TE%', data: teAff,
+            label: 'TE%', data: teAff, spanGaps: true,
             borderColor: chartColors.gold,
             backgroundColor: isMultiMonth ? 'rgba(242,140,40,0.06)' : 'rgba(242,140,40,0.08)',
             fill: true,
