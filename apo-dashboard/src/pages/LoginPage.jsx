@@ -36,22 +36,24 @@ export default function LoginPage() {
         flexDirection: 'column',
         gap: '24px',
       }}>
-        {/* Logo / titre */}
+        {/* Logo Palmeo */}
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: 52, height: 52,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--gold, #f28c28), var(--green, #2e6b3e))',
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, #16a34a, #4ade80)',
             margin: '0 auto 16px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24,
-          }}>🌴</div>
+            fontSize: 26, fontWeight: 800, color: '#fff',
+            boxShadow: '0 0 24px rgba(74,222,128,0.25)',
+          }}>P</div>
           <h1 style={{
             color: 'var(--text-1, #e8eaf0)',
             fontSize: 22,
             fontWeight: 700,
             margin: 0,
-          }}>APO Dashboard</h1>
+            letterSpacing: '-0.5px',
+          }}>palmeo</h1>
           <p style={{
             color: 'var(--text-2, #8b92a8)',
             fontSize: 13,
