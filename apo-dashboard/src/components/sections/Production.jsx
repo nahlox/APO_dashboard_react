@@ -87,14 +87,11 @@ export default function Production({ data, month }) {
     const tePointStyle = isMultiMonth
       ? teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle')
       : teRaw.map((v, i) => outlierIdx.has(i) ? 'triangle' : 'circle')
-    const tePointColor = isMultiMonth
-      ? teRaw.map((v, i) => outlierIdx.has(i) ? 'rgba(224,92,92,0.9)' : chartColors.gold)
-      : teRaw.map((v, i) =>
-          outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
-          : v >= 19.5 ? chartColors.green
-          : v >= 18   ? chartColors.gold
-          : chartColors.red
-        )
+    const tePointColor = teRaw.map((v, i) =>
+      outlierIdx.has(i) ? 'rgba(224,92,92,0.9)'
+      : v >= 20 ? chartColors.green
+      : chartColors.red
+    )
     // Tick labels : en multi-mois, n'afficher que les étiquettes "Mois-01" (1er jour)
     const xTickCallback = isMultiMonth
       ? (val, i) => {
@@ -119,8 +116,7 @@ export default function Production({ data, month }) {
             pointStyle:           tePointStyle,
             borderWidth:          isMultiMonth ? 1.5 : 2,
           },
-          { label: 'Min 18%',   data: Array(teDailyLabels.length).fill(18), borderColor: 'rgba(224,92,92,0.5)',  borderDash: [4, 4], pointRadius: 0, fill: false },
-          { label: 'Cible 22%', data: Array(teDailyLabels.length).fill(22), borderColor: 'rgba(63,163,77,0.4)',  borderDash: [4, 4], pointRadius: 0, fill: false },
+          { label: 'Seuil 20%', data: Array(teDailyLabels.length).fill(20), borderColor: 'rgba(242,140,40,0.7)', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false },
         ],
       },
       options: {
@@ -262,7 +258,7 @@ export default function Production({ data, month }) {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Taux d'Extraction Journalier</div>
-          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
+          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités) — {monthFull(data)}</div>
           <div className="chart-container" style={{ height: 260 }}>
             <canvas ref={refTE} />
           </div>
