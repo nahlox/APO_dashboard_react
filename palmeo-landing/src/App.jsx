@@ -53,7 +53,7 @@ const FEATURES = [
   {
     icon: <Brain size={20} className="text-emerald-400" />,
     title: 'Insights IA quotidiens',
-    desc: "Claude analyse vos données chaque soir et vous envoie un résumé avec un insight actionnable sur votre performance.",
+    desc: "Claude analyse vos données de production et vous envoie un résumé avec un insight actionnable sur votre performance.",
   },
   {
     icon: <Bell size={20} className="text-emerald-400" />,
@@ -232,7 +232,7 @@ function DashboardDesktopMockup() {
               display: 'flex', alignItems: 'center', gap: 5,
               background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)',
               borderRadius: 6, padding: '5px 7px', fontSize: 10, color: '#4ade80',
-            }}>🔔 Actif 19h00</div>
+            }}>🔔 Notifs actives</div>
           </div>
         </div>
 
@@ -660,11 +660,11 @@ export default function App() {
               <Bell size={11} /> Push + IA
             </div>
             <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 'clamp(22px,3vw,34px)', letterSpacing: -0.8, marginBottom: 16 }}>
-              Un bilan chaque soir,<br />
+              Restez informé,<br />
               <span className="gradient-text">analysé par l'IA</span>
             </h2>
             <p style={{ color: '#71717a', lineHeight: 1.7, marginBottom: 24, fontSize: 15 }}>
-              À 19h, Palmeo compile vos données de production et demande à Claude d'analyser les tendances. Vous recevez un résumé directement sur votre téléphone.
+              Palmeo compile vos données de production et demande à Claude d'analyser les tendances. Vous recevez les alertes et bilans clés directement sur votre téléphone.
             </p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {["TE du jour vs seuil 20%", 'Régimes reçus, traités, huile produite', 'Sorties citerne (ventes)', 'Insight IA sur la tendance'].map(item => (
