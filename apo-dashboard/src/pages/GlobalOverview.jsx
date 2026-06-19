@@ -195,21 +195,17 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
 
       {/* KPIs cumulés */}
       <div className="kpi-grid">
-        <KPICard label={`CA Cumulé ${range}`}            value={fmt.kpiValue(global.caCumule, currency, eurRate)}             valueColor="gold"  sub={`${currency} · ${sum}`} />
-        {filteredMois.length >= 2 && (
-          <KPICard label={`Évolution CA ${monthShort(filteredMois.at(-1).data)}/${monthShort(filteredMois.at(-2).data)}`}
-                   value={(global.evolutionCA_MarFev > 0 ? '+' : '') + global.evolutionCA_MarFev.toFixed(1) + '%'}
-                   valueColor="gold"
-                   sub={`${fmt.currency(filteredMois.at(-1).data.kpis.caTotalFCFA, currency, eurRate)} vs ${fmt.currency(filteredMois.at(-2).data.kpis.caTotalFCFA, currency, eurRate)}`} />
-        )}
-        <KPICard label={`Résultat Cumulé ${range}`}      value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub={`${currency} · ${sum}`} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
-        <KPICard label="Huile Produite Cumulée"          value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold"  sub={filteredMois.map(m => fmt.tonnes(m.data.kpis.huileProduiteT)).join(' + ')} />
-        {filteredMois.length >= 2 && (
-          <KPICard label={`Évolution Production ${monthShort(filteredMois.at(-1).data)}/${monthShort(filteredMois.at(-2).data)}`}
-                   value={(((filteredMois.at(-1).data.kpis.huileProduiteT - filteredMois.at(-2).data.kpis.huileProduiteT) / (filteredMois.at(-2).data.kpis.huileProduiteT || 1)) * 100).toFixed(1) + '%'}
-                   valueColor="gold"
-                   sub={`${fmt.tonnes(filteredMois.at(-1).data.kpis.huileProduiteT)} vs ${fmt.tonnes(filteredMois.at(-2).data.kpis.huileProduiteT)}`} />
-        )}
+        {(() => {
+          const margeBrute = global.caCumule > 0 ? ((global.caCumule - global.coutMPCumule) / global.caCumule * 100).toFixed(1) : '—'
+          const margeNette = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
+          return (<>
+            <KPICard label={`CA Cumulé ${range}`}       value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold"  sub={`${currency} · ${sum}`} />
+            <KPICard label="Marge Brute"                value={margeBrute + '%'}                                     valueColor="green" sub="(CA − Coût MP) ÷ CA" accent="accent-green" />
+            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub={`${currency} · ${sum}`} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label="Huile Produite Cumulée"     value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold"  sub={filteredMois.map(m => fmt.tonnes(m.data.kpis.huileProduiteT)).join(' + ')} />
+            <KPICard label="Marge Nette"                value={margeNette + '%'}                                     valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub="Résultat Net ÷ CA Total" accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+          </>)
+        })()}
       </div>
 
       {/* Charts */}
