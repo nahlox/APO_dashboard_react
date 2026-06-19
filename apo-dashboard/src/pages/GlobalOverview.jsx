@@ -8,6 +8,7 @@ import KPICard from '../components/kpi/KPICard'
 import { fmt, buildGlobalKPIs, chartColors, defaultTooltip } from '../lib/kpiEngine'
 import { useDashboardStore } from '../store/dashboardStore'
 import { monthLabel, monthShort, rangeLabel, sumLabel } from '../lib/monthUtils'
+import { useCpoPrices } from '../hooks/useCpoPrices'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController, RadialLinearScale)
 
@@ -44,11 +45,14 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
   const combinedCharges = buildCombinedCharges(filteredMois)
   const global = buildGlobalKPIs(...filteredMois.map(m => m.data))
 
+  const { prices: cpoPrices, latest: cpoLatest, pctChange: cpoPct } = useCpoPrices(18)
+
   const refCA     = useRef(null)
   const refResult = useRef(null)
   const refProd   = useRef(null)
   const refCosts  = useRef(null)
   const refPrix   = useRef(null)
+  const refCpo    = useRef(null)
   const charts    = useRef({})
 
   const shortLabels = filteredMois.map(m => monthLabel(m.data))
@@ -184,6 +188,54 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
     return () => Object.values(charts.current).forEach(c => c?.destroy())
   }, [currency, eurRate, filteredMois.length])
 
+  // Graphique CPO prix international
+  useEffect(() => {
+    if (!refCpo.current || cpoPrices.length < 2) return
+    charts.current.cpo?.destroy()
+    const labels = cpoPrices.map(p => {
+      const d = new Date(p.date)
+      return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
+    })
+    const values = cpoPrices.map(p => p.prix_usd_tonne)
+    charts.current.cpo = new Chart(refCpo.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'CPO (USD/t)',
+          data: values,
+          borderColor: 'rgba(242,140,40,0.9)',
+          backgroundColor: 'rgba(242,140,40,0.08)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: 'rgba(242,140,40,0.9)',
+          fill: true,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...defaultTooltip,
+            callbacks: {
+              label: c => ` ${c.raw.toFixed(0)} USD/t`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: {
+            grid: { color: 'rgba(242,140,40,0.06)' },
+            ticks: { callback: v => v.toFixed(0) + '$' },
+          },
+        },
+      },
+    })
+  }, [cpoPrices])
+
   return (
     <div>
       <div className="section-title">Vue Globale — Performance</div>
@@ -259,6 +311,43 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
           <canvas ref={refPrix} />
         </div>
       </div>
+
+      {/* Prix CPO international */}
+      {cpoPrices.length > 0 && (
+        <div className="chart-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+            <div>
+              <div className="chart-title" style={{ marginBottom: 2 }}>Prix CPO — Marché International</div>
+              <div className="chart-subtitle">USD / tonne · Source : FMI via FRED · Mise à jour mensuelle</div>
+            </div>
+            {cpoLatest && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gold)', lineHeight: 1 }}>
+                    {Math.round(cpoLatest.prix_usd_tonne).toLocaleString('fr-FR')} <span style={{ fontSize: 13, fontWeight: 400 }}>USD/t</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                    {new Date(cpoLatest.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+                {cpoPct !== null && (
+                  <div style={{
+                    fontSize: 13, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
+                    background: parseFloat(cpoPct) >= 0 ? 'rgba(63,163,77,0.12)' : 'rgba(224,92,92,0.12)',
+                    color: parseFloat(cpoPct) >= 0 ? 'var(--green)' : 'var(--red)',
+                    border: `1px solid ${parseFloat(cpoPct) >= 0 ? 'rgba(63,163,77,0.25)' : 'rgba(224,92,92,0.25)'}`,
+                  }}>
+                    {parseFloat(cpoPct) >= 0 ? '+' : ''}{cpoPct}% vs mois préc.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="chart-container" style={{ height: 220 }}>
+            <canvas ref={refCpo} />
+          </div>
+        </div>
+      )}
 
       {/* Cartes résumé — une par mois */}
       <div className="global-compare-grid" style={{ marginTop: 28 }}>
