@@ -484,9 +484,10 @@ Deno.serve(async (req) => {
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: String(m.content) }))
 
-    const stream = ai.messages.stream({
+    const stream = await ai.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1400,
+      stream:     true,
       system:     buildSystemPrompt(tenantId, tenantId.toUpperCase(), dataContext),
       messages:   [...safeHistory, { role: 'user', content: message }],
     })
