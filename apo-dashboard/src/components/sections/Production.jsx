@@ -213,11 +213,11 @@ export default function Production({ data, month }) {
       <div className="section-subtitle">Collecte de régimes FFB et indicateurs de production — {monthFull(data)}</div>
 
       <div className="kpi-grid">
-        <KPICard label="Régimes Reçus (FFB)"   value={fmt.tonnes(kpis.regimesRecusT   ?? 0)} valueColor="gold"  sub={`kg achetés · ${detailSub}`} />
-        <KPICard label="Régimes Traités"        value={fmt.tonnes(kpis.regimesTraitesT ?? 0)} valueColor="green" sub="kg effectivement traités · base coût MP" accent="accent-green" />
-        <KPICard label="Stock Régimes Fin Mois" value={fmt.tonnes(kpis.stockFinMoisT   ?? 0)} sub={`kg en stock au ${endDate} · reportés mois suiv.`} />
-        <KPICard label="Huile Brute Produite"   value={fmt.tonnes(kpis.huileProduiteT  ?? 0)} valueColor="green" sub={`kg produits · ${fmt.tonnes(kpis.huileVendueT ?? 0)} livrés`} accent="accent-green" />
-        <KPICard label="Taux d'Extraction Réel" value={fmt.pct(te)}                           valueColor="green" sub="Huile produite ÷ Régimes traités" accent="accent-green" />
+        <KPICard label="Régimes Reçus (FFB)"   value={fmt.tonnes(kpis.regimesRecusT   ?? 0)} valueColor="gold" />
+        <KPICard label="Régimes Traités"        value={fmt.tonnes(kpis.regimesTraitesT ?? 0)} valueColor="green" accent="accent-green" />
+        <KPICard label="Stock Régimes Fin Mois" value={fmt.tonnes(kpis.stockFinMoisT   ?? 0)} />
+        <KPICard label="Huile Brute Produite"   value={fmt.tonnes(kpis.huileProduiteT  ?? 0)} valueColor="green" accent="accent-green" />
+        <KPICard label="Taux d'Extraction Réel" value={fmt.pct(te)}                           valueColor="green" accent="accent-green" />
       </div>
 
       {/* Tank + Indicateurs TE — côte à côte */}

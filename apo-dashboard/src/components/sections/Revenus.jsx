@@ -108,11 +108,11 @@ export default function Revenus({ data, month }) {
       <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {monthFull(data)}</div>
 
       <div className="kpi-grid">
-        <KPICard label="CA Total"          value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}        valueColor="green" sub={currency} accent="accent-green" />
-        <KPICard label="CA Huile BLANC"    value={fmt.kpiValue(blanc.caFCFA ?? 0, currency, eurRate)}        valueColor="green" sub={`${pctBlanc}% · ${(blanc.poidsT ?? 0).toFixed(1)} T · chèque SARCI`} accent="accent-green" />
-        <KPICard label="CA Huile NOIR"     value={fmt.kpiValue(noir.caFCFA ?? 0, currency, eurRate)}         valueColor="gold"  sub={`${pctNoir}% · ${(noir.poidsT ?? 0).toFixed(1)} T · autres règlements`} />
-        <KPICard label="Huile Vendue"      value={fmt.tonnes(kpis.huileVendueT)}                             sub={`${(blanc.poidsT ?? 0).toFixed(0)} T blanc + ${(noir.poidsT ?? 0).toFixed(0)} T noir`} />
-        {kpis.caNoisFCFA > 0 && <KPICard label="CA Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)} valueColor="gold" sub={`${kpis.palmisteVenduT ?? 0} T · 60 F/kg`} />}
+        <KPICard label="CA Total"          value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}        valueColor="green" accent="accent-green" />
+        <KPICard label="CA Huile BLANC"    value={fmt.kpiValue(blanc.caFCFA ?? 0, currency, eurRate)}        valueColor="green" accent="accent-green" />
+        <KPICard label="CA Huile NOIR"     value={fmt.kpiValue(noir.caFCFA ?? 0, currency, eurRate)}         valueColor="gold" />
+        <KPICard label="Huile Vendue"      value={fmt.tonnes(kpis.huileVendueT)} />
+        {kpis.caNoisFCFA > 0 && <KPICard label="CA Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)} valueColor="gold" />}
       </div>
 
       {/* Graines correspondantes */}
