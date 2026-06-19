@@ -353,15 +353,43 @@ def parse_ventes_huile(content: bytes, mois: int, periode_id: int):
     sarci = q.single().execute()
     client_id = sarci.data["id"] if sarci.data else None
 
+    # Détection BLANC : un "REGLEMENT CHEQUE PAR SARCI" couvre les livraisons
+    # précédentes consécutives dont la somme = montant du chèque.
+    all_rows_dt = [r for r in lignes if r[1] and isinstance(r[1], datetime)]
+    blanc_indices = set()
+
+    for i, row in enumerate(all_rows_dt):
+        lib = str(row[2] or "").strip().upper()
+        if lib != "REGLEMENT CHEQUE PAR SARCI":
+            continue
+        cheque_mt = round(safe_float(row[7]) or safe_float(row[8]) or 0, 0)
+        if not cheque_mt:
+            continue
+        cumul = 0.0
+        for j in range(i - 1, max(i - 20, -1), -1):
+            lib_j = str(all_rows_dt[j][2] or "").strip().upper()
+            if "VENTE D'HUILE" not in lib_j:
+                continue
+            vente_mt = round(safe_float(all_rows_dt[j][8]) or
+                             safe_float(all_rows_dt[j][3]) * safe_float(all_rows_dt[j][6]), 0)
+            cumul += vente_mt
+            blanc_indices.add(j)
+            if round(cumul, 0) >= cheque_mt:
+                break
+
     rows = []
-    for row in lignes:
+    for idx, row in enumerate(all_rows_dt):
         if not row[1] or not isinstance(row[1], datetime): continue
         if row[1].month != mois: continue
         # Tolérer erreurs de saisie année ±1 (ex: 2025-02-26 au lieu de 2026-02-26)
         if abs(row[1].year - ANNEE_COURANTE) > 1: continue
         if safe_float(row[3]) == 0: continue
+        lib = str(row[2] or "").strip().upper()
+        if "VENTE D'HUILE" not in lib and "VENTE HUILE" not in lib:
+            continue
         # Forcer l'année correcte pour date_vente en cas d'erreur de saisie
         date_corrigee = row[1].replace(year=ANNEE_COURANTE)
+        circuit = "blanc" if idx in blanc_indices else "noir"
         rows.append({
             "periode_id":     periode_id,
             "client_id":      client_id,
@@ -371,7 +399,12 @@ def parse_ventes_huile(content: bytes, mois: int, periode_id: int):
             "poids_sarci_kg": safe_float(row[4]),
             "prix_kg":        safe_float(row[6]),
             "avance_sarci":   safe_float(row[7]),
+            "circuit":        circuit,
         })
+
+    blanc = sum(1 for r in rows if r["circuit"] == "blanc")
+    noir  = sum(1 for r in rows if r["circuit"] == "noir")
+    log(f"    circuit → {blanc} blanc / {noir} noir")
     inserer("ventes_huile", rows, periode_id, f"(mois {mois})")
 
 
