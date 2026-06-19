@@ -59,8 +59,7 @@ else:
 
 ANNEE_COURANTE = datetime.now().year   # 2026
 MOIS_MAX       = datetime.now().month  # plafond d'import = mois courant
-# Mois couverts par les fichiers statiques JS (src/data/index.js) — jamais importés via ETL
-MOIS_STATIQUES = {1, 2, 3}            # Jan, Fév, Mar = static ; Avr+ = Supabase
+MOIS_STATIQUES = set()                 # tous les mois importés depuis Supabase
 
 # ── CHEMINS DROPBOX ───────────────────────────────────────────
 # Chemins absolus dans ton Dropbox (sans "Dropbox/" — c'est la racine)
@@ -813,8 +812,9 @@ def run(mois_cible: int | None = None):
                  Sinon importe tous les mois de 1 à MOIS_MAX.
     """
     log("=" * 56)
-    mois_min_dyn = min(m for m in range(1, 13) if m not in MOIS_STATIQUES)
-    log(f"APO ETL Cloud — {LIBELLES_FR[mois_min_dyn]} → {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE} (mois 1-{max(MOIS_STATIQUES)} statiques)")
+    mois_min_dyn = min((m for m in range(1, 13) if m not in MOIS_STATIQUES), default=1)
+    statiques_info = f"mois 1-{max(MOIS_STATIQUES)} statiques" if MOIS_STATIQUES else "tous mois Supabase"
+    log(f"APO ETL Cloud — {LIBELLES_FR[mois_min_dyn]} → {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE} ({statiques_info})")
     if DRY_RUN:
         log("⚠️  MODE DRY-RUN — aucune écriture Supabase")
     log("=" * 56)
