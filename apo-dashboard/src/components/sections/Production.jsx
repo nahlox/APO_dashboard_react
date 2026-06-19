@@ -179,7 +179,7 @@ export default function Production({ data, month }) {
     })
 
     // ── Comparaison annuelle ───────────────────────────────────────────────
-    const bgColors = ['rgba(138,154,142,0.4)', 'rgba(242,140,40,0.5)', 'rgba(63,163,77,0.5)', chartColors.gold]
+    const bgColors = chartColors.series
     charts.current.compar = new Chart(refCompar.current, {
       type: 'bar',
       data: {

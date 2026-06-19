@@ -145,15 +145,33 @@ export function buildGlobalKPIs(...monthDatas) {
 
 // ── CHART DEFAULTS (couleurs APO) ────────────────────────────
 
+// Palette APO — 3 couleurs uniquement : gold · green · red
+// Pour les séries multiples, alterner gold/green par opacité décroissante
 export const chartColors = {
   gold:       'rgba(242,140,40,1)',
-  goldAlpha:  'rgba(242,140,40,0.7)',
+  goldAlpha:  'rgba(242,140,40,0.70)',
+  gold50:     'rgba(242,140,40,0.50)',
+  gold25:     'rgba(242,140,40,0.25)',
   green:      'rgba(63,163,77,1)',
-  greenAlpha: 'rgba(63,163,77,0.7)',
+  greenAlpha: 'rgba(63,163,77,0.70)',
+  green50:    'rgba(63,163,77,0.50)',
+  green25:    'rgba(63,163,77,0.25)',
   red:        'rgba(224,92,92,1)',
-  redAlpha:   'rgba(224,92,92,0.7)',
-  accent:     'rgba(107,201,122,1)',
-  dim:        'rgba(138,154,130,0.5)',
+  redAlpha:   'rgba(224,92,92,0.70)',
+  red50:      'rgba(224,92,92,0.50)',
+  dim:        'rgba(138,154,130,0.45)',
+  gridLine:   'rgba(242,140,40,0.06)',
+  // Multi-séries : gold + green alternés, opacité décroissante
+  series: [
+    'rgba(242,140,40,0.88)',
+    'rgba(63,163,77,0.82)',
+    'rgba(242,140,40,0.58)',
+    'rgba(63,163,77,0.55)',
+    'rgba(242,140,40,0.34)',
+    'rgba(63,163,77,0.30)',
+  ],
+  // Alias pour compatibilité
+  accent: 'rgba(63,163,77,1)',
 }
 
 export const defaultTooltip = {

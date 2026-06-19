@@ -15,15 +15,14 @@ Chart.register(
 )
 
 // ── Palette fournisseurs ──────────────────────────────────────
+// Palette fournisseurs — gold + green alternés, opacité décroissante
 const F_PALETTE = [
-  ['rgba(242,140,40,1)',  'rgba(242,140,40,0.30)'],
-  ['rgba(100,190,100,1)','rgba(100,190,100,0.30)'],
-  ['rgba(90,155,220,1)', 'rgba(90,155,220,0.30)'],
-  ['rgba(210,100,130,1)','rgba(210,100,130,0.30)'],
-  ['rgba(160,120,220,1)','rgba(160,120,220,0.30)'],
-  ['rgba(60,195,180,1)', 'rgba(60,195,180,0.30)'],
-  ['rgba(240,185,60,1)', 'rgba(240,185,60,0.30)'],
-  ['rgba(190,130,90,1)', 'rgba(190,130,90,0.30)'],
+  ['rgba(242,140,40,0.90)', 'rgba(242,140,40,0.18)'],
+  ['rgba(63,163,77,0.85)',  'rgba(63,163,77,0.15)'],
+  ['rgba(242,140,40,0.62)', 'rgba(242,140,40,0.10)'],
+  ['rgba(63,163,77,0.58)',  'rgba(63,163,77,0.10)'],
+  ['rgba(242,140,40,0.38)', 'rgba(242,140,40,0.06)'],
+  ['rgba(63,163,77,0.34)',  'rgba(63,163,77,0.06)'],
 ]
 
 const MONTH_LABELS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
@@ -310,8 +309,8 @@ function ActiveSuppliersChart({ allMois, month }) {
         datasets: [{
           label:           'Fournisseurs actifs',
           data:            counts,
-          borderColor:     'rgba(90,155,220,1)',
-          backgroundColor: 'rgba(90,155,220,0.15)',
+          borderColor:     chartColors.gold,
+          backgroundColor: chartColors.gold25,
           fill:            true,
           tension:         0.3,
           borderWidth:     2,

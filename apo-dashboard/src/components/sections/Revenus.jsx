@@ -20,8 +20,8 @@ export default function Revenus({ data, month }) {
   const blanc     = revenus.blanc ?? {}
   const noir      = revenus.noir  ?? {}
 
-  const C_BLANC = { bg: 'rgba(210,180,80,0.55)', border: 'rgba(210,180,80,0.9)', text: 'rgba(210,180,80,0.95)' }
-  const C_NOIR  = { bg: 'rgba(130,130,130,0.45)', border: 'rgba(130,130,130,0.8)', text: 'rgba(130,130,130,0.95)' }
+  const C_BLANC = { bg: 'rgba(242,140,40,0.55)', border: 'rgba(242,140,40,0.90)', text: 'rgba(242,140,40,0.95)' }
+  const C_NOIR  = { bg: 'rgba(63,163,77,0.45)',  border: 'rgba(63,163,77,0.80)',  text: 'rgba(63,163,77,0.95)'  }
 
   useEffect(() => {
     chartRef.current?.destroy()

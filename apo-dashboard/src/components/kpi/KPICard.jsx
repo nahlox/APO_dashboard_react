@@ -18,6 +18,7 @@ export default function KPICard({ label, value, valueColor = '', sub, accent = '
           <span className={`kpi-badge badge-${badgeType}`}>{badge}</span>
         </div>
       )}
+      {sub && <div className="kpi-sub">{sub}</div>}
     </div>
   )
 }

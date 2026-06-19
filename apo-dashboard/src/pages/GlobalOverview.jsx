@@ -11,21 +11,16 @@ import { monthLabel, monthShort, rangeLabel, sumLabel } from '../lib/monthUtils'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController, RadialLinearScale)
 
+// Palette homogène — gold + green uniquement, opacité décroissante
 const PIE_COLORS = [
-  'rgba(242,140,40,0.92)', 'rgba(224,92,92,0.85)', 'rgba(63,163,77,0.85)',
-  'rgba(160,120,220,0.80)', 'rgba(255,165,80,0.80)', 'rgba(138,154,142,0.80)',
-  'rgba(107,201,122,0.85)', 'rgba(90,160,210,0.80)',
+  'rgba(242,140,40,0.90)', 'rgba(63,163,77,0.82)',
+  'rgba(242,140,40,0.62)', 'rgba(63,163,77,0.56)',
+  'rgba(242,140,40,0.40)', 'rgba(63,163,77,0.36)',
+  'rgba(242,140,40,0.22)', 'rgba(63,163,77,0.20)',
+  'rgba(242,140,40,0.12)', 'rgba(63,163,77,0.12)',
 ]
 
-const BAR_COLORS = [
-  chartColors.goldAlpha,
-  chartColors.greenAlpha,
-  'rgba(107,201,122,0.7)',
-  'rgba(160,120,220,0.7)',
-  'rgba(90,160,210,0.7)',
-  'rgba(255,165,80,0.7)',
-  'rgba(255,200,120,0.7)',
-]
+const BAR_COLORS = chartColors.series
 
 function buildCombinedCharges(monthData) {
   const merged = {}
@@ -106,7 +101,7 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         datasets: [{
           label: 'Résultat Net',
           data: filteredMois.map(m => m.data.kpis.resultatNetFCFA / div),
-          backgroundColor: filteredMois.map((_, i) => BAR_COLORS[i % BAR_COLORS.length]),
+          backgroundColor: filteredMois.map(m => m.data.kpis.resultatNetFCFA >= 0 ? 'rgba(63,163,77,0.75)' : 'rgba(224,92,92,0.70)'),
           borderRadius: 4,
         }],
       },
@@ -199,9 +194,9 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
           const margeBrute = global.caCumule > 0 ? ((global.caCumule - global.coutMPCumule) / global.caCumule * 100).toFixed(1) : '—'
           const margeNette = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
           return (<>
-            <KPICard label={`CA Cumulé ${range}`}       value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold"  sub={`${currency} · ${sum}`} />
+            <KPICard label={`CA Cumulé ${range}`}       value={fmt.money(global.caCumule, currency, eurRate)}    valueColor="gold"  sub={`${currency} · ${sum}`} />
             <KPICard label="Marge Brute"                value={margeBrute + '%'}                                     valueColor="green" sub="(CA − Coût MP) ÷ CA" accent="accent-green" />
-            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub={`${currency} · ${sum}`} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.money(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub={`${currency} · ${sum}`} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
             <KPICard label="Huile Produite Cumulée"     value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold"  sub={filteredMois.map(m => fmt.tonnes(m.data.kpis.huileProduiteT)).join(' + ')} />
             <KPICard label="Marge Nette"                value={margeNette + '%'}                                     valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} sub="Résultat Net ÷ CA Total" accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
           </>)
