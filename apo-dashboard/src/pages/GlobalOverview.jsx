@@ -194,9 +194,9 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
           const margeBrute = global.caCumule > 0 ? ((global.caCumule - global.coutMPCumule) / global.caCumule * 100).toFixed(1) : '—'
           const margeNette = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
           return (<>
-            <KPICard label={`CA Cumulé ${range}`}       value={fmt.money(global.caCumule, currency, eurRate)}    valueColor="gold" />
-            <KPICard label="Marge Brute"                value={margeBrute + '%'}                                     valueColor="green" accent="accent-green" />
-            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.money(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label={`CA Cumulé ${range}`}       value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold" />
+            <KPICard label="Marge Brute"                value={margeBrute + '%'}                                       valueColor="green" accent="accent-green" />
+            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
             <KPICard label="Huile Produite Cumulée"     value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold" />
             <KPICard label="Marge Nette"                value={margeNette + '%'}                                     valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
           </>)
