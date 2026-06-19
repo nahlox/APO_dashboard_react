@@ -222,10 +222,10 @@ export default function Sidebar({ allMois = [] }) {
                 <span style={{ fontSize: 15 }}>
                   {pushStatus === 'subscribed' ? '🔔' : pushStatus === 'requesting' ? '⏳' : pushStatus === 'denied' ? '🔕' : '🔔'}
                 </span>
-                {pushStatus === 'subscribed'  ? 'Notif 19h00 active'   :
-                 pushStatus === 'requesting'  ? 'Activation…'          :
-                 pushStatus === 'denied'      ? 'Bloqué (navigateur)'  :
-                                               'Activer bilan 19h00'}
+                {pushStatus === 'subscribed'  ? 'Notifications actives'  :
+                 pushStatus === 'requesting'  ? 'Activation…'           :
+                 pushStatus === 'denied'      ? 'Bloqué (navigateur)'   :
+                                               'Activer les notifications'}
               </button>
 
               {/* BOUTON TEST — à supprimer après validation */}
