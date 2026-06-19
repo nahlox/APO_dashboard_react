@@ -356,12 +356,16 @@ def parse_ventes_huile(content: bytes, mois: int, periode_id: int):
     rows = []
     for row in lignes:
         if not row[1] or not isinstance(row[1], datetime): continue
-        if row[1].year != ANNEE_COURANTE or row[1].month != mois: continue
+        if row[1].month != mois: continue
+        # Tolérer erreurs de saisie année ±1 (ex: 2025-02-26 au lieu de 2026-02-26)
+        if abs(row[1].year - ANNEE_COURANTE) > 1: continue
         if safe_float(row[3]) == 0: continue
+        # Forcer l'année correcte pour date_vente en cas d'erreur de saisie
+        date_corrigee = row[1].replace(year=ANNEE_COURANTE)
         rows.append({
             "periode_id":     periode_id,
             "client_id":      client_id,
-            "date_vente":     row[1].date().isoformat(),
+            "date_vente":     date_corrigee.date().isoformat(),
             "libelle":        str(row[2] or ""),
             "poids_apo_kg":   safe_float(row[3]),
             "poids_sarci_kg": safe_float(row[4]),
