@@ -55,15 +55,22 @@
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-/* Mobile : plein écran sous la nav */
+/* Mobile : marges de tous les côtés */
 @media (max-width: 500px) {
   .chat-panel {
-    right: 0; left: 0; bottom: 64px;
-    width: 100%; max-height: calc(100dvh - 128px);
-    border-radius: 16px 16px 0 0;
-    border-left: none; border-right: none; border-bottom: none;
+    left: 12px;
+    right: 12px;
+    bottom: 132px;          /* au-dessus nav (64px) + FAB (52px) + gap (16px) */
+    top: auto;
+    width: auto;
+    max-height: calc(100dvh - 200px);
+    border-radius: 16px;    /* coins arrondis partout */
+    border: 1px solid rgba(242,140,40,0.22);
   }
-  .chat-fab { bottom: 72px; }
+  .chat-fab {
+    bottom: 72px;
+    right: 16px;
+  }
 }
 
 /* ── Header ─────────────────────────────────────────────────── */
