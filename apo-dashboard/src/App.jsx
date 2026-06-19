@@ -57,17 +57,19 @@ function AppDashboard() {
     setMoisData(moisSupp)
   }, [moisSupp, setMoisData])
 
-  // Thème : light / dark / auto (suit les préférences système)
+  // Thème : light / dark / auto (jour 7h–19h = light, nuit = dark)
   useEffect(() => {
     if (theme !== 'auto') {
       document.body.classList.toggle('light', theme === 'light')
       return
     }
-    const mq = window.matchMedia('(prefers-color-scheme: light)')
-    const apply = (e) => document.body.classList.toggle('light', e.matches)
-    apply(mq)
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
+    function applyTimeTheme() {
+      const h = new Date().getHours()
+      document.body.classList.toggle('light', h >= 7 && h < 19)
+    }
+    applyTimeTheme()
+    const timer = setInterval(applyTimeTheme, 60_000)
+    return () => clearInterval(timer)
   }, [theme])
 
   // Taux EUR live — XOF est arrimé à 655,957 mais on vérifie via l'API
