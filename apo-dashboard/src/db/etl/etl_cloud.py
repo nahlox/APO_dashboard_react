@@ -77,6 +77,7 @@ FICHIERS_DROPBOX = {
     "vente_bassin":    f"{COMPTA_DIR}/VENTE DE BASSIN DE LAGUNAGE.xlsx",
     "pepiniere":       f"{COMPTA_DIR}/CLIENTS PEPINIERE PALMIER A HUILE.xlsx",
     "production":      f"{PRODUCTION_DIR}/Tableau de production APO 2026.xlsx",
+    "banque_apo":      f"{COMPTA_DIR}/BANK APO/BANK APO 2026.xlsx",
 }
 
 # ── NOMS D'ONGLETS ────────────────────────────────────────────
@@ -561,6 +562,140 @@ def parse_pepiniere(content: bytes):
     log(f"  ✅ contrats_pepiniere : {len(rows_contrats)} lignes insérées")
 
 
+_SKIP_BANQUE = ("RETRAIT ESPECES", "APPROV CAISSE", "DEPOT ESPECES POUR APPROV")
+
+# Catégories banque (CHECK constraint Supabase) :
+# amortissement, assurance, charges_patronales, construction,
+# electricite, entretien, frais_admin, frais_bancaires,
+# frais_relat, materiels, salaires, securite, taxes_fiscales, vehicules
+
+def categorize_banque(libelle: str) -> str:
+    l = (libelle or "").upper()
+    if any(k in l for k in ["PRÊT BANCAIRE", "PRET BANCAIRE", "ECHEANCE PRÊ", "ECHEANCE PRET",
+                              "AMORTISSEMENT PRET", "ECH PRET"]):
+        return "amortissement"
+    if any(k in l for k in ["ASSURANCE", "SUNU ASSURANCE", "WAFA ASSURANCE"]):
+        return "assurance"
+    if any(k in l for k in ["CNPS", "CNAM", "IPS-CNPS", "IPS-CNAM", "IPS CNPS",
+                              "COTISATION CNPS", "COTISATION CNAM"]):
+        return "charges_patronales"
+    if any(k in l for k in ["CONSTRUCTION", "FORAGE", "DALLE", "CIMENT", "GRAVIER", "BRIQUES",
+                              "BASSIN LAGUNAGE", "TRAVAUX AMENAGEMENT", "STATION D'EPURATION",
+                              "ERT-B", "EPURATION"]):
+        return "construction"
+    if any(k in l for k in ["CIE/", "/CIE/", "CIE ", "CONSOMMATION ELECTRICIT", "ELECTRICIT"]):
+        return "electricite"
+    if any(k in l for k in ["ENTRETIEN", "REPARATION", "REAPARATION", "REBOBINAGE", "SOUDURE",
+                              "MAINTENANCE", "DEPANNAGE", "DETRATAGE", "NETTOYAGE", "CHAUDIERE"]):
+        return "entretien"
+    if any(k in l for k in ["CABINET BLANCHARD", "ASSISTANCE COMPTABLE", "NP CONSEILS",
+                              "NOTAIRE", "JURIDIQUE", "CONSULTANT", "EXPERT COMPTABLE"]):
+        return "frais_admin"
+    if any(k in l for k in ["AGIOS", "FRAIS BDA", "FRAIS BANCAIRE", "TENUE DE COMPTE",
+                              "RETOUR,INT", "TAXE FRAIS FIXE", "FRAIS FINANCIER",
+                              "COMMISSION", "IBE PREMIUM", "PACK IBE"]):
+        return "frais_bancaires"
+    if any(k in l for k in ["CHPH", "AIPH", "COTISATION FONCTIONNEMENT", "REDEVANCE CONSEIL",
+                              "FAMILLE PROFESSIONNELLE", "DEVELOPPEMENT FILIERE",
+                              "INTERPROFESSION"]):
+        return "frais_relat"
+    if any(k in l for k in ["MATERIEL", "FOURNITURE", "DMD SARL", "PIECES", "POMPE", "VANNE",
+                              "TUYAUX", "FLEXIB", "TM&FRERES", "ENIGMA", "MONDE CYCLES",
+                              "MONDIAL CYCLES", "SEMAG MATFORCE", "PALMITECO",
+                              "SN SATA", "SN ROCK"]):
+        return "materiels"
+    if any(k in l for k in ["VIREMENT SALAIRE", "SALAIRE ", "PAIE DU", "PAIE DES"]):
+        return "salaires"
+    if any(k in l for k in ["GARDIENNAGE", "POWERMAX", "SECURIT", "GARDE"]):
+        return "securite"
+    if any(k in l for k in ["TELEPAIEMENT ITS", "TELEPAIEMENT TSE", "ITS-FDFP", "RIBIC", "FIRCA",
+                              "TSE ", "REGIE DES MINES", "TAXE CHPH", "CMU", "TAXE D'INSPECTION",
+                              "TAXE ANNUELLE", "IMPOT", "TAXE "]):
+        return "taxes_fiscales"
+    if any(k in l for k in ["VEHICULE", "CAMION", "TRANSPORT", "UNICARS", "MOTO", "BULDOZER",
+                              "PORTE-CHAR", "PORTE CHAR", "AFFAIRES MARITIMES", "BILLET",
+                              "LIVRAISON", "MEITE LADJI"]):
+        return "vehicules"
+    return "materiels"  # fallback dans la liste autorisée
+
+
+def parse_banque_apo(content: bytes, mois: int, periode_id: int):
+    """Parse SGCI GL APO et BDA GL APO depuis BANK APO 2026.xlsx.
+
+    SGCI: col0=date_op, col3=libellé, col4=débit, col7=date_valeur (pour filtre mois).
+    BDA format A: col3=libellé (str), col4=débit, col6=date_valeur.
+    BDA format B: col0=date_op, col1=libellé, col3=montant négatif, col6=date_valeur.
+    """
+    rows_out = []
+
+    # ── SGCI GL APO ───────────────────────────────────────────────
+    sgci = lire_sheet(content, "SGCI GL APO")
+    if sgci:
+        for row in sgci:
+            date_val = row[7] if len(row) > 7 and isinstance(row[7], datetime) else None
+            date_op  = row[0] if isinstance(row[0], datetime) else None
+            date_ref = date_val or date_op
+            if not date_ref or date_ref.year != ANNEE_COURANTE or date_ref.month != mois:
+                continue
+            debit = safe_float(row[4] if len(row) > 4 else None)
+            if debit <= 0:
+                continue
+            libelle = str(row[3] or "").strip()
+            if not libelle:
+                continue
+            if any(k in libelle.upper() for k in _SKIP_BANQUE):
+                continue
+            rows_out.append({
+                "periode_id":     periode_id,
+                "banque":         "SGCI",
+                "date_operation": (date_op or date_val).date().isoformat(),
+                "date_valeur":    (date_val or date_op).date().isoformat(),
+                "libelle":        libelle,
+                "montant_fcfa":   int(round(debit)),
+                "categorie":      categorize_banque(libelle),
+            })
+
+    # ── BDA GL APO ────────────────────────────────────────────────
+    bda = lire_sheet(content, "BDA GL APO")
+    if bda:
+        for row in bda:
+            date_val = row[6] if len(row) > 6 and isinstance(row[6], datetime) else None
+            date_op  = row[0] if isinstance(row[0], datetime) else None
+            date_ref = date_val or date_op
+            if not date_ref or date_ref.year != ANNEE_COURANTE or date_ref.month != mois:
+                continue
+
+            # Format A : libellé en col3 (str), débit en col4
+            if isinstance(row[3], str) and row[3].strip():
+                libelle = row[3].strip()
+                debit   = safe_float(row[4] if len(row) > 4 else None)
+            # Format B : libellé en col1, montant négatif en col3
+            elif isinstance(row[3], (int, float)) and row[3] < 0 and isinstance(row[1], str) and row[1].strip():
+                libelle = row[1].strip()
+                debit   = abs(safe_float(row[3]))
+            else:
+                continue
+
+            if debit <= 0:
+                continue
+            lu = libelle.upper()
+            if lu.startswith(("TOTAL", "SOLDE", "JANVIER", "FEVRIER", "MARS",
+                               "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT",
+                               "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE")):
+                continue
+            rows_out.append({
+                "periode_id":     periode_id,
+                "banque":         "BDA",
+                "date_operation": (date_op or date_val).date().isoformat(),
+                "date_valeur":    (date_val or date_op).date().isoformat(),
+                "libelle":        libelle,
+                "montant_fcfa":   int(round(debit)),
+                "categorie":      categorize_banque(libelle),
+            })
+
+    inserer("banque_apo", rows_out, periode_id, f"(mois {mois})")
+
+
 def recalculer_kpis(mois: int, periode_id: int):
     """Recalcule kpis_mensuels depuis les tables de détail."""
     vh  = sb.table("ventes_huile").select("montant_fcfa").eq("periode_id", periode_id).execute()
@@ -730,6 +865,7 @@ def run(mois_cible: int | None = None):
         ("caisse_apo",      parse_caisse_apo),
         ("caisse_apo2",     parse_caisse_apo2),
         ("caisse_graine",   parse_achats_regimes),
+        ("banque_apo",      parse_banque_apo),
     ]
 
     for cle, parser in sources_mensuelles:
