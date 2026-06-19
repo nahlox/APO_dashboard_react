@@ -99,8 +99,9 @@ export default function Revenus({ data, month }) {
     return () => chartRef.current?.destroy()
   }, [month, currency, eurRate])
 
-  const pctBlanc = kpis.caHuileFCFA > 0 ? (blanc.caFCFA / kpis.caHuileFCFA * 100).toFixed(1) : 0
-  const pctNoir  = kpis.caHuileFCFA > 0 ? (noir.caFCFA  / kpis.caHuileFCFA * 100).toFixed(1) : 0
+  const totalHuileCalc = (blanc.caFCFA ?? 0) + (noir.caFCFA ?? 0)
+  const pctBlanc = totalHuileCalc > 0 ? (blanc.caFCFA / totalHuileCalc * 100).toFixed(1) : 0
+  const pctNoir  = totalHuileCalc > 0 ? (noir.caFCFA  / totalHuileCalc * 100).toFixed(1) : 0
 
   return (
     <section>
@@ -112,7 +113,7 @@ export default function Revenus({ data, month }) {
         <KPICard label="CA Huile BLANC"    value={fmt.kpiValue(blanc.caFCFA ?? 0, currency, eurRate)}        valueColor="green" accent="accent-green" />
         <KPICard label="CA Huile NOIR"     value={fmt.kpiValue(noir.caFCFA ?? 0, currency, eurRate)}         valueColor="gold" />
         <KPICard label="Huile Vendue"      value={fmt.tonnes(kpis.huileVendueT)} />
-        {kpis.caNoisFCFA > 0 && <KPICard label="CA Palmiste"   value={fmt.kpiValue(kpis.caNoisFCFA, currency, eurRate)} valueColor="gold" />}
+        <KPICard label="CA Palmiste" value={fmt.kpiValue(kpis.caNoisFCFA ?? 0, currency, eurRate)} valueColor="gold" />
       </div>
 
       {/* Graines correspondantes */}
