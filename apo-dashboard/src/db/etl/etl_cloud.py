@@ -507,6 +507,7 @@ def parse_achats_regimes(content: bytes, mois: int, periode_id: int):
             "prix_kg":        safe_float(row[6]),
             "prix_transport": safe_float(row[7]),
             "appro_caisse":   safe_float(row[8]),
+            # montant_total est une colonne générée (prix_kg × poids_kg) — ne pas l'insérer
         })
     inserer("achats_regimes", rows, periode_id, f"(mois {mois})")
 
@@ -705,7 +706,7 @@ def recalculer_kpis(mois: int, periode_id: int):
     ca2 = sb.table("caisse_apo2").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
     bq  = sb.table("banque_apo").select("montant_fcfa,categorie").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
-    ar  = sb.table("achats_regimes").select("poids_kg,montant_total").eq("periode_id", periode_id).execute()
+    ar  = sb.table("achats_regimes").select("poids_kg,prix_kg,prix_transport").eq("periode_id", periode_id).execute()
     pep_q = sb.table("contrats_pepiniere").select("montant_total,net_encaisse")
     if TENANT_ID:
         pep_q = pep_q.eq("tenant_id", TENANT_ID)
@@ -752,8 +753,12 @@ def recalculer_kpis(mois: int, periode_id: int):
     nb_steril   = sum(safe_int(r["nb_sterilisateurs"])        for r in pj.data)
     stock_fin   = safe_float(pj.data[-1]["regime_restant_kg"]) if pj.data else 0
 
-    total_poids = sum(safe_float(r["poids_kg"])     for r in ar.data)
-    total_mont  = sum(safe_float(r["montant_total"]) for r in ar.data)
+    total_poids = sum(safe_float(r["poids_kg"]) for r in ar.data)
+    # coût MP = (prix_kg + prix_transport) × poids_kg — transport inclus comme dans l'Excel col9
+    total_mont  = sum(
+        safe_float(r["poids_kg"]) * (safe_float(r["prix_kg"]) + safe_float(r["prix_transport"]))
+        for r in ar.data
+    )
     prix_moy    = total_mont / total_poids if total_poids else 0
     nb_camions  = len(ar.data)
 
