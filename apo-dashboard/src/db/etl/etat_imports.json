@@ -1,27 +1,27 @@
 {
   "caisse_graine": {
-    "md5": "8587a111ab10a5d14def21cf5b46be2e",
-    "date": "2026-06-17T07:01:50.469753",
+    "md5": "965fb7977dd2af2bc14b6be05ec7211f",
+    "date": "2026-06-19T07:00:10.423933",
     "fichier": "CAISSE GRAINES 2026.xlsx"
   },
   "caisse_apo": {
-    "md5": "359415c8093f530b5ee45e58cab84a44",
-    "date": "2026-06-17T07:01:52.148782",
+    "md5": "4440bf8010703e167ba65fd9d8e478bb",
+    "date": "2026-06-19T07:00:11.624148",
     "fichier": "CAISSE APO 2026.xlsx"
   },
   "caisse_apo2": {
-    "md5": "197cb8048faa5c99aafec2f382636e57",
-    "date": "2026-06-17T07:01:53.721524",
+    "md5": "7c11f83680f3cea06544b9b84bfca9f5",
+    "date": "2026-06-19T07:00:12.999063",
     "fichier": "CAISSE 2 APO 2026.xlsx"
   },
   "vente_huile": {
-    "md5": "4ec797245eef11e542e3d4c06ae5a37f",
-    "date": "2026-06-16T07:01:55.393524",
+    "md5": "0c8eb82d4dfcb2308c93cf9116d0b927",
+    "date": "2026-06-19T07:00:14.206123",
     "fichier": "VENTE D'HUILE APO SARCI 2026.xlsx"
   },
   "vente_palmiste": {
-    "md5": "135a74fad32a3d8adf6c578ae1f25589",
-    "date": "2026-06-16T07:01:55.804502",
+    "md5": "808ca635200cc95321a33704a6e41da3",
+    "date": "2026-06-19T07:00:14.614612",
     "fichier": "VENTE NOIX DE PALMISTE 2026.xlsx"
   },
   "vente_florentin": {

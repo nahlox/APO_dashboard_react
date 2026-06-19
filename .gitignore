@@ -19,3 +19,13 @@ apo-dashboard/.env.*.local
 
 # Vite
 *.local
+
+# Claude Code settings (can contain PAT/tokens)
+.claude/settings.local.json
+
+# Supabase temp files
+supabase/.temp/
+
+# Python cache
+**/__pycache__/
+*.pyc
