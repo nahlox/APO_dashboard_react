@@ -11,29 +11,86 @@ const SUGGESTIONS = [
   "Comment optimiser mon procédé ?",
 ]
 
+function renderInline(text) {
+  const parts = text.split(/\*\*(.*?)\*\*/g)
+  return parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : p)
+}
+
+function parseTableLines(lines) {
+  const rows = lines.filter(l => !/^\|[\s\-:|]+\|$/.test(l.trim()))
+  return rows.map(line =>
+    line.split('|').slice(1, -1).map(c => c.trim())
+  )
+}
+
+function parseBlocks(content) {
+  const blocks = []
+  const lines = content.split('\n')
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.startsWith('|')) {
+      const tableLines = []
+      while (i < lines.length && lines[i].startsWith('|')) {
+        tableLines.push(lines[i])
+        i++
+      }
+      blocks.push({ type: 'table', lines: tableLines })
+      continue
+    }
+    if (/^#{1,3} /.test(line)) {
+      blocks.push({ type: 'heading', text: line.replace(/^#+\s/, '') })
+      i++; continue
+    }
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      blocks.push({ type: 'li', text: line.slice(2) })
+      i++; continue
+    }
+    if (line.trim() === '') {
+      blocks.push({ type: 'spacer' })
+      i++; continue
+    }
+    blocks.push({ type: 'p', text: line })
+    i++
+  }
+  return blocks
+}
+
 function Message({ msg }) {
   const isUser = msg.role === 'user'
+  const blocks = parseBlocks(msg.content || '')
+
   return (
     <div className={`chat-message ${isUser ? 'chat-message--user' : 'chat-message--ai'}`}>
       {!isUser && <div className="chat-avatar">🌴</div>}
       <div className="chat-bubble">
-        {msg.content.split('\n').map((line, i) => {
-          if (line.startsWith('## ') || line.startsWith('### ')) {
-            return <div key={i} className="chat-heading">{line.replace(/^#+\s/, '')}</div>
+        {blocks.map((block, idx) => {
+          if (block.type === 'heading')
+            return <div key={idx} className="chat-heading">{renderInline(block.text)}</div>
+          if (block.type === 'li')
+            return <div key={idx} className="chat-li">· {renderInline(block.text)}</div>
+          if (block.type === 'spacer')
+            return <div key={idx} className="chat-spacer" />
+          if (block.type === 'table') {
+            const rows = parseTableLines(block.lines)
+            if (rows.length === 0) return null
+            const [header, ...body] = rows
+            return (
+              <div key={idx} className="chat-table-wrap">
+                <table className="chat-table">
+                  <thead>
+                    <tr>{(header || []).map((cell, ci) => <th key={ci}>{renderInline(cell)}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {body.map((row, ri) => (
+                      <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{renderInline(cell)}</td>)}</tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           }
-          if (line.startsWith('- ') || line.startsWith('• ')) {
-            return <div key={i} className="chat-li">· {line.slice(2)}</div>
-          }
-          if (line.startsWith('| ')) {
-            return <div key={i} className="chat-table-row">{line}</div>
-          }
-          if (line === '') return <div key={i} className="chat-spacer" />
-          const parts = line.split(/\*\*(.*?)\*\*/g)
-          return (
-            <div key={i}>
-              {parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : p)}
-            </div>
-          )
+          return <div key={idx}>{renderInline(block.text)}</div>
         })}
         {msg.loading && <span className="chat-typing">●●●</span>}
       </div>
@@ -48,7 +105,7 @@ export default function ChatBot() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
-  const [fabPos,  setFabPos]  = useState(null)  // {left, top} px, ou null = CSS par défaut
+  const [fabPos,  setFabPos]  = useState(null)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
   const dragRef   = useRef({ active: false, moved: false })
@@ -61,7 +118,6 @@ export default function ChatBot() {
     if (open) setTimeout(() => inputRef.current?.focus(), 150)
   }, [open])
 
-  // ── Drag du bouton flottant ─────────────────────────────────
   function onFabPointerDown(e) {
     const point  = e.touches?.[0] ?? e
     const rect   = e.currentTarget.getBoundingClientRect()
@@ -106,14 +162,12 @@ export default function ChatBot() {
     setOpen(o => !o)
   }
 
-  // ── Position du panel en fonction du FAB ────────────────────
   function getPanelStyle() {
     if (!fabPos) return {}
-
-    const PAD    = 12
-    const W      = window.innerWidth
-    const H      = window.innerHeight
-    const isMob  = W <= 500
+    const PAD   = 12
+    const W     = window.innerWidth
+    const H     = window.innerHeight
+    const isMob = W <= 500
 
     if (isMob) {
       const maxH = Math.min(500, H - 160)
@@ -123,7 +177,6 @@ export default function ChatBot() {
       return { left: PAD, right: PAD, top, bottom: 'auto', width: 'auto', maxHeight: maxH }
     }
 
-    // Desktop : panel à côté / au-dessus du FAB
     const PW = 360, PH = 540, FAB = 52
     let left = fabPos.left + PW + PAD <= W
       ? Math.max(PAD, fabPos.left)
@@ -138,16 +191,15 @@ export default function ChatBot() {
     return { left, top, right: 'auto', bottom: 'auto', width: PW, maxHeight: PH }
   }
 
-  // ── Envoi de message ────────────────────────────────────────
   async function send(text) {
     const msg = (text || input).trim()
     if (!msg || loading) return
     setInput('')
     setError(null)
 
-    const userMsg    = { role: 'user', content: msg }
-    const loadingMsg = { role: 'assistant', content: '', loading: true }
-    setHistory(h => [...h, userMsg, loadingMsg])
+    const userMsg = { role: 'user', content: msg }
+    const aiMsg   = { role: 'assistant', content: '', loading: true }
+    setHistory(h => [...h, userMsg, aiMsg])
     setLoading(true)
 
     try {
@@ -163,17 +215,40 @@ export default function ChatBot() {
         },
         body: JSON.stringify({ message: msg, history: history.slice(-8) }),
       })
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || `Erreur ${res.status}`)
       }
-      const data = await res.json()
-      if (data?.error) throw new Error(data.error)
 
-      setHistory(h => [
-        ...h.slice(0, -1),
-        { role: 'assistant', content: data?.reply || 'Pas de réponse.' },
-      ])
+      // Enlever l'indicateur de chargement dès que la réponse commence
+      setHistory(h => [...h.slice(0, -1), { role: 'assistant', content: '', loading: false }])
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() ?? ''
+        for (const part of parts) {
+          if (!part.startsWith('data: ')) continue
+          const raw = part.slice(6).trim()
+          if (raw === '[DONE]') break
+          try {
+            const { text } = JSON.parse(raw)
+            if (text) {
+              setHistory(h => {
+                const last = h[h.length - 1]
+                return [...h.slice(0, -1), { ...last, content: last.content + text }]
+              })
+            }
+          } catch { /* chunk partiel, ignorer */ }
+        }
+      }
     } catch (err) {
       setHistory(h => h.slice(0, -1))
       setError(err.message || 'Erreur de connexion')
@@ -196,7 +271,6 @@ export default function ChatBot() {
 
   return (
     <>
-      {/* Bouton flottant — draggable */}
       <button
         className={`chat-fab ${open ? 'chat-fab--open' : ''}`}
         style={fabStyle}
@@ -211,10 +285,8 @@ export default function ChatBot() {
         )}
       </button>
 
-      {/* Panel chat */}
       {open && (
         <div className="chat-panel" style={getPanelStyle()}>
-          {/* Header */}
           <div className="chat-header">
             <div className="chat-header-info">
               <span className="chat-header-icon">🌴</span>
@@ -231,7 +303,6 @@ export default function ChatBot() {
             </div>
           </div>
 
-          {/* Corps */}
           <div className="chat-body">
             {history.length === 0 ? (
               <div className="chat-welcome">
@@ -254,7 +325,6 @@ export default function ChatBot() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
           <div className="chat-footer">
             <textarea
               ref={inputRef}

@@ -159,7 +159,36 @@
 .chat-heading  { font-weight: 700; color: #f28c28; font-size: 11.5px; margin: 4px 0 2px; text-transform: uppercase; letter-spacing: 0.4px; }
 .chat-li       { padding-left: 8px; color: #b8c8c0; }
 .chat-spacer   { height: 4px; }
-.chat-table-row { font-family: monospace; font-size: 11px; color: #8a9890; white-space: pre-wrap; }
+
+/* ── Tableau markdown ───────────────────────────────────────── */
+.chat-table-wrap {
+  overflow-x: auto;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.chat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.chat-table th {
+  background: rgba(242,140,40,0.12);
+  color: #f28c28;
+  font-weight: 700;
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(242,140,40,0.2);
+  white-space: nowrap;
+}
+.chat-table td {
+  padding: 4px 8px;
+  color: #c8c8c0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.chat-table tr:last-child td { border-bottom: none; }
+.chat-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
 
 .chat-typing { color: #f28c28; animation: chatPulse 1s infinite; letter-spacing: 3px; }
 @keyframes chatPulse { 0%,100%{opacity:.3} 50%{opacity:1} }

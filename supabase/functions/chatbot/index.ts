@@ -478,24 +478,45 @@ Deno.serve(async (req) => {
       periodeMap,
     )
 
-    // ── 7. Appel Claude ───────────────────────────────────────
+    // ── 7. Appel Claude (streaming SSE) ──────────────────────
     const safeHistory = history
       .slice(-8)
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: String(m.content) }))
 
-    const aiResponse = await ai.messages.create({
+    const stream = ai.messages.stream({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1400,
       system:     buildSystemPrompt(tenantId, tenantId.toUpperCase(), dataContext),
       messages:   [...safeHistory, { role: 'user', content: message }],
     })
 
-    const reply = aiResponse.content[0]?.type === 'text'
-      ? aiResponse.content[0].text
-      : "Désolé, je n'ai pas pu générer une réponse."
+    const encoder = new TextEncoder()
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              const chunk = JSON.stringify({ text: event.delta.text })
+              controller.enqueue(encoder.encode(`data: ${chunk}\n\n`))
+            }
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        } catch (e) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(e) })}\n\n`))
+        } finally {
+          controller.close()
+        }
+      },
+    })
 
-    return json({ reply, tenant: tenantId })
+    return new Response(readable, {
+      headers: {
+        'Content-Type':                'text/event-stream',
+        'Cache-Control':               'no-cache',
+        'Access-Control-Allow-Origin': '*',
+      },
+    })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
