@@ -13,6 +13,7 @@ import GlobalOverview from './pages/GlobalOverview'
 import PnLView from './pages/PnLView'
 import { useMoisDB } from './hooks/useMoisDB'
 import { buildAggregateData, filterMonthsByRange } from './lib/aggregateData'
+import ChatBot from './components/chat/ChatBot'
 
 import {
   Chart, CategoryScale, LinearScale,
@@ -143,6 +144,7 @@ function AppDashboard() {
       </div>
 
       <MobileBottomNav />
+      <ChatBot />
     </>
   )
 }
