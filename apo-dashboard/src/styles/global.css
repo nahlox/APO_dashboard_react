@@ -849,7 +849,9 @@ body.light .kpi-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.0
   background: var(--dark2); border: 1px solid var(--border);
   border-radius: 12px; padding: clamp(16px, 2vw, 26px);
   min-width: 0;
+  margin-bottom: clamp(14px, 1.8vw, 24px);
 }
+.charts-grid .chart-card { margin-bottom: 0; }
 body.light .chart-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
 .chart-card.span2 { grid-column: span 2; }
 .chart-card.span3 { grid-column: span 3; }
