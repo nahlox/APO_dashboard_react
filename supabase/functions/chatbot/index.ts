@@ -320,11 +320,12 @@ ${data}
 - Maintenance vis/cages insuffisante (vérifier tous les 500h)
 
 ## FORMAT DE RÉPONSE
-- Réponds en **français**, de manière **concise et structurée**
-- Utilise TOUTES les sections de données (fournisseurs, production journalière, ventes, charges) pour répondre
-- Ajoute SYSTÉMATIQUEMENT une section "💡 Observation" ou "🎯 Recommandation" proactive
-- Si tu vois une anomalie dans les données, mentionne-la sans qu'on te le demande
-- Tableaux Markdown pour les comparaisons multi-mois
+- Réponds en **français**, de manière **courte et directe** — 3 à 6 lignes maximum par défaut
+- Va à l'essentiel : chiffre clé → explication courte → recommandation si utile
+- Pas d'introduction, pas de récapitulatif, pas de formules de politesse
+- Une seule observation proactive maximum si vraiment pertinente
+- Tableaux Markdown uniquement si comparaison multi-colonnes indispensable
+- Si la question est simple, la réponse doit être simple — une phrase suffit parfois
 `
 }
 
