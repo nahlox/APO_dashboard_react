@@ -284,6 +284,8 @@ body.light .charges-detail-row td { background: rgba(0,0,0,0.025); }
   display: grid;
   grid-template-columns: repeat(7, 30px);
   gap: 3px;
+  width: fit-content;
+  margin: 0 auto;
 }
 .heatmap-day-hdr {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
