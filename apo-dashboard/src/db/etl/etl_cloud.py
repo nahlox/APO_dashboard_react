@@ -17,7 +17,7 @@ Prérequis (.env) :
   DROPBOX_TOKEN    = sl.xxx...  (token Dropbox App, voir README)
 """
 
-import os, hashlib, argparse, io, time
+import os, hashlib, argparse, io, time, json, urllib.request
 from datetime import datetime
 from pathlib import Path
 import openpyxl
@@ -846,6 +846,75 @@ def recalculer_kpis(mois: int, periode_id: int):
     log(f"  ✅ KPIs mois {mois} — CA : {ca_total:,.0f} | Charges : {charges:,.0f} | Amort : {amort_total:,.0f} | Résultat : {resultat:,.0f} FCFA")
 
 
+# ── PRIX CPO INTERNATIONAL (FRED — St. Louis Fed) ─────────────
+
+FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
+
+def fetch_cpo_prices():
+    """
+    Récupère les prix CPO (huile de palme) depuis l'API FRED (St. Louis Fed).
+    Série PPOILUSDUSDM — USD / tonne métrique — publication mensuelle avec ~1 mois de délai.
+    Insère uniquement les mois absents de la table prix_cpo (pas d'écrasement).
+
+    Prérequis : FRED_API_KEY dans .env (clé gratuite sur fred.stlouisfed.org)
+    """
+    log("─" * 56)
+    log("🌍 Récupération prix CPO international (FRED)...")
+
+    if not FRED_API_KEY:
+        log("  ⚠️  FRED_API_KEY absent dans .env — prix CPO non mis à jour")
+        log("      → Créez une clé gratuite sur fred.stlouisfed.org puis ajoutez FRED_API_KEY=<clé> dans .env")
+        return
+
+    try:
+        import requests as _req
+        url = (
+            "https://api.stlouisfed.org/fred/series/observations"
+            f"?series_id=PPOILUSDUSDM&api_key={FRED_API_KEY}"
+            "&file_type=json&sort_order=asc&observation_start=2020-01-01"
+        )
+        r = _req.get(url, timeout=15)
+        r.raise_for_status()
+        observations = r.json().get("observations", [])
+
+        if not observations:
+            log("  ⚠️  Réponse FRED vide — graphique CPO inchangé")
+            return
+
+        # Garder uniquement les valeurs numériques (exclure "." = données manquantes)
+        nouveaux = []
+        for obs in observations:
+            val = obs.get("value", ".")
+            if val == ".":
+                continue
+            # date FRED : "YYYY-MM-DD" (toujours le 1er du mois)
+            nouveaux.append({
+                "date":           obs["date"],
+                "prix_usd_tonne": round(float(val), 4),
+                "source":         "FRED/IMF",
+            })
+
+        # Récupérer les dates déjà en base
+        existing = sb.table("prix_cpo").select("date").execute().data
+        dates_existantes = {r["date"] for r in existing}
+
+        a_inserer = [r for r in nouveaux if r["date"] not in dates_existantes]
+
+        if not a_inserer:
+            log(f"  ✅ Aucun nouveau mois à ajouter ({len(dates_existantes)} mois déjà en base)")
+            return
+
+        if DRY_RUN:
+            log(f"  [DRY] {len(a_inserer)} nouveaux mois CPO : {[r['date'] for r in a_inserer]}")
+            return
+
+        sb.table("prix_cpo").insert(a_inserer).execute()
+        log(f"  ✅ {len(a_inserer)} nouveau(x) mois CPO inséré(s) : {[r['date'] for r in a_inserer]}")
+
+    except Exception as e:
+        log(f"  ❌ Erreur récupération CPO (non bloquant) : {e}")
+
+
 # ── ORCHESTRATEUR ─────────────────────────────────────────────
 
 def run(mois_cible: int | None = None):
@@ -929,6 +998,9 @@ def run(mois_cible: int | None = None):
             recalculer_kpis(mois, pid)
         except Exception as e:
             log(f"  ❌ Erreur KPIs mois {mois} : {e}")
+
+    # 7. Prix CPO international (IMF — indépendant du filtre mois)
+    fetch_cpo_prices()
 
     log("=" * 56)
     log("ETL Cloud terminé ✅")
