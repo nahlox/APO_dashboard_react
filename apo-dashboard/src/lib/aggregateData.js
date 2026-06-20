@@ -219,10 +219,18 @@ export function buildAggregateData(monthArr) {
 
   // Décaissements par jour — fusion des maps date→montant (Feature 4)
   const decaissementsParJour = {}
+  const depensesParJour = {}
   for (const d of dataArr) {
     for (const [dk, mt] of Object.entries(d.charges?.decaissementsParJour || {})) {
       decaissementsParJour[dk] = (decaissementsParJour[dk] || 0) + mt
     }
+    for (const [dk, rows] of Object.entries(d.charges?.depensesParJour || {})) {
+      if (!depensesParJour[dk]) depensesParJour[dk] = []
+      depensesParJour[dk].push(...rows)
+    }
+  }
+  for (const dk of Object.keys(depensesParJour)) {
+    depensesParJour[dk].sort((a, b) => b.mt - a.mt)
   }
 
   // ── Fournisseurs agrégés ────────────────────────────────────────────
@@ -342,7 +350,7 @@ export function buildAggregateData(monthArr) {
       caJoursBlanc:   dailyBlanc.vals,
       caJoursNoir:    dailyNoir.vals,
     },
-    charges: { topDepenses, detailsParCat, decaissementsParJour },
+    charges: { topDepenses, detailsParCat, decaissementsParJour, depensesParJour },
     fournisseurs: {
       totalPoidsKg: allFournisseursListe.reduce((s, f) => s + f.poids, 0),
       nbActifs:     allFournisseursListe.length,
