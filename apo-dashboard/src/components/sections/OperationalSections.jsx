@@ -469,17 +469,13 @@ function ChargesHeatmap({ decaissementsParJour, depensesParJour = {} }) {
           {selectedDeps.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Aucun détail disponible</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {selectedDeps.slice(0, 6).map((dep, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-main)', flex: 1, marginRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {dep.lib || '—'}
-                  </span>
-                  <span style={{ color: 'var(--red)', fontWeight: 600, flexShrink: 0 }}>
-                    {Math.round(dep.mt).toLocaleString('fr-FR')} F
-                  </span>
-                </div>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <span style={{ color: 'var(--text-main)', flex: 1, marginRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {selectedDeps[0].lib || '—'}
+              </span>
+              <span style={{ color: 'var(--red)', fontWeight: 600, flexShrink: 0 }}>
+                {Math.round(selectedDeps[0].mt).toLocaleString('fr-FR')} F
+              </span>
             </div>
           )}
         </div>
