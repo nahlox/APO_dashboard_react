@@ -238,19 +238,25 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
 
   return (
     <div>
-      <div className="section-title">Vue Globale — Performance</div>
+      <div className="section-title">{filteredMois.length === 1 ? `Vue d'Ensemble — ${monthLabel(filteredMois[0].data)}` : 'Vue Globale — Performance'}</div>
 
-      {/* KPIs cumulés */}
+      {/* KPIs */}
       <div className="kpi-grid">
         {(() => {
-          const margeBrute = global.caCumule > 0 ? ((global.caCumule - global.coutMPCumule) / global.caCumule * 100).toFixed(1) : '—'
-          const margeNette = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
+          const isSingle     = filteredMois.length === 1
+          const margeBrute   = global.caCumule > 0 ? ((global.caCumule - global.coutMPCumule) / global.caCumule * 100).toFixed(1) : '—'
+          const margeNette   = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
+          const revNetTonne  = global.huileProduiteTotal > 0 ? Math.round(global.resultatCumule / global.huileProduiteTotal) : 0
+          const huileLabel   = isSingle ? 'Huile Produite' : 'Huile Produite Cumulée'
+          const caLabel      = isSingle ? `CA — ${range}` : `CA Cumulé ${range}`
+          const resultLabel  = isSingle ? `Résultat Net — ${range}` : `Résultat Cumulé ${range}`
           return (<>
-            <KPICard label={`CA Cumulé ${range}`}       value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold" />
-            <KPICard label="Marge Brute"                value={margeBrute + '%'}                                       valueColor="green" accent="accent-green" />
-            <KPICard label={`Résultat Cumulé ${range}`} value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
-            <KPICard label="Huile Produite Cumulée"     value={fmt.tonnes(global.huileProduiteTotal)}                valueColor="gold" />
-            <KPICard label="Marge Nette"                value={margeNette + '%'}                                     valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label={caLabel}      value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold" />
+            <KPICard label="Marge Brute"  value={margeBrute + '%'}                                    valueColor="green" accent="accent-green" />
+            <KPICard label={resultLabel}  value={(global.resultatCumule >= 0 ? '+ ' : '– ') + fmt.kpiValue(Math.abs(global.resultatCumule), currency, eurRate)} valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label={huileLabel}   value={fmt.tonnes(global.huileProduiteTotal)}               valueColor="gold" />
+            <KPICard label="Marge Nette"  value={margeNette + '%'}                                    valueColor={global.resultatCumule >= 0 ? 'green' : 'red'} accent={global.resultatCumule >= 0 ? 'accent-green' : 'accent-red'} />
+            <KPICard label="Revenu Net / Tonne" value={fmt.kpiValue(Math.abs(revNetTonne), currency, eurRate)} valueColor={revNetTonne >= 0 ? 'green' : 'red'} sub={`${currency}/T · ${Math.round(global.huileProduiteTotal)} T produites`} accent={revNetTonne >= 0 ? 'accent-green' : 'accent-red'} />
           </>)
         })()}
       </div>
@@ -258,15 +264,15 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
       {/* Charts */}
       <div className="charts-grid">
         <div className="chart-card">
-          <div className="chart-title">Évolution du CA</div>
-          <div className="chart-subtitle">CA mensuel par produit {range} {year} ({currency})</div>
+          <div className="chart-title">{filteredMois.length === 1 ? 'Chiffre d\'Affaires par Produit' : 'Évolution du CA'}</div>
+          <div className="chart-subtitle">CA par produit {range} {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
-          <div className="chart-title">Évolution du Résultat</div>
-          <div className="chart-subtitle">Résultat net mensuel {range} {year} ({currency})</div>
+          <div className="chart-title">{filteredMois.length === 1 ? 'Résultat Net' : 'Évolution du Résultat'}</div>
+          <div className="chart-subtitle">Résultat net {range} {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refResult} />
           </div>

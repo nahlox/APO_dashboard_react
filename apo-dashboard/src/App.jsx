@@ -133,10 +133,10 @@ function AppDashboard() {
                     Aucun mois ne correspond au filtre sélectionné.
                   </div>
                 )}
-                {aggregatedData && currentTab === 'vue-ensemble' && filteredMois.length > 1 && (
+                {aggregatedData && currentTab === 'vue-ensemble' && filteredMois.length >= 1 && (
                   <GlobalOverview filteredMois={filteredMois} aggregatedData={aggregatedData} />
                 )}
-                {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length > 1) && (
+                {aggregatedData && !(currentTab === 'vue-ensemble' && filteredMois.length >= 1) && (
                   <MonthPanel key={rangeKey} data={aggregatedData} month={rangeKey} activeTab={currentTab} allMois={allMois} />
                 )}
               </>
