@@ -275,6 +275,7 @@ export function buildAggregateData(monthArr) {
       coutMPDetail:         `${prixMoyenRegimeKg.toFixed(2)} F/kg (cumul)`,
       chargesExplFCFA, totalTaxesFCFA, amortissementFCFA,
       resultatExplFCFA, resultatNetFCFA, margeNette,
+      revenuNetParTonne: huileProduiteT > 0 ? Math.round(resultatNetFCFA / huileProduiteT) : 0,
       regimesRecusT, regimesTraitesT, stockFinMoisT, stockFinMoisFCFA,
       huileProduiteT, huileVendueT, tauxExtraction: +tauxExtraction.toFixed(2),
       nbCamions, prixMoyenHuileKg, prixMoyenRegimeKg,
