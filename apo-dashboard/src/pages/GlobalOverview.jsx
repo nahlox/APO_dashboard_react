@@ -234,7 +234,7 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         },
       },
     })
-  }, [cpoPrices])
+  }, [cpoPrices, filteredMois.length, currency, eurRate])
 
   return (
     <div>
