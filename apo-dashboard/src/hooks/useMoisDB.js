@@ -206,10 +206,20 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
 
   // ── Décaissements par jour — heatmap (Feature 4) ──────────────────────────
   const decaissementsParJour = {}
+  const depensesParJour = {}
   for (const r of (caisseRows || [])) {
     if (!r.date_mouvement) continue
     const dk = r.date_mouvement.slice(0, 10)
     decaissementsParJour[dk] = (decaissementsParJour[dk] || 0) + (r.credit_fcfa || 0)
+    if (!depensesParJour[dk]) depensesParJour[dk] = []
+    depensesParJour[dk].push({
+      lib: r.libelle || '',
+      mt:  r.credit_fcfa || 0,
+      cat: r.categorie || categorizeLibelle(r.libelle || ''),
+    })
+  }
+  for (const dk of Object.keys(depensesParJour)) {
+    depensesParJour[dk].sort((a, b) => b.mt - a.mt)
   }
 
   // ── Graphiques journaliers ────────────────────────────────────────────────
@@ -494,7 +504,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       caJoursBlanc,
       caJoursNoir,
     },
-    charges: { topDepenses, detailsParCat, decaissementsParJour },
+    charges: { topDepenses, detailsParCat, decaissementsParJour, depensesParJour },
     fournisseurs: {
       totalPoidsKg: fournisseursItems.reduce((s, f) => s + f.poids, 0),
       nbActifs:     fournisseursItems.length,

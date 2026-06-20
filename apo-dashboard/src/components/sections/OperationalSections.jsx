@@ -360,11 +360,10 @@ function ActiveSuppliersChart({ allMois, month }) {
 const JOURS_HDR = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const MOIS_FR   = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
-function ChargesHeatmap({ decaissementsParJour }) {
+function ChargesHeatmap({ decaissementsParJour, depensesParJour = {} }) {
   const entries = Object.entries(decaissementsParJour)
   if (entries.length === 0) return null
 
-  // Grouper par YYYY-MM
   const byMonth = {}
   for (const [dk, mt] of entries) {
     const ym = dk.slice(0, 7)
@@ -375,54 +374,116 @@ function ChargesHeatmap({ decaissementsParJour }) {
   const allMts = entries.map(([, mt]) => mt)
   const maxMt  = Math.max(...allMts, 1)
 
+  const [idx, setIdx]         = useState(months.length - 1)
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const ym = months[idx] || months[0]
+  const [yr, mo] = (ym || '2026-01').split('-').map(Number)
+  const daysInMonth = new Date(yr, mo, 0).getDate()
+  const firstDow    = (new Date(yr, mo - 1, 1).getDay() + 6) % 7
+
+  const cells = []
+  for (let i = 0; i < firstDow; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dk = `${ym}-${String(d).padStart(2, '0')}`
+    cells.push({ day: d, dk, mt: byMonth[ym]?.[dk] || 0 })
+  }
+
+  const selectedDeps = selectedDay ? (depensesParJour[selectedDay] || []) : []
+  const selectedTotal = selectedDeps.reduce((s, r) => s + r.mt, 0)
+
+  function handleDayClick(cell) {
+    if (!cell || cell.mt === 0) { setSelectedDay(null); return }
+    setSelectedDay(prev => prev === cell.dk ? null : cell.dk)
+  }
+
   return (
-    <div className="heatmap-months">
-      {months.map(ym => {
-        const [yr, mo] = ym.split('-').map(Number)
-        const daysInMonth = new Date(yr, mo, 0).getDate()
-        const firstDow    = (new Date(yr, mo - 1, 1).getDay() + 6) % 7 // Lun=0
+    <div>
+      {/* Navigation carousel */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <button
+          onClick={() => { setIdx(i => Math.max(0, i - 1)); setSelectedDay(null) }}
+          disabled={idx === 0}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 12px', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.3 : 1, color: 'var(--text-dim)', fontSize: 16 }}
+        >‹</button>
+        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-main)' }}>
+          {MOIS_FR[mo - 1]} {yr}
+          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-dim)', marginLeft: 8 }}>{idx + 1} / {months.length}</span>
+        </span>
+        <button
+          onClick={() => { setIdx(i => Math.min(months.length - 1, i + 1)); setSelectedDay(null) }}
+          disabled={idx === months.length - 1}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 12px', cursor: idx === months.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === months.length - 1 ? 0.3 : 1, color: 'var(--text-dim)', fontSize: 16 }}
+        >›</button>
+      </div>
 
-        const cells = []
-        for (let i = 0; i < firstDow; i++) cells.push(null)
-        for (let d = 1; d <= daysInMonth; d++) {
-          const dk = `${ym}-${String(d).padStart(2, '0')}`
-          cells.push({ day: d, mt: byMonth[ym][dk] || 0 })
-        }
+      {/* Grille calendrier */}
+      <div className="heatmap-grid">
+        {JOURS_HDR.map((j, i) => (
+          <div key={i} className="heatmap-day-hdr">{j}</div>
+        ))}
+        {cells.map((cell, i) =>
+          cell === null
+            ? <div key={i} className="heatmap-cell heatmap-empty" />
+            : (
+              <div
+                key={i}
+                className="heatmap-cell"
+                onClick={() => handleDayClick(cell)}
+                style={{
+                  cursor: cell.mt > 0 ? 'pointer' : 'default',
+                  backgroundColor: selectedDay === cell.dk
+                    ? 'rgba(242,140,40,0.70)'
+                    : cell.mt > 0
+                      ? `rgba(224,92,92,${(0.15 + 0.75 * (cell.mt / maxMt)).toFixed(2)})`
+                      : undefined,
+                  outline: selectedDay === cell.dk ? '2px solid rgba(242,140,40,0.9)' : undefined,
+                }}
+              >
+                <span className="heatmap-day-num">{cell.day}</span>
+              </div>
+            )
+        )}
+      </div>
 
-        return (
-          <div key={ym} className="heatmap-month">
-            <div className="heatmap-month-label">{MOIS_FR[mo - 1]} {yr}</div>
-            <div className="heatmap-grid">
-              {JOURS_HDR.map((j, i) => (
-                <div key={i} className="heatmap-day-hdr">{j}</div>
-              ))}
-              {cells.map((cell, i) =>
-                cell === null
-                  ? <div key={i} className="heatmap-cell heatmap-empty" />
-                  : (
-                    <div
-                      key={i}
-                      className="heatmap-cell"
-                      title={cell.mt > 0 ? `${cell.day}/${mo} — ${Math.round(cell.mt / 1000).toLocaleString('fr-FR')} K FCFA` : `${cell.day}/${mo} — aucun décaissement`}
-                      style={cell.mt > 0 ? {
-                        backgroundColor: `rgba(224,92,92,${(0.15 + 0.75 * (cell.mt / maxMt)).toFixed(2)})`,
-                      } : {}}
-                    >
-                      <span className="heatmap-day-num">{cell.day}</span>
-                    </div>
-                  )
-              )}
-            </div>
-          </div>
-        )
-      })}
-      <div className="heatmap-legend">
+      {/* Légende */}
+      <div className="heatmap-legend" style={{ marginTop: 10 }}>
         <span className="heatmap-legend-label">0</span>
         {[0.15, 0.35, 0.55, 0.75, 0.90].map(o => (
           <div key={o} className="heatmap-legend-swatch" style={{ backgroundColor: `rgba(224,92,92,${o})` }} />
         ))}
         <span className="heatmap-legend-label">Max</span>
       </div>
+
+      {/* Popup dépenses du jour */}
+      {selectedDay && (
+        <div style={{ marginTop: 14, background: 'var(--dark2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gold)' }}>
+              {new Date(selectedDay + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+              Total : {Math.round(selectedTotal).toLocaleString('fr-FR')} FCFA
+            </span>
+          </div>
+          {selectedDeps.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Aucun détail disponible</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {selectedDeps.slice(0, 6).map((dep, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                  <span style={{ color: 'var(--text-main)', flex: 1, marginRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {dep.lib || '—'}
+                  </span>
+                  <span style={{ color: 'var(--red)', fontWeight: 600, flexShrink: 0 }}>
+                    {Math.round(dep.mt).toLocaleString('fr-FR')} F
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -440,6 +501,7 @@ export function Charges({ data, month, allMois = [] }) {
   const total               = charges.topDepenses.reduce((s, r) => s + r.mt, 0)
   const detailsParCat       = charges.detailsParCat        || {}
   const decaissementsParJour = charges.decaissementsParJour || {}
+  const depensesParJour      = charges.depensesParJour      || {}
   const isMultiMois          = allMois.length > 1
 
   // Feature 5 — fréquence par catégorie sur les mois sélectionnés
@@ -651,12 +713,12 @@ export function Charges({ data, month, allMois = [] }) {
         </table>
       </div>
 
-      {/* Feature 4 — Heatmap décaissements (caisse uniquement) */}
+      {/* Feature 4 — Calendrier carousel des décaissements */}
       {Object.keys(decaissementsParJour).length > 0 && (
         <div className="chart-card">
           <div className="chart-title">Calendrier des Décaissements</div>
-          <div className="chart-subtitle">Intensité journalière des dépenses caisse — survol pour le montant</div>
-          <ChargesHeatmap decaissementsParJour={decaissementsParJour} />
+          <div className="chart-subtitle">Touchez un jour pour voir le détail des dépenses</div>
+          <ChargesHeatmap decaissementsParJour={decaissementsParJour} depensesParJour={depensesParJour} />
         </div>
       )}
     </section>
