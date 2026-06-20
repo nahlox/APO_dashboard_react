@@ -302,7 +302,7 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         </div>
       </div>
 
-      <div className="chart-card">
+      <div className="chart-card" style={{ marginBottom: 'clamp(18px, 2vw, 28px)' }}>
         <div className="chart-title">Évolution des Prix & Marge Matière</div>
         <div className="chart-subtitle">
           Prix d'achat régimes · Prix vente CPO · Marge brute matière (F/kg)
