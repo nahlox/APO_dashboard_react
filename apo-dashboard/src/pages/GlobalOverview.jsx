@@ -349,35 +349,6 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         </div>
       )}
 
-      {/* Cartes résumé — une par mois */}
-      <div className="global-compare-grid" style={{ marginTop: 28 }}>
-        {filteredMois.map(({ key, data, accent, rgba }) => (
-          <div key={key} className="month-summary-card" style={{ borderTop: `3px solid ${accent}` }}>
-            <div className="month-summary-title">
-              <span className="month-badge" style={{ background: `${rgba}0.2)`, color: accent, marginRight: 8 }}>
-                {monthLabel(data)}
-              </span>
-              {data._etl.annee}
-            </div>
-            {[
-              ["Chiffre d'Affaires",    fmt.currency(data.kpis.caTotalFCFA, currency, eurRate),                        'var(--gold)'],
-              ['Coût Matière Première', fmt.currency(data.kpis.coutMPFCFA, currency, eurRate),                          'var(--red)'],
-              ['Charges Exploitation',  fmt.currency(data.kpis.chargesExplFCFA, currency, eurRate),                     'var(--red)'],
-              ['Résultat Net',          (data.kpis.resultatNetFCFA >= 0 ? '+ ' : '– ') + fmt.currency(Math.abs(data.kpis.resultatNetFCFA), currency, eurRate), data.kpis.resultatNetFCFA >= 0 ? 'var(--green)' : 'var(--red)'],
-              ['Marge Nette',           data.kpis.margeNette + '%',                                            'var(--green)'],
-              ['Régimes Traités',       fmt.tonnes(data.kpis.regimesTraitesT),                                 null],
-              ['Huile Produite',        fmt.tonnes(data.kpis.huileProduiteT),                                  null],
-              ['Huile Vendue',          fmt.tonnes(data.kpis.huileVendueT),                                    null],
-              ["Taux d'Extraction",     fmt.pct(data.kpis.tauxExtraction),                                     null],
-            ].map(([label, val, color], i) => (
-              <div className="compare-row" key={i}>
-                <span className="compare-label">{label}</span>
-                <span className="compare-val" style={color ? { color } : {}}>{val}</span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
