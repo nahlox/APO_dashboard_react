@@ -358,6 +358,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       resultatExplFCFA:     resultatExpl,
       resultatNetFCFA:      resultat,
       margeNette:           caTotal ? +((resultat / caTotal) * 100).toFixed(1) : 0,
+      revenuNetParTonne:    huileProduiteT > 0 ? Math.round(resultat / huileProduiteT) : 0,
       regimesRecusT:        regRecusT,
       regimesTraitesT:      regTraitesT,
       stockFinMoisT:        stockFinT,
