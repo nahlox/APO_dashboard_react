@@ -2,365 +2,156 @@
 // Deploy : supabase functions deploy chatbot
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Anthropic from 'npm:@anthropic-ai/sdk'
+import Anthropic        from 'npm:@anthropic-ai/sdk'
+import postgres         from 'npm:postgres'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY')!
+const DB_URL        = Deno.env.get('SUPABASE_DB_URL')!
 
 const ai = new Anthropic({ apiKey: ANTHROPIC_KEY })
 
-// ── Formatage ─────────────────────────────────────────────────
+// ── Sécurité : tables/patterns interdits ────────────────────────
+const BLOCKED = [
+  'user_tenants', 'auth.', 'pg_catalog', 'pg_stat', 'pg_class',
+  'information_schema', 'storage.', 'vault.', 'pgsodium',
+  'supabase_migrations', 'schema_migrations', 'secret', 'password',
+  'token', 'jwt', 'credential', 'private', 'key',
+]
 
-function numFr(n: number) {
-  return Math.round(n).toLocaleString('fr-FR')
+function validateSql(sql: string): string | null {
+  const lower = sql.toLowerCase().trim()
+  if (!lower.startsWith('select')) return 'Seules les requêtes SELECT sont autorisées.'
+  if (lower.includes(';') && lower.lastIndexOf(';') !== lower.trimEnd().length - 1)
+    return 'Une seule requête à la fois.'
+  for (const b of BLOCKED) {
+    if (lower.includes(b)) return `Accès interdit : "${b}" est une ressource système.`
+  }
+  return null
 }
 
-// ── Construction du contexte multi-modules ────────────────────
+// ── Schéma métier exposé à PALMAI ───────────────────────────────
+const SCHEMA = `
+Tables métier disponibles (toutes filtrées sur ton tenant via periode_id) :
 
-const CAT_LABELS: Record<string, string> = {
-  fournitures_usine:   'Fournitures usine/bureaux',
-  frais_transport:     'Frais transport',
-  services_ext:        'Services extérieurs',
-  autres_services_ext: 'Autres services ext.',
-  autres_charges:      'Autres charges',
-  charges_personnel:   'Charges personnel',
-  taxes_fiscales:      'Impôts et taxes',
-  frais_bancaires:     'Frais bancaires',
-  amortissement:       'Amortissements',
+achats_regimes       — 1 ligne = 1 camion livré
+  id, periode_id, fournisseur_id, date_achat (DATE), type_transport,
+  numero_camion, poids_kg, prix_kg, prix_transport, montant_total
+
+fournisseurs         — transporteurs / fournisseurs
+  id, reference, nom
+
+production_journaliere — production quotidienne usine
+  id, periode_id, date_production (DATE), regime_recu_kg, regime_traite_kg,
+  regime_restant_kg, huile_produite_kg, taux_extraction, stock_huile_kg,
+  tank_1000_kg, tank_300_kg, nb_sterilisateurs, livraison_citerne_kg,
+  livraison_florentin_kg, livraison_bassin_kg, production_palmiste_kg,
+  livraison_palmiste_kg, stock_palmiste_kg
+
+ventes_huile         — livraisons CPO à SARCI
+  id, periode_id, client_id, date_vente, libelle, poids_apo_kg,
+  poids_sarci_kg, prix_kg, circuit, avance_sarci, montant_fcfa
+
+ventes_palmiste      — ventes noix de palmiste
+  id, periode_id, client_id, date_vente, poids_kg, prix_kg, montant_fcfa
+
+ventes_florentin     — ventes Florentin
+  id, periode_id, client_id, date_vente, poids_kg, prix_kg, montant_fcfa
+
+ventes_bassin        — ventes bassin lagunage
+  id, periode_id, client_id, date_vente, poids_kg, prix_kg, montant_fcfa
+
+caisse_apo           — mouvements caisse principale (encaissements & décaissements)
+  id, periode_id, date_mouvement, libelle, debit_fcfa, credit_fcfa,
+  solde_fcfa, type_mouvement, categorie
+
+caisse_apo2          — charges exploitation (salaires, carburant, etc.)
+  id, periode_id, date_mouvement, libelle, debit_fcfa, credit_fcfa,
+  solde_fcfa, categorie
+
+banque_apo           — mouvements bancaires SGCI / BDA
+  id, periode_id, banque, date_operation, date_valeur, libelle,
+  montant_fcfa, categorie
+
+contrats_pepiniere   — contrats pépinière
+  id, client_id, numero_ordre, date_contrat, localite_champ,
+  superficie_champ_ha, montant_total, net_encaisse, montant_restant
+
+clients              — clients (huile, palmiste, florentin, pépinière…)
+  id, reference, nom, telephone, localite, type
+
+kpis_mensuels        — KPIs agrégés par mois
+  id, periode_id, ca_huile_fcfa, ca_palmiste_fcfa, ca_total_fcfa,
+  cout_mp_fcfa, charges_exploitation, amortissement_fcfa, resultat_net_fcfa,
+  regimes_recus_kg, regimes_traites_kg, huile_produite_kg, taux_extraction,
+  nb_camions, palmiste_produit_kg, prix_moyen_regime_kg, prix_moyen_huile_kg
+
+amortissement_bancaire — annuités prêt bancaire
+  id, periode_id, libelle, montant_fcfa, type
+
+periodes             — référentiel mois/année (ton tenant est déjà filtré)
+  id, annee, mois, libelle, tenant_id
+
+Vues utiles :
+vue_top_fournisseurs — agrégat fournisseurs par mois (annee, mois, nom, poids_total_kg, nb_camions, prix_moyen_kg, montant_total_fcfa)
+vue_ca_par_mois      — CA détaillé par mois
+vue_production_par_mois — production agrégée par mois
+`
+
+// ── Outil SQL pour PALMAI ───────────────────────────────────────
+const SQL_TOOL: Anthropic.Tool = {
+  name: 'query_database',
+  description: `Exécute une requête SQL SELECT sur la base de données du tenant.
+Utilise cet outil chaque fois que tu as besoin de données précises : réceptions journalières,
+détail par transporteur, ventes, charges, production, etc.
+IMPORTANT : filtre TOUJOURS par les periode_id du tenant (fournis dans le contexte).
+Limite à 200 lignes maximum pour les détails. Utilise des agrégats (SUM, COUNT, AVG) quand possible.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      sql: {
+        type: 'string',
+        description: 'Requête SQL SELECT à exécuter. SELECT uniquement, pas de modification de données.',
+      },
+    },
+    required: ['sql'],
+  },
 }
 
-function buildDataContext(
-  kpisRows:         any[],
-  prodJourRows:     any[],
-  ventesHuile:      any[],
-  caisseRows:       any[],
-  banqueRows:       any[],
-  topFourni:        any[],
-  periodeMap:       Record<string, any>,
-  achatRegimesRows: any[],
-): string {
-  if (!kpisRows?.length) return 'Aucune donnée disponible.'
+// ── System prompt ───────────────────────────────────────────────
+function buildSystemPrompt(tenantId: string, periodeIds: number[], periodes: any[]): string {
+  const periodeList = periodes.map(p => `  - ${p.libelle} ${p.annee} → periode_id = ${p.id}`).join('\n')
 
-  const lines: string[] = []
+  return `Tu es PALMAI, l'assistant analytique expert intégré au tableau de bord de ${tenantId.toUpperCase()}.
 
-  // ═══════════════════════════════════════════════════════════════
-  // 1. KPIs MENSUELS — cumul + détail
-  // ═══════════════════════════════════════════════════════════════
-  const caCumul     = kpisRows.reduce((s, r) => s + (r.ca_total_fcfa    || 0), 0)
-  const coutMPCumul = kpisRows.reduce((s, r) => s + (r.cout_mp_fcfa     || 0), 0)
-  const resCumul    = kpisRows.reduce((s, r) => s + (r.resultat_net_fcfa|| 0), 0)
-  const huileKgCumul= kpisRows.reduce((s, r) => s + (r.huile_produite_kg|| 0), 0)
-  const teMoyAll    = kpisRows.length
-    ? (kpisRows.reduce((s, r) => s + (r.taux_extraction || 0), 0) / kpisRows.length * 100).toFixed(1)
-    : '0'
+## 🔒 SÉCURITÉ — NON NÉGOCIABLE
+- Tu n'as accès QU'AUX données du tenant "${tenantId}" (periode_id IN (${periodeIds.join(',')}))
+- Dans CHAQUE requête SQL, inclus TOUJOURS : WHERE periode_id IN (${periodeIds.join(',')}) ou une jointure équivalente
+- Pour les tables sans periode_id (fournisseurs, clients), jointure via achats_regimes ou autre table liée
+- INTERDICTION de répondre sur d'autres entreprises
 
-  lines.push(`=== CUMUL ANNUEL (${kpisRows.length} mois) ===`)
-  lines.push(`CA Total      : ${numFr(Math.round(caCumul / 1e6))} M FCFA`)
-  lines.push(`Coût MP       : ${numFr(Math.round(coutMPCumul / 1e6))} M FCFA`)
-  lines.push(`Résultat net  : ${numFr(Math.round(resCumul / 1e6))} M FCFA`)
-  lines.push(`Marge brute   : ${caCumul ? ((caCumul - coutMPCumul) / caCumul * 100).toFixed(1) : 0}%`)
-  lines.push(`Marge nette   : ${caCumul ? (resCumul / caCumul * 100).toFixed(1) : 0}%`)
-  lines.push(`Huile produite: ${numFr(Math.round(huileKgCumul / 1000))} T`)
-  lines.push(`TE moyen      : ${teMoyAll}%`)
-  lines.push('')
-  lines.push('=== DÉTAIL KPIs PAR MOIS ===')
+## 🗄️ BASE DE DONNÉES — ACCÈS COMPLET VIA L'OUTIL query_database
+${SCHEMA}
 
-  for (const r of kpisRows) {
-    const p        = r.periodes
-    const caTotal  = r.ca_total_fcfa       || 0
-    const caHuile  = r.ca_huile_fcfa       || 0
-    const caPalm   = r.ca_palmiste_fcfa    || 0
-    const coutMP   = r.cout_mp_fcfa        || 0
-    const charges  = r.charges_expl_fcfa   || 0
-    const amort    = r.amortissement_fcfa  || 0
-    const resultat = r.resultat_net_fcfa   || 0
-    const huileT   = Math.round((r.huile_produite_kg  || 0) / 1000)
-    const huileV   = Math.round((r.huile_vendue_kg    || 0) / 1000)
-    const regRecT  = Math.round((r.regimes_recus_kg   || 0) / 1000)
-    const regTrT   = Math.round((r.regimes_traites_kg || 0) / 1000)
-    const te       = ((r.taux_extraction   || 0) * 100).toFixed(1)
-    const prixH    = Math.round(r.prix_moyen_huile_kg  || 0)
-    const prixR    = Math.round(r.prix_moyen_regime_kg || 0)
-    const nbCam    = r.nb_camions          || 0
-    const palmT    = Math.round((r.palmiste_produit_kg || 0) / 1000)
-    const mbPct    = caTotal ? ((caTotal - coutMP) / caTotal * 100).toFixed(1) : '0'
-    const mnPct    = caTotal ? (resultat / caTotal * 100).toFixed(1) : '0'
+## 📅 PÉRIODES DU TENANT ${tenantId.toUpperCase()}
+${periodeList}
+IDs à utiliser : periode_id IN (${periodeIds.join(',')})
 
-    lines.push(`\n--- ${p.libelle} ${p.annee} (periode_id: ${p.id}) ---`)
-    lines.push(`CA: ${numFr(Math.round(caTotal/1e6))} M FCFA (CPO: ${numFr(Math.round(caHuile/1e6))} M | palmiste: ${numFr(Math.round(caPalm/1e6))} M)`)
-    lines.push(`Coût MP: ${numFr(Math.round(coutMP/1e6))} M | Charges: ${numFr(Math.round(charges/1e6))} M | Amort: ${numFr(Math.round(amort/1e6))} M`)
-    lines.push(`Résultat: ${numFr(Math.round(resultat/1e6))} M FCFA | Marge brute: ${mbPct}% | Marge nette: ${mnPct}%`)
-    lines.push(`Régimes reçus: ${numFr(regRecT)} T | Traités: ${numFr(regTrT)} T | Camions: ${nbCam}`)
-    lines.push(`Huile produite: ${numFr(huileT)} T | Huile vendue: ${numFr(huileV)} T | Palmiste: ${numFr(palmT)} T`)
-    lines.push(`TE: ${te}% | Prix huile: ${prixH} F/kg | Prix régimes: ${prixR} F/kg`)
-  }
+## 🎯 COMPORTEMENT
+- Utilise TOUJOURS query_database pour des données précises — ne devine jamais un chiffre
+- Préfère les agrégats SQL (SUM, COUNT, GROUP BY) aux listes brutes
+- Si une première requête ne suffit pas, enchaîne avec une deuxième
+- Réponds en français, concis : chiffre clé → explication courte → recommandation si utile
+- Pas d'introduction, pas de politesse, pas de récapitulatif
 
-  // ═══════════════════════════════════════════════════════════════
-  // 2. FOURNISSEURS (vue_top_fournisseurs par période)
-  // ═══════════════════════════════════════════════════════════════
-  lines.push('\n\n=== FOURNISSEURS ===')
-
-  // Agrégat cumulé multi-périodes
-  const fourniMap: Record<string, { nom: string; poidsKg: number; montant: number; nbCam: number }> = {}
-  for (const f of topFourni) {
-    const key = f.reference || f.nom || 'inconnu'
-    if (!fourniMap[key]) fourniMap[key] = { nom: f.nom || f.reference || key, poidsKg: 0, montant: 0, nbCam: 0 }
-    fourniMap[key].poidsKg += f.poids_total_kg    || 0
-    fourniMap[key].montant += f.montant_total_fcfa || 0
-    fourniMap[key].nbCam   += f.nb_camions         || 0
-  }
-
-  const allFourni = Object.values(fourniMap).sort((a, b) => b.poidsKg - a.poidsKg)
-  if (allFourni.length > 0) {
-    lines.push(`Fournisseurs actifs : ${allFourni.length}`)
-    lines.push('Top fournisseurs (cumul toutes périodes) :')
-    for (const f of allFourni.slice(0, 15)) {
-      const prixMoy = f.poidsKg > 0 ? Math.round(f.montant / f.poidsKg) : 0
-      lines.push(`  - ${f.nom}: ${numFr(Math.round(f.poidsKg/1000))} T | ${f.nbCam} cam. | ${prixMoy} F/kg | ${numFr(Math.round(f.montant/1e6))} M FCFA`)
-    }
-  } else {
-    lines.push('Aucune donnée fournisseur disponible.')
-  }
-
-  // Détail par mois
-  const fourniByPeriode: Record<string, any[]> = {}
-  for (const f of topFourni) {
-    if (!fourniByPeriode[f.periode_id]) fourniByPeriode[f.periode_id] = []
-    fourniByPeriode[f.periode_id].push(f)
-  }
-
-  for (const [pid, fournisseurs] of Object.entries(fourniByPeriode)) {
-    const p = periodeMap[pid]
-    if (!p) continue
-    const totPoidsT = (fournisseurs as any[]).reduce((s, f) => s + (f.poids_total_kg || 0), 0) / 1000
-    const totCam    = (fournisseurs as any[]).reduce((s, f) => s + (f.nb_camions     || 0), 0)
-    lines.push(`\n  ${p.libelle} ${p.annee} — ${(fournisseurs as any[]).length} fournisseurs, ${numFr(Math.round(totPoidsT))} T, ${totCam} camions :`)
-    for (const f of (fournisseurs as any[]).slice(0, 8)) {
-      lines.push(`    · ${f.nom || f.reference}: ${numFr(Math.round((f.poids_total_kg||0)/1000))} T | ${f.nb_camions||0} cam. | ${Math.round(f.prix_moyen_kg||0)} F/kg`)
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // 3. PRODUCTION JOURNALIÈRE (stats + alertes TE)
-  // ═══════════════════════════════════════════════════════════════
-  lines.push('\n\n=== PRODUCTION JOURNALIÈRE ===')
-
-  const prodByPeriode: Record<string, any[]> = {}
-  for (const r of prodJourRows) {
-    if (!prodByPeriode[r.periode_id]) prodByPeriode[r.periode_id] = []
-    prodByPeriode[r.periode_id].push(r)
-  }
-
-  for (const kpis of kpisRows) {
-    const p   = kpis.periodes
-    const pid = p.id
-    const rows = prodByPeriode[pid] || []
-    if (!rows.length) continue
-
-    const teVals = rows.map((r: any) => (r.taux_extraction || 0) * 100).filter((v: number) => v > 0)
-    const teMoyP = teVals.length ? (teVals.reduce((s: number, v: number) => s + v, 0) / teVals.length).toFixed(1) : '—'
-    const teMin  = teVals.length ? Math.min(...teVals).toFixed(1) : '—'
-    const teMax  = teVals.length ? Math.max(...teVals).toFixed(1) : '—'
-    const totReg = rows.reduce((s: number, r: any) => s + (r.regime_recu_kg || 0), 0)
-    const lastStock = [...rows].reverse().find((r: any) => (r.stock_huile_kg || 0) > 0)?.stock_huile_kg || 0
-
-    lines.push(`\n--- ${p.libelle} ${p.annee} ---`)
-    lines.push(`  Jours production: ${rows.length} | Régimes reçus: ${numFr(Math.round(totReg/1000))} T`)
-    lines.push(`  TE moyen: ${teMoyP}% | min: ${teMin}% | max: ${teMax}% | Stock huile fin: ${numFr(Math.round(lastStock/1000))} T`)
-
-    const badDays = rows.filter((r: any) => (r.taux_extraction || 0) * 100 < 19 && (r.taux_extraction || 0) > 0)
-    if (badDays.length > 0) {
-      const dates = badDays.map((r: any) => r.date_production?.slice(5, 10)).join(', ')
-      lines.push(`  ⚠️ Jours TE<19% (${badDays.length}j): ${dates}`)
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // 4. VENTES HUILE (blanc/noir split par mois)
-  // ═══════════════════════════════════════════════════════════════
-  lines.push('\n\n=== VENTES HUILE (DÉTAIL LIVRAISONS) ===')
-
-  const ventesParPeriode: Record<string, any[]> = {}
-  for (const r of ventesHuile) {
-    if (!ventesParPeriode[r.periode_id]) ventesParPeriode[r.periode_id] = []
-    ventesParPeriode[r.periode_id].push(r)
-  }
-
-  for (const kpis of kpisRows) {
-    const p    = kpis.periodes
-    const pid  = p.id
-    const rows = ventesParPeriode[pid] || []
-    if (!rows.length) continue
-
-    const blanc = rows.filter((r: any) => r.circuit === 'blanc')
-    const noir  = rows.filter((r: any) => r.circuit !== 'blanc')
-
-    const calcCA  = (arr: any[]) => arr.reduce((s: number, r: any) => {
-      const poids = (r.poids_sarci_kg || 0) > 0 ? r.poids_sarci_kg : r.poids_apo_kg
-      return s + (poids || 0) * (r.prix_kg || 0)
-    }, 0)
-    const calcT   = (arr: any[]) => arr.reduce((s: number, r: any) => s + (r.poids_apo_kg || 0), 0) / 1000
-    const avgPrix = (arr: any[]) => arr.length ? arr.reduce((s: number, r: any) => s + (r.prix_kg || 0), 0) / arr.length : 0
-
-    lines.push(`\n--- ${p.libelle} ${p.annee} (${rows.length} livraisons) ---`)
-    if (blanc.length) {
-      lines.push(`  BLANC (chèque SARCI): ${blanc.length} lvr. | ${calcT(blanc).toFixed(1)} T | CA: ${numFr(Math.round(calcCA(blanc)/1e6))} M FCFA | prix moy: ${Math.round(avgPrix(blanc))} F/kg`)
-    }
-    if (noir.length) {
-      lines.push(`  NOIR  (autres règl.): ${noir.length} lvr. | ${calcT(noir).toFixed(1)} T | CA: ${numFr(Math.round(calcCA(noir)/1e6))} M FCFA | prix moy: ${Math.round(avgPrix(noir))} F/kg`)
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // 5. CHARGES EXPLOITATION (caisse + banque, par catégorie)
-  // ═══════════════════════════════════════════════════════════════
-  lines.push('\n\n=== CHARGES EXPLOITATION (CAISSE + BANQUE) ===')
-
-  const caisseByPeriode: Record<string, any[]> = {}
-  for (const r of caisseRows) {
-    if (!caisseByPeriode[r.periode_id]) caisseByPeriode[r.periode_id] = []
-    caisseByPeriode[r.periode_id].push(r)
-  }
-  const banqueByPeriode: Record<string, any[]> = {}
-  for (const r of banqueRows) {
-    if (!banqueByPeriode[r.periode_id]) banqueByPeriode[r.periode_id] = []
-    banqueByPeriode[r.periode_id].push(r)
-  }
-
-  for (const kpis of kpisRows) {
-    const p      = kpis.periodes
-    const pid    = p.id
-    const caisse = caisseByPeriode[pid] || []
-    const banque = banqueByPeriode[pid] || []
-    if (!caisse.length && !banque.length) continue
-
-    const parCat: Record<string, number> = {}
-    for (const r of caisse) {
-      const cat = r.categorie || 'autres_services_ext'
-      parCat[cat] = (parCat[cat] || 0) + (r.credit_fcfa || 0)
-    }
-    for (const r of banque) {
-      if (r.categorie === 'amortissement' || r.categorie === 'frais_bancaires') continue
-      const cat = r.categorie || 'autres_services_ext'
-      parCat[cat] = (parCat[cat] || 0) + (r.montant_fcfa || 0)
-    }
-
-    const total = Object.values(parCat).reduce((s, v) => s + v, 0)
-    if (!total) continue
-
-    lines.push(`\n--- ${p.libelle} ${p.annee} — Total: ${numFr(Math.round(total/1e6))} M FCFA ---`)
-    const sorted = Object.entries(parCat).sort((a, b) => b[1] - a[1])
-    for (const [cat, mt] of sorted) {
-      if (!mt) continue
-      const pct = total ? (mt / total * 100).toFixed(0) : '0'
-      lines.push(`  · ${CAT_LABELS[cat] || cat}: ${numFr(Math.round(mt/1000))} k FCFA (${pct}%)`)
-    }
-
-    // Top 5 dépenses individuelles caisse
-    const topItems = caisse
-      .map((r: any) => ({ lib: r.libelle || '—', mt: r.credit_fcfa || 0 }))
-      .sort((a: any, b: any) => b.mt - a.mt)
-      .slice(0, 5)
-    if (topItems.length) {
-      lines.push('  Top dépenses caisse:')
-      for (const it of topItems) {
-        lines.push(`    - ${String(it.lib).slice(0, 55)}: ${numFr(Math.round(it.mt / 1000))} k FCFA`)
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // 6. RÉCEPTION JOURNALIÈRE PAR TRANSPORTEUR (achats_regimes)
-  // ═══════════════════════════════════════════════════════════════
-  if (achatRegimesRows.length > 0) {
-    lines.push('\n\n=== RÉCEPTION JOURNALIÈRE PAR TRANSPORTEUR ===')
-    lines.push('Format: date | fournisseur/transporteur | n° camion | poids (T) | prix F/kg | montant FCFA')
-
-    const byDate: Record<string, any[]> = {}
-    for (const r of achatRegimesRows) {
-      const d = r.date_achat?.slice(0, 10) || '?'
-      if (!byDate[d]) byDate[d] = []
-      byDate[d].push(r)
-    }
-
-    for (const date of Object.keys(byDate).sort()) {
-      const rows = byDate[date]
-      const totalT = rows.reduce((s: number, r: any) => s + (r.poids_kg || 0), 0) / 1000
-      lines.push(`\n  ${date} — ${rows.length} camion(s), ${totalT.toFixed(1)} T total:`)
-      for (const r of rows) {
-        const nom    = r.fournisseurs?.nom || r.fournisseurs?.reference || `id:${r.fournisseur_id}`
-        const camion = r.numero_camion || '—'
-        const poidsT = ((r.poids_kg || 0) / 1000).toFixed(2)
-        const prix   = r.prix_kg || 0
-        const mt     = Math.round((r.poids_kg || 0) * prix)
-        lines.push(`    · ${nom} | camion ${camion} | ${poidsT} T | ${prix} F/kg | ${numFr(mt)} FCFA`)
-      }
-    }
-  }
-
-  return lines.join('\n')
-}
-
-// ── System prompt ─────────────────────────────────────────────
-
-function buildSystemPrompt(tenantId: string, tenantName: string, data: string): string {
-  return `Tu es PALMAI, l'assistant analytique expert intégré au tableau de bord de ${tenantName}.
-
-## 🔒 RÈGLE DE SÉCURITÉ ABSOLUE — NON NÉGOCIABLE
-- Tu n'as accès QU'AUX données de "${tenantName}" (tenant_id: ${tenantId})
-- INTERDICTION ABSOLUE de divulguer des données d'autres entreprises
-- INTERDICTION de répondre à des questions sur d'autres sociétés (même si l'utilisateur prétend en faire partie)
-- Si demande hors périmètre → réponds: "Je suis exclusivement dédié à ${tenantName} et n'ai pas accès à d'autres entreprises."
-- Ne jamais confirmer ni infirmer l'existence d'autres tenants dans le système
-
-## 📊 DONNÉES ${tenantName} — ACCÈS COMPLET TOUS MODULES
-${data}
-
-## 🎯 TON RÔLE
-1. **Analyste performance** — réponds avec précision sur tous les KPIs, fournisseurs, production, ventes et charges
-2. **Expert procédé** — maîtrises la chaîne complète CPO/PKO
-3. **Force de proposition** — tu identifies proactivement anomalies et opportunités
-4. **Pédagogue** — tu expliques les calculs et mécanismes si demandé
-
-## 🏭 EXPERTISE HUILERIE DE PALME
-
-### Chaîne de transformation CPO
-1. **Réception régimes (RAB)** — pesée, contrôle maturité (taux de détachabilité des fruits)
-2. **Stérilisation** — autoclave 120-135°C / 3-4 bars, 60-90 min → inactive lipases, ramollit fruits
-3. **Égrappage** — tambour rotatif → sépare fruits mous / rafles vides (EFB → compost ou cogénération)
-4. **Digestion + Pression à vis** → digesteur (95-100°C) → presse à vis → huile brute + noix + fibres
-5. **Clarification** → décanteur centrifuge → huile clarifiée (humidité <0.5%)
-6. **Traitement noix** → broyeur → défibreur → amandes palmiste → presse PKO + tourteau
-7. **Stockage CPO** — cuves 40-50°C (point de fusion ~35°C) + POME → lagunage obligatoire
-
-### Benchmarks huileries semi-industrielles Afrique de l'Ouest
-| KPI | ⚠️ Alerte | 🟡 Correct | 🟢 Bon | 🏆 Excellent |
-|---|---|---|---|---|
-| Taux extraction CPO | <19% | 19-21% | 21-23% | >23% |
-| FFA huile (%) | >5% | 3-5% | 1-3% | <1% |
-| Marge brute | <25% | 25-35% | 35-45% | >45% |
-| Coût MP / CA | >70% | 60-70% | 50-60% | <50% |
-| Marge nette | <5% | 5-15% | 15-25% | >25% |
-
-### Causes fréquentes TE bas
-- Régimes immatures → teneur huile insuffisante dans mésocarpe
-- Contre-pression presse insuffisante → pertes fibres
-- Température digestion basse (<90°C) ou durée stérilisation trop courte
-- Maintenance vis/cages insuffisante (vérifier tous les 500h)
-
-## FORMAT DE RÉPONSE
-- Réponds en **français**, de manière **courte et directe** — 3 à 6 lignes maximum par défaut
-- Va à l'essentiel : chiffre clé → explication courte → recommandation si utile
-- Pas d'introduction, pas de récapitulatif, pas de formules de politesse
-- Une seule observation proactive maximum si vraiment pertinente
-- Tableaux Markdown uniquement si comparaison multi-colonnes indispensable
-- Si la question est simple, la réponse doit être simple — une phrase suffit parfois
+## 🏭 EXPERTISE HUILERIE
+Taux extraction CPO : excellent >23% | bon 21-23% | correct 19-21% | ⚠️ <19%
+Marge nette : excellent >25% | bon 15-25% | correct 5-15% | ⚠️ <5%
 `
 }
 
-// ── Handler principal ─────────────────────────────────────────
-
+// ── Handler ─────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -373,183 +164,126 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── 1. Authentification JWT ───────────────────────────────
+    // 1. Auth JWT
     const auth = req.headers.get('Authorization')
     if (!auth?.startsWith('Bearer ')) return json({ error: 'Non autorisé' }, 401)
     const jwt = auth.slice(7)
 
-    const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false },
-    })
-
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
     const { data: { user }, error: authErr } = await sb.auth.getUser(jwt)
     if (authErr || !user) return json({ error: 'Token invalide' }, 401)
 
-    // ── 2. Récupérer le tenant (toujours depuis la DB, jamais du body) ──
-    const { data: ut, error: utErr } = await sb
-      .from('user_tenants')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (utErr || !ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403)
+    // 2. Tenant (toujours depuis la DB)
+    const { data: ut } = await sb.from('user_tenants').select('tenant_id').eq('user_id', user.id).single()
+    if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403)
     const tenantId = ut.tenant_id
 
-    // ── 3. Parser la requête ──────────────────────────────────
+    // 3. Périodes du tenant
+    const { data: periodes } = await sb
+      .from('periodes')
+      .select('id, annee, mois, libelle')
+      .eq('tenant_id', tenantId)
+      .order('annee').order('mois')
+
+    const periodeIds = (periodes || []).map((p: any) => p.id)
+    if (!periodeIds.length) return json({ error: 'Aucune période disponible' }, 404)
+
+    // 4. Message
     const body = await req.json().catch(() => ({}))
     const message: string = (body.message || '').trim()
     const history: Array<{ role: string; content: string }> = body.history || []
     if (!message) return json({ error: 'Message requis' }, 400)
 
-    // ── 4. Charger les périodes du tenant ─────────────────────
-    const { data: periodes } = await sb
-      .from('periodes')
-      .select('id, annee, mois, libelle')
-      .eq('tenant_id', tenantId)
-      .order('annee')
-      .order('mois')
+    const systemPrompt = buildSystemPrompt(tenantId, periodeIds, periodes || [])
 
-    const periodeIds = (periodes || []).map((p: any) => p.id)
-    const periodeMap = Object.fromEntries((periodes || []).map((p: any) => [p.id, p]))
+    // 5. Boucle agentique (outil SQL + réponse finale)
+    const sql = postgres(DB_URL, { max: 1, prepare: false, ssl: 'require' })
 
-    // ── 5. Charger tous les modules en parallèle ──────────────
-    // Sécurité : toutes les queries utilisent periodeIds issus du tenant vérifié
-    const [
-      kpisRows,
-      prodJourRows,
-      ventesHuileRows,
-      caisseRows,
-      banqueRows,
-      topFourniRows,
-      achatRegimesRows,
-    ] = await Promise.all([
+    const messages: Anthropic.MessageParam[] = [
+      ...history
+        .slice(-6)
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: String(m.content) })),
+      { role: 'user', content: message },
+    ]
 
-      // KPIs mensuels (avec double vérification tenant via inner join)
-      sb.from('kpis_mensuels')
-        .select('*, periodes!inner(id, annee, mois, libelle, tenant_id)')
-        .eq('periodes.tenant_id', tenantId)
-        .order('periode_id')
-        .then(r => r.data || []),
+    let finalText = ''
 
-      // Production journalière
-      periodeIds.length
-        ? sb.from('production_journaliere')
-            .select('periode_id, date_production, regime_recu_kg, taux_extraction, stock_huile_kg')
-            .in('periode_id', periodeIds)
-            .order('date_production')
-            .then(r => r.data || [])
-        : Promise.resolve([]),
+    try {
+      for (let iter = 0; iter < 5; iter++) {
+        const isLast = iter === 4
+        const response = await ai.messages.create({
+          model:      'claude-haiku-4-5-20251001',
+          max_tokens: 2000,
+          system:     systemPrompt,
+          tools:      isLast ? [] : [SQL_TOOL],
+          tool_choice: isLast ? { type: 'none' } : { type: 'auto' },
+          messages,
+        })
 
-      // Ventes huile
-      periodeIds.length
-        ? sb.from('ventes_huile')
-            .select('periode_id, date_vente, poids_apo_kg, poids_sarci_kg, prix_kg, circuit')
-            .in('periode_id', periodeIds)
-            .order('date_vente')
-            .then(r => r.data || [])
-        : Promise.resolve([]),
+        // Collecter le texte de cette itération
+        const textBlocks = response.content.filter(b => b.type === 'text')
+        if (textBlocks.length) {
+          finalText = textBlocks.map(b => (b as Anthropic.TextBlock).text).join('')
+        }
 
-      // Caisse 1 + Caisse 2 (débits opérationnels, hors mouvements internes)
-      periodeIds.length
-        ? Promise.all([
-            sb.from('caisse_apo')
-              .select('periode_id, libelle, credit_fcfa, categorie, date_mouvement')
-              .in('periode_id', periodeIds)
-              .gt('credit_fcfa', 0)
-              .not('libelle', 'ilike', 'TRANSFERT%')
-              .not('libelle', 'ilike', 'VIREMENT%')
-              .not('libelle', 'ilike', 'VERSEMENT%')
-              .not('libelle', 'ilike', 'DEPOT%')
-              .not('libelle', 'ilike', 'APPRO%')
-              .then(r => r.data || []),
-            sb.from('caisse_apo2')
-              .select('periode_id, libelle, credit_fcfa, categorie, date_mouvement')
-              .in('periode_id', periodeIds)
-              .gt('credit_fcfa', 0)
-              .not('libelle', 'ilike', 'TRANSFERT%')
-              .not('libelle', 'ilike', 'VIREMENT%')
-              .not('libelle', 'ilike', 'VERSEMENT%')
-              .not('libelle', 'ilike', 'DEPOT%')
-              .not('libelle', 'ilike', 'APPRO%')
-              .then(r => r.data || []),
-          ]).then(([c1, c2]) => [...c1, ...c2])
-        : Promise.resolve([]),
+        if (response.stop_reason === 'end_turn') break
 
-      // Banque APO (SGCI + BDA)
-      periodeIds.length
-        ? sb.from('banque_apo')
-            .select('periode_id, libelle, montant_fcfa, categorie')
-            .in('periode_id', periodeIds)
-            .then(r => r.data || [])
-        : Promise.resolve([]),
+        if (response.stop_reason === 'tool_use') {
+          // Ajouter le message assistant (avec blocs tool_use)
+          messages.push({ role: 'assistant', content: response.content })
 
-      // Top fournisseurs (vue par annee+mois)
-      periodes?.length
-        ? Promise.all(
-            (periodes as any[]).map(p =>
-              sb.from('vue_top_fournisseurs')
-                .select('nom, reference, poids_total_kg, prix_moyen_kg, montant_total_fcfa, nb_camions')
-                .eq('annee', p.annee)
-                .eq('mois', p.mois)
-                .order('montant_total_fcfa', { ascending: false })
-                .limit(15)
-                .then(r => (r.data || []).map((f: any) => ({ ...f, periode_id: p.id })))
-            )
-          ).then(arr => arr.flat())
-        : Promise.resolve([]),
+          // Exécuter chaque appel d'outil
+          const toolResults: Anthropic.ToolResultBlockParam[] = []
+          for (const block of response.content) {
+            if (block.type !== 'tool_use') continue
+            const input = block.input as { sql: string }
+            const querySql = (input.sql || '').trim()
 
-      // Réception journalière par transporteur (achats_regimes)
-      periodeIds.length
-        ? sb.from('achats_regimes')
-            .select('date_achat, fournisseur_id, numero_camion, type_transport, poids_kg, prix_kg, fournisseurs(nom, reference)')
-            .in('periode_id', periodeIds)
-            .order('date_achat')
-            .then(r => r.data || [])
-        : Promise.resolve([]),
-    ])
+            const valErr = validateSql(querySql)
+            let resultContent: string
 
-    // ── 6. Construire le contexte ─────────────────────────────
-    const dataContext = buildDataContext(
-      kpisRows,
-      prodJourRows,
-      ventesHuileRows,
-      caisseRows,
-      banqueRows,
-      topFourniRows,
-      periodeMap,
-      achatRegimesRows,
-    )
+            if (valErr) {
+              resultContent = `Erreur : ${valErr}`
+            } else {
+              try {
+                const rows = await sql.unsafe(querySql)
+                const limited = Array.isArray(rows) ? rows.slice(0, 300) : rows
+                resultContent = JSON.stringify(limited)
+              } catch (e) {
+                resultContent = `Erreur SQL : ${String(e)}`
+              }
+            }
 
-    // ── 7. Appel Claude (streaming SSE) ──────────────────────
-    const safeHistory = history
-      .slice(-8)
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .map(m => ({ role: m.role as 'user' | 'assistant', content: String(m.content) }))
+            toolResults.push({
+              type:        'tool_result',
+              tool_use_id: block.id,
+              content:     resultContent,
+            })
+          }
 
-    const stream = await ai.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1400,
-      stream:     true,
-      system:     buildSystemPrompt(tenantId, tenantId.toUpperCase(), dataContext),
-      messages:   [...safeHistory, { role: 'user', content: message }],
-    })
+          messages.push({ role: 'user', content: toolResults })
+          continue
+        }
 
+        break
+      }
+    } finally {
+      await sql.end({ timeout: 5 })
+    }
+
+    // 6. Streamer la réponse finale en SSE
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              const chunk = JSON.stringify({ text: event.delta.text })
-              controller.enqueue(encoder.encode(`data: ${chunk}\n\n`))
-            }
-          }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        } catch (e) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(e) })}\n\n`))
-        } finally {
-          controller.close()
+      start(controller) {
+        // Émettre par chunks de ~30 caractères pour simuler le streaming
+        const chunkSize = 30
+        for (let i = 0; i < finalText.length; i += chunkSize) {
+          const chunk = finalText.slice(i, i + chunkSize)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`))
         }
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
       },
     })
 
@@ -571,9 +305,6 @@ Deno.serve(async (req) => {
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type':                'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
   })
 }
