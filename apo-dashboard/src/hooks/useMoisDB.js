@@ -27,13 +27,28 @@ export const CAT_LABELS = {
 const CATS_FINANCIERES = new Set(['amortissement', 'frais_bancaires'])
 
 // Mapping catégorie → section OHADA
+// Couvre les catégories caisse_apo/caisse_apo2 ET banque_apo
 const CAT_TO_SECTION = {
+  // caisse_apo / caisse_apo2
   fournitures_usine:   '60',
   frais_transport:     '61',
   services_ext:        '62',
   autres_services_ext: '63',
   autres_charges:      '65',
   charges_personnel:   '66',
+  // banque_apo — catégories propres
+  materiels:           '60',  // achats matériels, pièces, équipements
+  electricite:         '60',  // énergie, fournitures électriques
+  eau_fournitures:     '60',  // eau, fournitures diverses
+  construction:        '60',  // matériaux construction
+  entretien:           '62',  // maintenance, réparations
+  assurance:           '62',  // assurances
+  vehicules:           '61',  // transport, véhicules
+  securite:            '63',  // gardiennage, sécurité
+  salaires:            '66',  // charges de personnel
+  charges_patronales:  '66',  // cotisations patronales
+  frais_relat:         '65',  // relations publiques, frais relationnels
+  frais_admin:         '63',  // frais administratifs divers
 }
 
 /**
@@ -595,10 +610,15 @@ export function useMoisDB() {
                 .eq('periode_id', periodeId)
                 .then(r => r.data || []),
 
-              // Banque APO (SGCI + BDA) — toutes catégories
+              // Banque APO (SGCI + BDA) — hors virements internes et reversements
               supabase.from('banque_apo')
                 .select('libelle, montant_fcfa, categorie')
                 .eq('periode_id', periodeId)
+                .not('libelle', 'ilike', '%APPRO CAISSE%')
+                .not('libelle', 'ilike', '%COMPENSATION CHQ%')
+                .not('libelle', 'ilike', '%VIREMENT%')
+                .not('libelle', 'ilike', '%VERSEMENT%')
+                .not('libelle', 'ilike', 'APPRO SARCI%')
                 .then(r => r.data || []),
             ])
 
