@@ -595,7 +595,7 @@ def recalculer_kpis(mois: int, periode_id: int):
     vb  = sb.table("ventes_bassin").select("montant_fcfa").eq("periode_id", periode_id).execute()
     ca1 = sb.table("caisse_apo").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
     ca2 = sb.table("caisse_apo2").select("credit_fcfa,libelle").eq("periode_id", periode_id).execute()
-    bq  = sb.table("banque_apo").select("montant_fcfa,categorie").eq("periode_id", periode_id).execute()
+    bq  = sb.table("banque_apo").select("montant_fcfa,categorie,libelle").eq("periode_id", periode_id).execute()
     pj  = sb.table("production_journaliere").select("*").eq("periode_id", periode_id).execute()
     ar  = sb.table("achats_regimes").select("poids_kg,prix_kg,prix_transport").eq("periode_id", periode_id).execute()
     pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
@@ -612,19 +612,27 @@ def recalculer_kpis(mois: int, periode_id: int):
     ca_florentin = sum(safe_float(r["montant_fcfa"]) for r in vf.data)
     ca_bassin    = sum(safe_float(r["montant_fcfa"]) for r in vb.data)
 
+    # Virements internes banque à exclure des charges
+    SKIP_BANQUE = ("APPRO CAISSE", "COMPENSATION CHQ", "VIREMENT", "VERSEMENT", "APPRO SARCI")
+    def is_internal_banque(libelle: str) -> bool:
+        u = (libelle or "").upper()
+        return any(k in u for k in SKIP_BANQUE)
+
     # Charges caisse (hors transferts inter-caisses)
     charges_caisse = (
         sum(safe_float(r["credit_fcfa"]) for r in ca1.data if not is_transfer(r["libelle"]))
       + sum(safe_float(r["credit_fcfa"]) for r in ca2.data if not is_transfer(r["libelle"]))
     )
 
-    # Charges banque — séparées par type
+    # Charges banque — séparées par type, hors virements internes
     CATS_FIN = {"amortissement", "frais_bancaires"}
-    charges_banque = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
-                         if r.get("categorie") not in CATS_FIN)
-    amort_banque   = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
+    bq_data = bq.data or []
+    charges_banque = sum(safe_float(r["montant_fcfa"]) for r in bq_data
+                         if r.get("categorie") not in CATS_FIN
+                         and not is_internal_banque(r.get("libelle", "")))
+    amort_banque   = sum(safe_float(r["montant_fcfa"]) for r in bq_data
                          if r.get("categorie") == "amortissement")
-    frais_fin      = sum(safe_float(r["montant_fcfa"]) for r in (bq.data or [])
+    frais_fin      = sum(safe_float(r["montant_fcfa"]) for r in bq_data
                          if r.get("categorie") == "frais_bancaires")
 
     # Totaux
