@@ -31,13 +31,14 @@ const CAT_LABELS: Record<string, string> = {
 }
 
 function buildDataContext(
-  kpisRows:       any[],
-  prodJourRows:   any[],
-  ventesHuile:    any[],
-  caisseRows:     any[],
-  banqueRows:     any[],
-  topFourni:      any[],
-  periodeMap:     Record<string, any>,
+  kpisRows:         any[],
+  prodJourRows:     any[],
+  ventesHuile:      any[],
+  caisseRows:       any[],
+  banqueRows:       any[],
+  topFourni:        any[],
+  periodeMap:       Record<string, any>,
+  achatRegimesRows: any[],
 ): string {
   if (!kpisRows?.length) return 'Aucune donnée disponible.'
 
@@ -269,6 +270,35 @@ function buildDataContext(
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // 6. RÉCEPTION JOURNALIÈRE PAR TRANSPORTEUR (achats_regimes)
+  // ═══════════════════════════════════════════════════════════════
+  if (achatRegimesRows.length > 0) {
+    lines.push('\n\n=== RÉCEPTION JOURNALIÈRE PAR TRANSPORTEUR ===')
+    lines.push('Format: date | fournisseur/transporteur | n° camion | poids (T) | prix F/kg | montant FCFA')
+
+    const byDate: Record<string, any[]> = {}
+    for (const r of achatRegimesRows) {
+      const d = r.date_achat?.slice(0, 10) || '?'
+      if (!byDate[d]) byDate[d] = []
+      byDate[d].push(r)
+    }
+
+    for (const date of Object.keys(byDate).sort()) {
+      const rows = byDate[date]
+      const totalT = rows.reduce((s: number, r: any) => s + (r.poids_kg || 0), 0) / 1000
+      lines.push(`\n  ${date} — ${rows.length} camion(s), ${totalT.toFixed(1)} T total:`)
+      for (const r of rows) {
+        const nom    = r.fournisseurs?.nom || r.fournisseurs?.reference || `id:${r.fournisseur_id}`
+        const camion = r.numero_camion || '—'
+        const poidsT = ((r.poids_kg || 0) / 1000).toFixed(2)
+        const prix   = r.prix_kg || 0
+        const mt     = Math.round((r.poids_kg || 0) * prix)
+        lines.push(`    · ${nom} | camion ${camion} | ${poidsT} T | ${prix} F/kg | ${numFr(mt)} FCFA`)
+      }
+    }
+  }
+
   return lines.join('\n')
 }
 
@@ -391,6 +421,7 @@ Deno.serve(async (req) => {
       caisseRows,
       banqueRows,
       topFourniRows,
+      achatRegimesRows,
     ] = await Promise.all([
 
       // KPIs mensuels (avec double vérification tenant via inner join)
@@ -466,6 +497,15 @@ Deno.serve(async (req) => {
             )
           ).then(arr => arr.flat())
         : Promise.resolve([]),
+
+      // Réception journalière par transporteur (achats_regimes)
+      periodeIds.length
+        ? sb.from('achats_regimes')
+            .select('date_achat, fournisseur_id, numero_camion, type_transport, poids_kg, prix_kg, fournisseurs(nom, reference)')
+            .in('periode_id', periodeIds)
+            .order('date_achat')
+            .then(r => r.data || [])
+        : Promise.resolve([]),
     ])
 
     // ── 6. Construire le contexte ─────────────────────────────
@@ -477,6 +517,7 @@ Deno.serve(async (req) => {
       banqueRows,
       topFourniRows,
       periodeMap,
+      achatRegimesRows,
     )
 
     // ── 7. Appel Claude (streaming SSE) ──────────────────────
