@@ -287,6 +287,21 @@ body.light .charges-detail-row td { background: rgba(0,0,0,0.025); }
   width: fit-content;
   margin: 0 auto;
 }
+.heatmap-grid-sm {
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+}
+.heatmap-grid-sm .heatmap-cell,
+.heatmap-grid-sm .heatmap-empty {
+  width: auto;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 3px;
+}
+.heatmap-grid-sm .heatmap-day-hdr { font-size: 7px; }
+.heatmap-grid-sm .heatmap-day-num { font-size: 7px; }
 .heatmap-day-hdr {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
   text-align: center; padding: 2px 0;
@@ -314,6 +329,9 @@ body.light .charges-detail-row td { background: rgba(0,0,0,0.025); }
 @media (max-width: 600px) {
   .heatmap-grid { grid-template-columns: repeat(7, 26px); }
   .heatmap-cell { width: 26px; height: 26px; }
+  .heatmap-grid-sm { grid-template-columns: repeat(7, 1fr); }
+  .heatmap-grid-sm .heatmap-cell,
+  .heatmap-grid-sm .heatmap-empty { width: auto; height: auto; }
   .heatmap-months { gap: 16px; }
 }
 
