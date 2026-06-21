@@ -374,76 +374,98 @@ function ChargesHeatmap({ decaissementsParJour, depensesParJour = {} }) {
   const allMts = entries.map(([, mt]) => mt)
   const maxMt  = Math.max(...allMts, 1)
 
-  const [idx, setIdx]         = useState(months.length - 1)
+  const PAGE = 3
+  const totalPages = Math.ceil(months.length / PAGE)
+  const [page, setPage]              = useState(Math.max(0, totalPages - 1))
   const [selectedDay, setSelectedDay] = useState(null)
 
-  const ym = months[idx] || months[0]
-  const [yr, mo] = (ym || '2026-01').split('-').map(Number)
-  const daysInMonth = new Date(yr, mo, 0).getDate()
-  const firstDow    = (new Date(yr, mo - 1, 1).getDay() + 6) % 7
+  const idx           = page * PAGE
+  const visibleMonths = months.slice(idx, idx + PAGE)
+  const canPrev = page > 0
+  const canNext = page < totalPages - 1
 
-  const cells = []
-  for (let i = 0; i < firstDow; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dk = `${ym}-${String(d).padStart(2, '0')}`
-    cells.push({ day: d, dk, mt: byMonth[ym]?.[dk] || 0 })
+  function buildCells(ym) {
+    const [yr, mo] = ym.split('-').map(Number)
+    const daysInMonth = new Date(yr, mo, 0).getDate()
+    const firstDow    = (new Date(yr, mo - 1, 1).getDay() + 6) % 7
+    const cells = []
+    for (let i = 0; i < firstDow; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = `${ym}-${String(d).padStart(2, '0')}`
+      cells.push({ day: d, dk, mt: byMonth[ym]?.[dk] || 0 })
+    }
+    return cells
   }
-
-  const selectedDeps = selectedDay ? (depensesParJour[selectedDay] || []) : []
-  const selectedTotal = selectedDeps.reduce((s, r) => s + r.mt, 0)
 
   function handleDayClick(cell) {
     if (!cell || cell.mt === 0) { setSelectedDay(null); return }
     setSelectedDay(prev => prev === cell.dk ? null : cell.dk)
   }
 
+  const selectedDeps  = selectedDay ? (depensesParJour[selectedDay] || []) : []
+  const selectedTotal = selectedDeps.reduce((s, r) => s + r.mt, 0)
+
+  const firstVis = visibleMonths[0]?.split('-').map(Number) || [2026, 1]
+  const lastVis  = visibleMonths[visibleMonths.length - 1]?.split('-').map(Number) || [2026, 1]
+  const navLabel = visibleMonths.length <= 1
+    ? `${MOIS_FR[firstVis[1] - 1]} ${firstVis[0]}`
+    : `${MOIS_FR[firstVis[1] - 1]} — ${MOIS_FR[lastVis[1] - 1]} ${lastVis[0]}`
+
+  const btnStyle = (disabled) => ({
+    background: 'none', border: '1px solid var(--border)', borderRadius: 8,
+    padding: '4px 12px', cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.3 : 1, color: 'var(--text-dim)', fontSize: 16,
+  })
+
   return (
     <div>
       {/* Navigation carousel */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <button
-          onClick={() => { setIdx(i => Math.max(0, i - 1)); setSelectedDay(null) }}
-          disabled={idx === 0}
-          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 12px', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.3 : 1, color: 'var(--text-dim)', fontSize: 16 }}
-        >‹</button>
-        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-main)' }}>
-          {MOIS_FR[mo - 1]} {yr}
-          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-dim)', marginLeft: 8 }}>{idx + 1} / {months.length}</span>
-        </span>
-        <button
-          onClick={() => { setIdx(i => Math.min(months.length - 1, i + 1)); setSelectedDay(null) }}
-          disabled={idx === months.length - 1}
-          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 12px', cursor: idx === months.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === months.length - 1 ? 0.3 : 1, color: 'var(--text-dim)', fontSize: 16 }}
-        >›</button>
+        <button onClick={() => { setPage(p => Math.max(0, p - 1)); setSelectedDay(null) }} disabled={!canPrev} style={btnStyle(!canPrev)}>‹</button>
+        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-main)' }}>{navLabel}</span>
+        <button onClick={() => { setPage(p => Math.min(totalPages - 1, p + 1)); setSelectedDay(null) }} disabled={!canNext} style={btnStyle(!canNext)}>›</button>
       </div>
 
-      {/* Grille calendrier */}
-      <div className="heatmap-grid">
-        {JOURS_HDR.map((j, i) => (
-          <div key={i} className="heatmap-day-hdr">{j}</div>
-        ))}
-        {cells.map((cell, i) =>
-          cell === null
-            ? <div key={i} className="heatmap-cell heatmap-empty" />
-            : (
-              <div
-                key={i}
-                className="heatmap-cell"
-                onClick={() => handleDayClick(cell)}
-                style={{
-                  cursor: cell.mt > 0 ? 'pointer' : 'default',
-                  backgroundColor: selectedDay === cell.dk
-                    ? 'rgba(242,140,40,0.70)'
-                    : cell.mt > 0
-                      ? `rgba(224,92,92,${(0.15 + 0.75 * (cell.mt / maxMt)).toFixed(2)})`
-                      : undefined,
-                  outline: selectedDay === cell.dk ? '2px solid rgba(242,140,40,0.9)' : undefined,
-                }}
-              >
-                <span className="heatmap-day-num">{cell.day}</span>
+      {/* 3 calendriers côte à côte */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {visibleMonths.map(ym => {
+          const [yr, mo] = ym.split('-').map(Number)
+          const cells = buildCells(ym)
+          return (
+            <div key={ym} style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ textAlign: 'center', marginBottom: 4, fontWeight: 700, fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                {MOIS_FR[mo - 1].slice(0, 4)} {yr}
               </div>
-            )
-        )}
+              <div className="heatmap-grid heatmap-grid-sm">
+                {JOURS_HDR.map((j, i) => (
+                  <div key={i} className="heatmap-day-hdr">{j}</div>
+                ))}
+                {cells.map((cell, i) =>
+                  cell === null
+                    ? <div key={i} className="heatmap-cell heatmap-empty" />
+                    : (
+                      <div
+                        key={i}
+                        className="heatmap-cell"
+                        onClick={() => handleDayClick(cell)}
+                        style={{
+                          cursor: cell.mt > 0 ? 'pointer' : 'default',
+                          backgroundColor: selectedDay === cell.dk
+                            ? 'rgba(242,140,40,0.70)'
+                            : cell.mt > 0
+                              ? `rgba(224,92,92,${(0.15 + 0.75 * (cell.mt / maxMt)).toFixed(2)})`
+                              : undefined,
+                          outline: selectedDay === cell.dk ? '2px solid rgba(242,140,40,0.9)' : undefined,
+                        }}
+                      >
+                        <span className="heatmap-day-num">{cell.day}</span>
+                      </div>
+                    )
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Légende */}
