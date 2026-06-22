@@ -114,16 +114,18 @@ const MOIS_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','
 
 /**
  * Convertit les lignes Supabase en objet `data` compatible avec les composants React.
- * @param {object}   kpis           - ligne kpis_mensuels
- * @param {object}   periode        - ligne periodes jointe
- * @param {array}    prodJour       - production_journaliere
- * @param {array}    ventesHuile    - ventes_huile
- * @param {array}    caisseRows     - caisse_apo + caisse_apo2 (débits filtrés)
+ * @param {object}   kpis              - ligne kpis_mensuels
+ * @param {object}   periode           - ligne periodes jointe
+ * @param {array}    prodJour          - production_journaliere
+ * @param {array}    ventesHuile       - ventes_huile
+ * @param {array}    caisseRows        - caisse_apo + caisse_apo2 (débits filtrés)
  * @param {array}    topFournisseurs
- * @param {array}    amortRows      - amortissement_bancaire (table dédiée)
- * @param {array}    banqueRows     - banque_apo (SGCI + BDA, toutes catégories)
+ * @param {array}    amortRows         - amortissement_bancaire (table dédiée)
+ * @param {array}    banqueRows        - banque_apo (SGCI + BDA, toutes catégories)
+ * @param {number}   tankCapaciteKg
+ * @param {array}    achatsRegimesRaw  - achats_regimes (date_achat, prix_kg, poids_kg)
  */
-function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg = 1_300_000) {
+function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg = 1_300_000, achatsRegimesRaw = []) {
   const huileProduiteT = Math.round((kpis.huile_produite_kg  || 0) / 1000)
   const huileVendueT   = Math.round((kpis.huile_vendue_kg    || 0) / 1000)
   const regRecusT      = Math.round((kpis.regimes_recus_kg   || 0) / 1000)
@@ -312,6 +314,48 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   const caJoursSarciOk = caJoursSorted.map(d => joursData[d].sarciOk)
   const caJoursBlanc   = caJoursSorted.map(d => joursData[d].blanc)
   const caJoursNoir    = caJoursSorted.map(d => joursData[d].noir)
+
+  // ── Prix & Marge journaliers ─────────────────────────────────────────────
+  const achatJoursMap = {}
+  for (const r of (achatsRegimesRaw || [])) {
+    const d = r.date_achat || ''
+    if (!d) continue
+    if (!achatJoursMap[d]) achatJoursMap[d] = { prixSum: 0, poidsSum: 0 }
+    const p = r.poids_kg || 0
+    achatJoursMap[d].prixSum  += (r.prix_kg || 0) * p
+    achatJoursMap[d].poidsSum += p
+  }
+  const cpoJoursMap = {}
+  for (const r of ventesHuile) {
+    const d = r.date_vente || ''
+    if (!d) continue
+    if (!cpoJoursMap[d]) cpoJoursMap[d] = { prixSum: 0, poidsSum: 0 }
+    const p = r.poids_apo_kg || 0
+    cpoJoursMap[d].prixSum  += (r.prix_kg || 0) * p
+    cpoJoursMap[d].poidsSum += p
+  }
+  const teJourMap = {}
+  for (const r of prodJour) {
+    const d = r.date_production || ''
+    if (d) teJourMap[d] = r.taux_extraction || 0
+  }
+  const allPrixDates = [...new Set([...Object.keys(achatJoursMap), ...Object.keys(cpoJoursMap)])].sort()
+  const prixDailyLabels  = allPrixDates.map(d => d.slice(8, 10))
+  const prixDailyCPO     = allPrixDates.map(d => {
+    const j = cpoJoursMap[d]
+    return j && j.poidsSum > 0 ? +(j.prixSum / j.poidsSum).toFixed(0) : null
+  })
+  const prixDailyRegimes = allPrixDates.map(d => {
+    const j = achatJoursMap[d]
+    return j && j.poidsSum > 0 ? +(j.prixSum / j.poidsSum).toFixed(0) : null
+  })
+  const margeDailyKg = allPrixDates.map((d, i) => {
+    const pCPO = prixDailyCPO[i]
+    const pReg = prixDailyRegimes[i]
+    const teJour = teJourMap[d] || (te / 100)
+    if (pCPO === null || pReg === null) return null
+    return +(pCPO * teJour - pReg).toFixed(1)
+  })
 
   // ── Top fournisseurs ──────────────────────────────────────────────────────
   const fournisseursItems = topFournisseurs.map(r => ({
@@ -519,6 +563,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       caJoursBlanc,
       caJoursNoir,
     },
+    prixDaily: {
+      labels:  prixDailyLabels,
+      prixCPO: prixDailyCPO,
+      regimes: prixDailyRegimes,
+      marge:   margeDailyKg,
+    },
     charges: { topDepenses, detailsParCat, decaissementsParJour, depensesParJour },
     fournisseurs: {
       totalPoidsKg: fournisseursItems.reduce((s, f) => s + f.poids, 0),
@@ -592,7 +642,7 @@ export function useMoisDB() {
             return q.then(r => r.data || [])
           }
 
-          const [prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows] =
+          const [prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, achatsRegimesRaw] =
             await Promise.all([
 
               supabase.from('production_journaliere')
@@ -628,12 +678,18 @@ export function useMoisDB() {
 
               // Banque APO — filtres depuis tenant_config
               buildBanqueQuery(),
+
+              supabase.from('achats_regimes')
+                .select('date_achat, prix_kg, poids_kg')
+                .eq('periode_id', periodeId)
+                .order('date_achat')
+                .then(r => r.data || []),
             ])
 
           const idx = (periode.mois - 1) % 12
           return {
             key:    MOIS_KEYS[periode.mois - 1],
-            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg),
+            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg, achatsRegimesRaw),
             accent: ACCENTS[idx].accent,
             rgba:   ACCENTS[idx].rgba,
           }

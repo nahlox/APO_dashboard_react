@@ -155,19 +155,31 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
       },
     })
 
-    const prixRegimes = filteredMois.map(m => m.data.kpis.prixMoyenRegimeKg || 0)
-    const prixCPO     = filteredMois.map(m => m.data.kpis.prixMoyenHuileKg  || 0)
-    const teList      = filteredMois.map(m => (m.data.kpis.tauxExtraction    || 0) / 100)
-    const margeKg     = filteredMois.map((_, i) => +(prixCPO[i] * teList[i] - prixRegimes[i]).toFixed(1))
+    const isDaily = filteredMois.length === 1
+
+    let prixLabels, prixCPO, prixRegimes, margeKg
+    if (isDaily) {
+      const daily = filteredMois[0].data.prixDaily || {}
+      prixLabels  = daily.labels  || []
+      prixCPO     = daily.prixCPO || []
+      prixRegimes = daily.regimes || []
+      margeKg     = daily.marge   || []
+    } else {
+      prixLabels  = shortLabels
+      prixCPO     = filteredMois.map(m => m.data.kpis.prixMoyenHuileKg  || 0)
+      prixRegimes = filteredMois.map(m => m.data.kpis.prixMoyenRegimeKg || 0)
+      const teList = filteredMois.map(m => (m.data.kpis.tauxExtraction || 0) / 100)
+      margeKg      = filteredMois.map((_, i) => +(prixCPO[i] * teList[i] - prixRegimes[i]).toFixed(1))
+    }
 
     charts.current.prix = new Chart(refPrix.current, {
       type: 'line',
       data: {
-        labels: shortLabels,
+        labels: prixLabels,
         datasets: [
-          { label: 'Prix CPO vendu (F/kg)', data: prixCPO, borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)', pointBackgroundColor: chartColors.gold, borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'yPrix' },
-          { label: 'Prix régimes achetés (F/kg)', data: prixRegimes, borderColor: 'rgba(224,92,92,1)', backgroundColor: 'rgba(224,92,92,0.08)', pointBackgroundColor: 'rgba(224,92,92,1)', borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'yPrix' },
-          { label: 'Marge brute / kg régime (F/kg)', data: margeKg, borderColor: chartColors.green, backgroundColor: 'rgba(63,163,77,0.15)', pointBackgroundColor: chartColors.green, borderWidth: 2, pointRadius: 4, tension: 0.3, fill: true, yAxisID: 'yMarge' },
+          { label: 'Prix CPO vendu (F/kg)', data: prixCPO, borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)', pointBackgroundColor: chartColors.gold, borderWidth: 2, pointRadius: isDaily ? 3 : 5, tension: 0.3, fill: false, yAxisID: 'yPrix', spanGaps: true },
+          { label: 'Prix régimes achetés (F/kg)', data: prixRegimes, borderColor: 'rgba(224,92,92,1)', backgroundColor: 'rgba(224,92,92,0.08)', pointBackgroundColor: 'rgba(224,92,92,1)', borderWidth: 2, pointRadius: isDaily ? 3 : 5, tension: 0.3, fill: false, yAxisID: 'yPrix', spanGaps: true },
+          { label: 'Marge brute / kg régime (F/kg)', data: margeKg, borderColor: chartColors.green, backgroundColor: 'rgba(63,163,77,0.15)', pointBackgroundColor: chartColors.green, borderWidth: 2, pointRadius: isDaily ? 3 : 4, tension: 0.3, fill: true, yAxisID: 'yMarge', spanGaps: true },
         ],
       },
       options: {
@@ -175,10 +187,10 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { font: { size: 11 }, boxWidth: 14 } },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toLocaleString('fr-FR')} F/kg` } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw !== null ? ` ${c.dataset.label}: ${c.raw.toLocaleString('fr-FR')} F/kg` : '' } },
         },
         scales: {
-          x: { grid: { display: false } },
+          x: { grid: { display: false }, ticks: { font: { size: isDaily ? 10 : 12 }, maxRotation: isDaily ? 45 : 0 } },
           yPrix:  { position: 'left',  grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toLocaleString('fr-FR') + ' F' } },
           yMarge: { position: 'right', grid: { display: false }, ticks: { callback: v => v.toLocaleString('fr-FR') + ' F', color: 'rgba(63,163,77,0.6)', font: { size: 10 } } },
         },
@@ -311,7 +323,9 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
       <div className="chart-card" style={{ marginBottom: 'clamp(18px, 2vw, 28px)' }}>
         <div className="chart-title">Évolution des Prix & Marge Matière</div>
         <div className="chart-subtitle">
-          Prix d'achat régimes · Prix vente CPO · Marge brute matière (F/kg)
+          {filteredMois.length === 1
+            ? `Vue journalière — ${monthLabel(filteredMois[0].data)} · Prix d'achat régimes · Prix vente CPO · Marge brute (F/kg)`
+            : "Prix d'achat régimes · Prix vente CPO · Marge brute matière (F/kg)"}
         </div>
         <div className="chart-container" style={{ height: 300 }}>
           <canvas ref={refPrix} />
