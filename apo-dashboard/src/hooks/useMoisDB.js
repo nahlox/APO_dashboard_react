@@ -359,6 +359,18 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     if (pCPO === null || pReg === null) return null
     return +(pCPO * teJour - pReg).toFixed(1)
   })
+  // Prix CPO en F/T et Marge Brute en F/T huile (pour le graphique Revenu/Tonne)
+  const prixCPOTDaily = allPrixDates.map((_, i) =>
+    prixDailyCPO[i] !== null ? Math.round(prixDailyCPO[i] * 1000) : null
+  )
+  const margeTDaily = allPrixDates.map((d, i) => {
+    const pCPO = prixDailyCPO[i]
+    const pReg = prixDailyRegimes[i]
+    const teJour = teJourMap[d] || (te / 100)
+    if (pCPO === null || pReg === null || teJour <= 0) return null
+    // Marge brute/T huile = (Prix CPO - Prix régimes / TE) × 1000
+    return Math.round((pCPO - pReg / teJour) * 1000)
+  })
 
   // ── Top fournisseurs ──────────────────────────────────────────────────────
   const fournisseursItems = topFournisseurs.map(r => ({
@@ -567,10 +579,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       caJoursNoir,
     },
     prixDaily: {
-      labels:  prixDailyLabels,
-      prixCPO: prixDailyCPO,
-      regimes: prixDailyRegimes,
-      marge:   margeDailyKg,
+      labels:   prixDailyLabels,
+      prixCPO:  prixDailyCPO,
+      regimes:  prixDailyRegimes,
+      marge:    margeDailyKg,
+      prixCPOT: prixCPOTDaily,
+      margeT:   margeTDaily,
     },
     charges: { topDepenses, detailsParCat, decaissementsParJour, depensesParJour },
     fournisseurs: {

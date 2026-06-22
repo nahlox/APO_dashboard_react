@@ -157,42 +157,55 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
 
     const isDaily = filteredMois.length === 1
 
-    let prixLabels, prixCPO, prixRegimes, margeKg
+    // ── Revenu Net & Rentabilité / Tonne ─────────────────────────────────────
+    let rentLabels, dsPrixCPOT, dsMargeBruteT, dsCoutMPT, dsRevNetT
     if (isDaily) {
-      const daily = filteredMois[0].data.prixDaily || {}
-      prixLabels  = daily.labels  || []
-      prixCPO     = daily.prixCPO || []
-      prixRegimes = daily.regimes || []
-      margeKg     = daily.marge   || []
+      const daily  = filteredMois[0].data.prixDaily || {}
+      rentLabels   = daily.labels   || []
+      dsPrixCPOT   = daily.prixCPOT || []   // F/T — prix CPO du jour
+      dsMargeBruteT = daily.margeT  || []   // F/T — marge brute/T huile du jour
+      dsCoutMPT    = null
+      dsRevNetT    = null
     } else {
-      prixLabels  = shortLabels
-      prixCPO     = filteredMois.map(m => m.data.kpis.prixMoyenHuileKg  || 0)
-      prixRegimes = filteredMois.map(m => m.data.kpis.prixMoyenRegimeKg || 0)
-      const teList = filteredMois.map(m => (m.data.kpis.tauxExtraction || 0) / 100)
-      margeKg      = filteredMois.map((_, i) => +(prixCPO[i] * teList[i] - prixRegimes[i]).toFixed(1))
+      rentLabels    = shortLabels
+      dsPrixCPOT    = filteredMois.map(m => Math.round((m.data.kpis.prixMoyenHuileKg || 0) * 1000))
+      dsCoutMPT     = filteredMois.map(m => {
+        const hp = m.data.kpis.huileProduiteT || 0
+        return hp > 0 ? Math.round((m.data.kpis.coutMPFCFA || 0) / hp) : 0
+      })
+      dsMargeBruteT = filteredMois.map(m => {
+        const hp = m.data.kpis.huileProduiteT || 0
+        return hp > 0 ? Math.round(((m.data.kpis.caTotalFCFA || 0) - (m.data.kpis.coutMPFCFA || 0)) / hp) : 0
+      })
+      dsRevNetT     = filteredMois.map(m => m.data.kpis.revenuNetParTonne || 0)
     }
+
+    const fmtT = v => v !== null ? ` ${Math.round(v / 1000).toLocaleString('fr-FR')} K F/T` : ''
+    const tickT = v => (v / 1000).toFixed(0) + ' K'
+
+    const datasetsRent = isDaily ? [
+      { label: 'Prix CPO/T (F/T)',     data: dsPrixCPOT,    borderColor: chartColors.gold,           backgroundColor: 'rgba(242,140,40,0.08)', pointBackgroundColor: chartColors.gold,           borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true },
+      { label: 'Marge Brute/T (F/T)',  data: dsMargeBruteT, borderColor: chartColors.green,          backgroundColor: 'rgba(63,163,77,0.12)',  pointBackgroundColor: chartColors.green,          borderWidth: 2, pointRadius: 3, tension: 0.3, fill: true,  spanGaps: true },
+    ] : [
+      { label: 'Prix CPO/T (F/T)',     data: dsPrixCPOT,    borderColor: chartColors.gold,           backgroundColor: 'rgba(242,140,40,0.08)', pointBackgroundColor: chartColors.gold,           borderWidth: 2.5, pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'Coût MP/T (F/T)',      data: dsCoutMPT,     borderColor: 'rgba(224,92,92,0.9)',      backgroundColor: 'rgba(224,92,92,0.07)',  pointBackgroundColor: 'rgba(224,92,92,0.9)',      borderWidth: 2,   pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'Marge Brute/T (F/T)',  data: dsMargeBruteT, borderColor: 'rgba(88,166,255,0.9)',     backgroundColor: 'rgba(88,166,255,0.08)', pointBackgroundColor: 'rgba(88,166,255,0.9)',     borderWidth: 2,   pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'Revenu Net/T (F/T)',   data: dsRevNetT,     borderColor: chartColors.green,          backgroundColor: 'rgba(63,163,77,0.12)',  pointBackgroundColor: chartColors.green,          borderWidth: 2.5, pointRadius: 5, tension: 0.3, fill: true  },
+    ]
 
     charts.current.prix = new Chart(refPrix.current, {
       type: 'line',
-      data: {
-        labels: prixLabels,
-        datasets: [
-          { label: 'Prix CPO vendu (F/kg)', data: prixCPO, borderColor: chartColors.gold, backgroundColor: 'rgba(242,140,40,0.08)', pointBackgroundColor: chartColors.gold, borderWidth: 2, pointRadius: isDaily ? 3 : 5, tension: 0.3, fill: false, yAxisID: 'yPrix', spanGaps: true },
-          { label: 'Prix régimes achetés (F/kg)', data: prixRegimes, borderColor: 'rgba(224,92,92,1)', backgroundColor: 'rgba(224,92,92,0.08)', pointBackgroundColor: 'rgba(224,92,92,1)', borderWidth: 2, pointRadius: isDaily ? 3 : 5, tension: 0.3, fill: false, yAxisID: 'yPrix', spanGaps: true },
-          { label: 'Marge brute / kg régime (F/kg)', data: margeKg, borderColor: chartColors.green, backgroundColor: 'rgba(63,163,77,0.15)', pointBackgroundColor: chartColors.green, borderWidth: 2, pointRadius: isDaily ? 3 : 4, tension: 0.3, fill: true, yAxisID: 'yMarge', spanGaps: true },
-        ],
-      },
+      data: { labels: rentLabels, datasets: datasetsRent },
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { font: { size: 11 }, boxWidth: 14 } },
-          tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw !== null ? ` ${c.dataset.label}: ${c.raw.toLocaleString('fr-FR')} F/kg` : '' } },
+          tooltip: { ...defaultTooltip, callbacks: { label: c => c.raw !== null ? fmtT(c.raw) : '' } },
         },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: isDaily ? 10 : 12 }, maxRotation: isDaily ? 45 : 0 } },
-          yPrix:  { position: 'left',  grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: v => v.toLocaleString('fr-FR') + ' F' } },
-          yMarge: { position: 'right', grid: { display: false }, ticks: { callback: v => v.toLocaleString('fr-FR') + ' F', color: 'rgba(63,163,77,0.6)', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(242,140,40,0.06)' }, ticks: { callback: tickT } },
         },
       },
     })
@@ -321,11 +334,11 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
       </div>
 
       <div className="chart-card" style={{ marginBottom: 'clamp(18px, 2vw, 28px)' }}>
-        <div className="chart-title">Évolution des Prix & Marge Matière</div>
+        <div className="chart-title">Revenu Net & Rentabilité / Tonne</div>
         <div className="chart-subtitle">
           {filteredMois.length === 1
-            ? `Vue journalière — ${monthLabel(filteredMois[0].data)} · Prix d'achat régimes · Prix vente CPO · Marge brute (F/kg)`
-            : "Prix d'achat régimes · Prix vente CPO · Marge brute matière (F/kg)"}
+            ? `Vue journalière — ${monthLabel(filteredMois[0].data)} · Prix CPO/T · Marge Brute/T (FCFA/T)`
+            : 'Prix CPO/T · Coût MP/T · Marge Brute/T · Revenu Net/T (FCFA/T)'}
         </div>
         <div className="chart-container" style={{ height: 300 }}>
           <canvas ref={refPrix} />
