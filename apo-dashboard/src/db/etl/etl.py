@@ -32,26 +32,24 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-DROPBOX_COMPTA     = Path.home() / "Dropbox/APO/Compta/2026"
-DROPBOX_PRODUCTION = Path.home() / "Dropbox/APO/Rapport de Production/Rapport des production 2026"
-ETAT_FILE          = Path(__file__).parent / "etat_imports.json"
-ANNEE_COURANTE     = datetime.now().year   # 2026
-MOIS_MAX           = datetime.now().month  # mois actuel = plafond d'import
+ETAT_FILE      = Path(__file__).parent / "etat_imports.json"
+ANNEE_COURANTE = datetime.now().year   # 2026
+MOIS_MAX       = datetime.now().month  # mois actuel = plafond d'import
 
-FICHIERS = {
-    "caisse_graine":   DROPBOX_COMPTA / "CAISSE GRAINES 2026.xlsx",
-    "caisse_apo":      DROPBOX_COMPTA / "CAISSE APO 2026.xlsx",
-    "caisse_apo2":     DROPBOX_COMPTA / "CAISSE 2 APO 2026.xlsx",
-    "vente_huile":     DROPBOX_COMPTA / "VENTE D'HUILE APO SARCI 2026.xlsx",
-    "vente_palmiste":  DROPBOX_COMPTA / "VENTE NOIX DE PALMISTE 2026.xlsx",
-    "vente_florentin": DROPBOX_COMPTA / "VENTE DE FLORENTIN 2026.xlsx",
-    "vente_bassin":    DROPBOX_COMPTA / "VENTE DE BASSIN DE LAGUNAGE.xlsx",
-    "pepiniere":       DROPBOX_COMPTA / "CLIENTS PEPINIERE PALMIER A HUILE.xlsx",
-    "production":      DROPBOX_PRODUCTION / "Tableau de production APO 2026.xlsx",
-}
+# ── CONFIG TENANT (chargée depuis Supabase au démarrage) ──────
+TENANT_ID: str  = ""   # rempli par argparse
+CONFIG:    dict = {}   # rempli par load_tenant_config()
+FICHIERS:  dict = {}   # rempli depuis CONFIG dans run()
+SHEETS_PAR_MOIS: dict = {}  # rempli depuis CONFIG dans run()
 
-# Noms des onglets Excel par source et par numéro de mois
-# Les sources à onglet unique (caisse_apo, caisse_apo2, vente_huile) sont filtrées par date dans le parseur
+def load_tenant_config() -> dict:
+    """Charge la configuration du tenant depuis la table tenant_config."""
+    r = sb.table("tenant_config").select("config").eq("tenant_id", TENANT_ID).single().execute()
+    if not r.data:
+        raise RuntimeError(f"Aucune config trouvée pour le tenant '{TENANT_ID}' dans tenant_config")
+    return r.data["config"]
+
+# Noms de mois pour construire les noms d'onglets Excel
 NOMS_MOIS_FR = {
     1: 'JANVIER', 2: 'FEVRIER', 3: 'MARS',   4: 'AVRIL',
     5: 'MAI',     6: 'JUIN',    7: 'JUILLET', 8: 'AOUT',
@@ -63,29 +61,23 @@ LIBELLES_FR = {
     9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre',
 }
 
-# Sources à onglet unique : même sheet pour tous les mois (filtrage par date dans le parseur)
-SHEETS_PAR_MOIS = {
-    "caisse_apo":  {m: "CAISSE APO"          for m in range(1, 13)},
-    "caisse_apo2": {m: "CAISSE 2 APO"        for m in range(1, 13)},
-    "vente_huile": {m: "VENTE D'HUILE 2026"  for m in range(1, 13)},
-}
-
 def sheet_caisse_graine(mois):
-    return f"CAISSE GRAINE {NOMS_MOIS_FR[mois]}"
+    return CONFIG['sheet_patterns']['caisse_graine'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 def sheet_production(mois):
-    return f"{NOMS_MOIS_FR[mois]} 2026"
+    return CONFIG['sheet_patterns']['production'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 def sheet_vente_palmiste(mois):
-    # Typo connue en février
-    if mois == 2: return "VEMTE NOIX DE PALMISTE FEVRIER"
-    return f"VENTE NOIX DE PALMISTE {NOMS_MOIS_FR[mois]}" if mois > 1 else "VENTE NOIX PALMISTE JANVIER"
+    overrides = CONFIG.get('vente_palmiste_overrides', {})
+    if str(mois) in overrides:
+        return overrides[str(mois)]
+    return CONFIG['sheet_patterns']['vente_palmiste'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 def sheet_vente_florentin(mois):
-    return f"VENTE FLORENTIN {NOMS_MOIS_FR[mois]}"
+    return CONFIG['sheet_patterns']['vente_florentin'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 def sheet_vente_bassin(mois):
-    return f"VENTE BASSIN {NOMS_MOIS_FR[mois]}"
+    return CONFIG['sheet_patterns']['vente_bassin'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 # ── UTILITAIRES ───────────────────────────────────────────────
 
@@ -105,7 +97,10 @@ def sauver_etat(etat: dict):
     ETAT_FILE.write_text(json.dumps(etat, indent=2, default=str))
 
 def get_periode_id(annee: int, mois: int) -> int | None:
-    r = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois).single().execute()
+    q = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois)
+    if TENANT_ID:
+        q = q.eq("tenant_id", TENANT_ID)
+    r = q.single().execute()
     return r.data["id"] if r.data else None
 
 def log(msg: str):
@@ -600,23 +595,22 @@ def recalculer_kpis(mois: int, periode_id: int):
     ar  = sb.table("achats_regimes").select("poids_kg,prix_kg,prix_transport").eq("periode_id", periode_id).execute()
     pep = sb.table("contrats_pepiniere").select("montant_total,net_encaisse").execute()
 
-    # Patterns de transferts inter-caisses à exclure des charges
-    SKIP = ("TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO")
+    # Patterns de transferts inter-caisses à exclure des charges (depuis config tenant)
+    skip_caisse = tuple(CONFIG.get('skip_caisse', ["TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO"]))
+    skip_banque = tuple(CONFIG.get('skip_banque', ["APPRO CAISSE", "COMPENSATION CHQ", "VIREMENT", "VERSEMENT", "APPRO SARCI"]))
 
     def is_transfer(libelle: str) -> bool:
         u = (libelle or "").upper()
-        return any(u.startswith(k) for k in SKIP)
+        return any(u.startswith(k) for k in skip_caisse)
 
     ca_huile     = sum(safe_float(r["montant_fcfa"]) for r in vh.data)
     ca_palmiste  = sum(safe_float(r["montant_fcfa"]) for r in vp.data)
     ca_florentin = sum(safe_float(r["montant_fcfa"]) for r in vf.data)
     ca_bassin    = sum(safe_float(r["montant_fcfa"]) for r in vb.data)
 
-    # Virements internes banque à exclure des charges
-    SKIP_BANQUE = ("APPRO CAISSE", "COMPENSATION CHQ", "VIREMENT", "VERSEMENT", "APPRO SARCI")
     def is_internal_banque(libelle: str) -> bool:
         u = (libelle or "").upper()
-        return any(k in u for k in SKIP_BANQUE)
+        return any(k in u for k in skip_banque)
 
     # Charges caisse (hors transferts inter-caisses)
     charges_caisse = (
@@ -713,19 +707,44 @@ def assurer_periodes() -> dict:
         pid = get_periode_id(ANNEE_COURANTE, mois)
         if not pid:
             log(f"  📅 Création période {LIBELLES_FR[mois]} {ANNEE_COURANTE}...")
-            sb.table("periodes").insert({
-                "annee":   ANNEE_COURANTE,
-                "mois":    mois,
-                "libelle": LIBELLES_FR[mois],
-            }).execute()
+            row = {"annee": ANNEE_COURANTE, "mois": mois, "libelle": LIBELLES_FR[mois]}
+            if TENANT_ID:
+                row["tenant_id"] = TENANT_ID
+            sb.table("periodes").insert(row).execute()
             pid = get_periode_id(ANNEE_COURANTE, mois)
         periodes[mois] = pid
     return periodes
 
 
 def run(force: bool = False):
+    global CONFIG, FICHIERS, SHEETS_PAR_MOIS
+
     log("=" * 50)
-    log(f"APO ETL démarré — plafond : {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE}")
+
+    # 0. Charger la configuration du tenant depuis Supabase
+    log(f"⚙️  Chargement config tenant '{TENANT_ID}'...")
+    CONFIG = load_tenant_config()
+
+    # Construire les chemins locaux Dropbox depuis la config
+    local_conf    = CONFIG.get('local_dropbox', {})
+    compta_dir    = Path(local_conf.get('compta_dir',    '~/Dropbox')).expanduser()
+    production_dir = Path(local_conf.get('production_dir', '~/Dropbox')).expanduser()
+    fichiers_conf = CONFIG['fichiers']
+    FICHIERS = {
+        cle: (production_dir / fichiers_conf[cle] if cle == "production" else compta_dir / fichiers_conf[cle])
+        for cle in fichiers_conf
+        if cle != "banque_apo"  # banque_apo n'est pas dans l'ETL local
+    }
+
+    # Construire les sheets fixes depuis la config
+    sheets = CONFIG['sheets']
+    SHEETS_PAR_MOIS = {
+        "caisse_apo":  {m: sheets['caisse_apo']  for m in range(1, 13)},
+        "caisse_apo2": {m: sheets['caisse_apo2'] for m in range(1, 13)},
+        "vente_huile": {m: sheets['vente_huile'] for m in range(1, 13)},
+    }
+
+    log(f"ETL local [{TENANT_ID.upper()}] — plafond : {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE}")
     log("=" * 50)
 
     # 1. S'assure que toutes les périodes jusqu'au mois actuel existent
@@ -811,6 +830,8 @@ def run(force: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--force", action="store_true", help="Réimporte tout sans vérifier les dates")
+    parser.add_argument("--tenant", required=True, help="Identifiant du tenant (ex: apo)")
+    parser.add_argument("--force",  action="store_true", help="Réimporte tout sans vérifier les dates")
     args = parser.parse_args()
+    TENANT_ID = args.tenant
     run(force=args.force)

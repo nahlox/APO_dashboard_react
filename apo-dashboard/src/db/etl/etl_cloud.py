@@ -61,23 +61,17 @@ ANNEE_COURANTE = datetime.now().year   # 2026
 MOIS_MAX       = datetime.now().month  # plafond d'import = mois courant
 MOIS_STATIQUES = set()                 # tous les mois importés depuis Supabase
 
-# ── CHEMINS DROPBOX ───────────────────────────────────────────
-# Chemins absolus dans ton Dropbox (sans "Dropbox/" — c'est la racine)
-COMPTA_DIR     = "/APO/Compta/2026"
-PRODUCTION_DIR = "/APO/Rapport de Production/Rapport des production 2026"
+# ── CONFIG TENANT (chargée depuis Supabase au démarrage) ──────
+CONFIG: dict = {}          # rempli par load_tenant_config() dans run()
+FICHIERS_DROPBOX: dict = {}  # rempli depuis CONFIG dans run()
+SHEETS_PAR_MOIS:  dict = {}  # rempli depuis CONFIG dans run()
 
-FICHIERS_DROPBOX = {
-    "caisse_graine":   f"{COMPTA_DIR}/CAISSE GRAINES 2026.xlsx",
-    "caisse_apo":      f"{COMPTA_DIR}/CAISSE APO 2026.xlsx",
-    "caisse_apo2":     f"{COMPTA_DIR}/CAISSE 2 APO 2026.xlsx",
-    "vente_huile":     f"{COMPTA_DIR}/VENTE D'HUILE APO SARCI 2026.xlsx",
-    "vente_palmiste":  f"{COMPTA_DIR}/VENTE NOIX DE PALMISTE 2026.xlsx",
-    "vente_florentin": f"{COMPTA_DIR}/VENTE DE FLORENTIN 2026.xlsx",
-    "vente_bassin":    f"{COMPTA_DIR}/VENTE DE BASSIN DE LAGUNAGE.xlsx",
-    "pepiniere":       f"{COMPTA_DIR}/CLIENTS PEPINIERE PALMIER A HUILE.xlsx",
-    "production":      f"{PRODUCTION_DIR}/Tableau de production APO 2026.xlsx",
-    "banque_apo":      f"{COMPTA_DIR}/BANK APO/BANK APO 2026.xlsx",
-}
+def load_tenant_config() -> dict:
+    """Charge la configuration du tenant depuis la table tenant_config."""
+    r = sb.table("tenant_config").select("config").eq("tenant_id", TENANT_ID).single().execute()
+    if not r.data:
+        raise RuntimeError(f"Aucune config trouvée pour le tenant '{TENANT_ID}' dans tenant_config")
+    return r.data["config"]
 
 # ── NOMS D'ONGLETS ────────────────────────────────────────────
 NOMS_MOIS_FR = {
@@ -90,22 +84,24 @@ LIBELLES_FR = {
     5: 'mai',     6: 'juin',    7: 'juillet', 8: 'août',
     9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre',
 }
-SHEETS_PAR_MOIS = {
-    "caisse_apo":  {m: "CAISSE APO"         for m in range(1, 13)},
-    "caisse_apo2": {m: "CAISSE 2 APO"       for m in range(1, 13)},
-    "vente_huile": {m: "VENTE D'HUILE 2026" for m in range(1, 13)},
-}
 
-def sheet_caisse_graine(mois): return f"CAISSE GRAINE {NOMS_MOIS_FR[mois]}"
-def sheet_production(mois):    return f"{NOMS_MOIS_FR[mois]} 2026"
+def sheet_caisse_graine(mois):
+    return CONFIG['sheet_patterns']['caisse_graine'].replace('{MOIS}', NOMS_MOIS_FR[mois])
+
+def sheet_production(mois):
+    return CONFIG['sheet_patterns']['production'].replace('{MOIS}', NOMS_MOIS_FR[mois])
+
 def sheet_vente_palmiste(mois):
-    if mois == 1: return "VENTE NOIX PALMISTE JANVIER"
-    if mois == 2: return "VEMTE NOIX DE PALMISTE FEVRIER"   # typo connue dans l'Excel
-    if mois == 4: return "VENTE PALMISTE AVRIL"              # nom court en avril
-    if mois == 5: return "VENTE PALMISTE MAI"                # nom court en mai
-    return f"VENTE NOIX DE PALMISTE {NOMS_MOIS_FR[mois]}"
-def sheet_vente_florentin(mois): return f"VENTE FLORENTIN {NOMS_MOIS_FR[mois]}"
-def sheet_vente_bassin(mois):    return f"VENTE BASSIN {NOMS_MOIS_FR[mois]}"
+    overrides = CONFIG.get('vente_palmiste_overrides', {})
+    if str(mois) in overrides:
+        return overrides[str(mois)]
+    return CONFIG['sheet_patterns']['vente_palmiste'].replace('{MOIS}', NOMS_MOIS_FR[mois])
+
+def sheet_vente_florentin(mois):
+    return CONFIG['sheet_patterns']['vente_florentin'].replace('{MOIS}', NOMS_MOIS_FR[mois])
+
+def sheet_vente_bassin(mois):
+    return CONFIG['sheet_patterns']['vente_bassin'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 
 # ── UTILITAIRES ───────────────────────────────────────────────
@@ -599,7 +595,7 @@ def parse_pepiniere(content: bytes):
     log(f"  ✅ contrats_pepiniere : {len(rows_contrats)} lignes insérées")
 
 
-_SKIP_BANQUE = ("RETRAIT ESPECES", "APPROV CAISSE", "DEPOT ESPECES POUR APPROV")
+# Les patterns de skip banque sont chargés depuis CONFIG dans run()
 
 # Catégories banque (CHECK constraint Supabase) :
 # amortissement, assurance, charges_patronales, construction,
@@ -657,16 +653,17 @@ def categorize_banque(libelle: str) -> str:
 
 
 def parse_banque_apo(content: bytes, mois: int, periode_id: int):
-    """Parse SGCI GL APO et BDA GL APO depuis BANK APO 2026.xlsx.
+    """Parse les onglets banque (SGCI et BDA) depuis le fichier BANK APO.
 
     SGCI: col0=date_op, col3=libellé, col4=débit, col7=date_valeur (pour filtre mois).
     BDA format A: col3=libellé (str), col4=débit, col6=date_valeur.
     BDA format B: col0=date_op, col1=libellé, col3=montant négatif, col6=date_valeur.
     """
+    skip_import = tuple(CONFIG.get('skip_banque_import', []))
     rows_out = []
 
-    # ── SGCI GL APO ───────────────────────────────────────────────
-    sgci = lire_sheet(content, "SGCI GL APO")
+    # ── SGCI ──────────────────────────────────────────────────────
+    sgci = lire_sheet(content, CONFIG['sheets']['bank_sgci'])
     if sgci:
         for row in sgci:
             date_val = row[7] if len(row) > 7 and isinstance(row[7], datetime) else None
@@ -680,7 +677,7 @@ def parse_banque_apo(content: bytes, mois: int, periode_id: int):
             libelle = str(row[3] or "").strip()
             if not libelle:
                 continue
-            if any(k in libelle.upper() for k in _SKIP_BANQUE):
+            if any(k in libelle.upper() for k in skip_import):
                 continue
             rows_out.append({
                 "periode_id":     periode_id,
@@ -692,8 +689,8 @@ def parse_banque_apo(content: bytes, mois: int, periode_id: int):
                 "categorie":      categorize_banque(libelle),
             })
 
-    # ── BDA GL APO ────────────────────────────────────────────────
-    bda = lire_sheet(content, "BDA GL APO")
+    # ── BDA ───────────────────────────────────────────────────────
+    bda = lire_sheet(content, CONFIG['sheets']['bank_bda'])
     if bda:
         for row in bda:
             date_val = row[6] if len(row) > 6 and isinstance(row[6], datetime) else None
@@ -749,12 +746,13 @@ def recalculer_kpis(mois: int, periode_id: int):
         pep_q = pep_q.eq("tenant_id", TENANT_ID)
     pep = pep_q.execute()
 
-    # Patterns de transferts inter-caisses à exclure des charges
-    SKIP = ("TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO")
+    # Patterns de transferts inter-caisses à exclure des charges (depuis config tenant)
+    skip_caisse  = tuple(CONFIG.get('skip_caisse',  ["TRANSFERT", "VIREMENT", "VERSEMENT", "DEPOT", "APPRO"]))
+    skip_banque  = tuple(CONFIG.get('skip_banque',  ["APPRO CAISSE", "COMPENSATION CHQ", "VIREMENT", "VERSEMENT", "APPRO SARCI"]))
 
     def is_transfer(libelle: str) -> bool:
         u = (libelle or "").upper()
-        return any(u.startswith(k) for k in SKIP)
+        return any(u.startswith(k) for k in skip_caisse)
 
     ca_huile     = sum(safe_float(r["montant_fcfa"]) for r in vh.data)
     ca_palmiste  = sum(safe_float(r["montant_fcfa"]) for r in vp.data)
@@ -769,11 +767,10 @@ def recalculer_kpis(mois: int, periode_id: int):
 
     # Charges banque — séparées par type, hors virements internes
     CATS_FIN = {"amortissement", "frais_bancaires"}
-    SKIP_BANQUE = ("APPRO CAISSE", "COMPENSATION CHQ", "VIREMENT", "VERSEMENT", "APPRO SARCI")
 
     def is_internal_banque(libelle: str) -> bool:
         u = (libelle or "").upper()
-        return any(k in u for k in SKIP_BANQUE)
+        return any(k in u for k in skip_banque)
 
     bq_data = bq.data or []
     charges_banque = sum(safe_float(r["montant_fcfa"]) for r in bq_data
@@ -930,10 +927,35 @@ def run(mois_cible: int | None = None):
     mois_cible : si fourni, n'importe que ce mois précis.
                  Sinon importe tous les mois de 1 à MOIS_MAX.
     """
+    global CONFIG, FICHIERS_DROPBOX, SHEETS_PAR_MOIS
+
     log("=" * 56)
+
+    # 0. Charger la configuration du tenant depuis Supabase
+    log(f"⚙️  Chargement config tenant '{TENANT_ID}'...")
+    CONFIG = load_tenant_config()
+    log(f"   Config chargée : {list(CONFIG.keys())}")
+
+    # Construire les chemins Dropbox depuis la config
+    compta_dir     = CONFIG['dropbox']['compta_dir']
+    production_dir = CONFIG['dropbox']['production_dir']
+    fichiers       = CONFIG['fichiers']
+    FICHIERS_DROPBOX = {
+        cle: (f"{production_dir}/{fichiers[cle]}" if cle == "production" else f"{compta_dir}/{fichiers[cle]}")
+        for cle in fichiers
+    }
+
+    # Construire les sheets fixes depuis la config
+    sheets = CONFIG['sheets']
+    SHEETS_PAR_MOIS = {
+        "caisse_apo":  {m: sheets['caisse_apo']  for m in range(1, 13)},
+        "caisse_apo2": {m: sheets['caisse_apo2'] for m in range(1, 13)},
+        "vente_huile": {m: sheets['vente_huile'] for m in range(1, 13)},
+    }
+
     mois_min_dyn = min((m for m in range(1, 13) if m not in MOIS_STATIQUES), default=1)
     statiques_info = f"mois 1-{max(MOIS_STATIQUES)} statiques" if MOIS_STATIQUES else "tous mois Supabase"
-    log(f"APO ETL Cloud — {LIBELLES_FR[mois_min_dyn]} → {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE} ({statiques_info})")
+    log(f"ETL Cloud [{TENANT_ID.upper()}] — {LIBELLES_FR[mois_min_dyn]} → {LIBELLES_FR[MOIS_MAX]} {ANNEE_COURANTE} ({statiques_info})")
     if DRY_RUN:
         log("⚠️  MODE DRY-RUN — aucune écriture Supabase")
     log("=" * 56)

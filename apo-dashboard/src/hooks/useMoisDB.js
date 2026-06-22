@@ -123,7 +123,7 @@ const MOIS_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','
  * @param {array}    amortRows      - amortissement_bancaire (table dédiée)
  * @param {array}    banqueRows     - banque_apo (SGCI + BDA, toutes catégories)
  */
-function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows) {
+function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg = 1_300_000) {
   const huileProduiteT = Math.round((kpis.huile_produite_kg  || 0) / 1000)
   const huileVendueT   = Math.round((kpis.huile_vendue_kg    || 0) / 1000)
   const regRecusT      = Math.round((kpis.regimes_recus_kg   || 0) / 1000)
@@ -259,7 +259,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     const lastProdJourAvecStock = [...prodJour].reverse().find(r => (r.stock_huile_kg || 0) > 0)
     stockHuileKg = lastProdJourAvecStock?.stock_huile_kg || 0
   }
-  const TANK_CAPACITE_KG = 1_300_000   // tank 1000T + tank 300T (+ florentin ~60T)
+  const TANK_CAPACITE_KG = tankCapaciteKg
 
   // ── Blanc / Noir split ────────────────────────────────────────────────────
   const ventesHuileBloc = { blanc: [], noir: [] }
@@ -543,6 +543,17 @@ export function useMoisDB() {
 
     async function fetchTout() {
       try {
+        // 0. Charger la config tenant depuis Supabase
+        const { data: configRow } = await supabase
+          .from('tenant_config')
+          .select('config')
+          .eq('tenant_id', tenantId)
+          .single()
+        const tenantConfig    = configRow?.config || {}
+        const tankCapaciteKg  = tenantConfig.tank_capacite_kg || 1_300_000
+        const skipCaisse      = tenantConfig.skip_caisse      || ['TRANSFERT', 'VIREMENT', 'VERSEMENT', 'DEPOT', 'APPRO']
+        const skipBanque      = tenantConfig.skip_banque      || ['APPRO CAISSE', 'COMPENSATION CHQ', 'VIREMENT', 'VERSEMENT', 'APPRO SARCI']
+
         const { data: kpisRows, error: e1 } = await supabase
           .from('kpis_mensuels')
           .select('*, periodes(id, annee, mois, libelle)')
@@ -557,6 +568,29 @@ export function useMoisDB() {
         const resultats = await Promise.all(kpisFiltres.map(async (kpis) => {
           const periode   = kpis.periodes
           const periodeId = periode.id
+
+          // Construction dynamique des filtres caisse depuis config
+          const buildCaisseQuery = (table) => {
+            let q = supabase.from(table)
+              .select('libelle, credit_fcfa, categorie, date_mouvement')
+              .eq('periode_id', periodeId)
+              .gt('credit_fcfa', 0)
+            for (const pattern of skipCaisse) {
+              q = q.not('libelle', 'ilike', `${pattern}%`)
+            }
+            return q.then(r => r.data || [])
+          }
+
+          // Construction dynamique des filtres banque depuis config
+          const buildBanqueQuery = () => {
+            let q = supabase.from('banque_apo')
+              .select('libelle, montant_fcfa, categorie')
+              .eq('periode_id', periodeId)
+            for (const pattern of skipBanque) {
+              q = q.not('libelle', 'ilike', `%${pattern}%`)
+            }
+            return q.then(r => r.data || [])
+          }
 
           const [prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows] =
             await Promise.all([
@@ -573,28 +607,10 @@ export function useMoisDB() {
                 .order('date_vente')
                 .then(r => r.data || []),
 
-              // Caisse 1 + Caisse 2 (débits, hors transferts internes)
+              // Caisse 1 + Caisse 2 — filtres depuis tenant_config
               Promise.all([
-                supabase.from('caisse_apo')
-                  .select('libelle, credit_fcfa, categorie, date_mouvement')
-                  .eq('periode_id', periodeId)
-                  .gt('credit_fcfa', 0)
-                  .not('libelle', 'ilike', 'TRANSFERT%')
-                  .not('libelle', 'ilike', 'VIREMENT%')
-                  .not('libelle', 'ilike', 'VERSEMENT%')
-                  .not('libelle', 'ilike', 'DEPOT%')
-                  .not('libelle', 'ilike', 'APPRO%')
-                  .then(r => r.data || []),
-                supabase.from('caisse_apo2')
-                  .select('libelle, credit_fcfa, categorie, date_mouvement')
-                  .eq('periode_id', periodeId)
-                  .gt('credit_fcfa', 0)
-                  .not('libelle', 'ilike', 'TRANSFERT%')
-                  .not('libelle', 'ilike', 'VIREMENT%')
-                  .not('libelle', 'ilike', 'VERSEMENT%')
-                  .not('libelle', 'ilike', 'DEPOT%')
-                  .not('libelle', 'ilike', 'APPRO%')
-                  .then(r => r.data || []),
+                buildCaisseQuery('caisse_apo'),
+                buildCaisseQuery('caisse_apo2'),
               ]).then(([c1, c2]) => [...c1, ...c2]),
 
               supabase.from('vue_top_fournisseurs')
@@ -610,22 +626,14 @@ export function useMoisDB() {
                 .eq('periode_id', periodeId)
                 .then(r => r.data || []),
 
-              // Banque APO (SGCI + BDA) — hors virements internes et reversements
-              supabase.from('banque_apo')
-                .select('libelle, montant_fcfa, categorie')
-                .eq('periode_id', periodeId)
-                .not('libelle', 'ilike', '%APPRO CAISSE%')
-                .not('libelle', 'ilike', '%COMPENSATION CHQ%')
-                .not('libelle', 'ilike', '%VIREMENT%')
-                .not('libelle', 'ilike', '%VERSEMENT%')
-                .not('libelle', 'ilike', 'APPRO SARCI%')
-                .then(r => r.data || []),
+              // Banque APO — filtres depuis tenant_config
+              buildBanqueQuery(),
             ])
 
           const idx = (periode.mois - 1) % 12
           return {
             key:    MOIS_KEYS[periode.mois - 1],
-            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows),
+            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg),
             accent: ACCENTS[idx].accent,
             rgba:   ACCENTS[idx].rgba,
           }
