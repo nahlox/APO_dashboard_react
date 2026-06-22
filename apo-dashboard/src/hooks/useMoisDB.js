@@ -339,10 +339,12 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     const d = r.date_production || ''
     if (d) teJourMap[d] = r.taux_extraction || 0
   }
-  const monthPrefix  = `${periode.annee}-${String(periode.mois).padStart(2, '0')}-`
-  const allPrixDates = [...new Set([...Object.keys(achatJoursMap), ...Object.keys(cpoJoursMap)])]
-    .filter(d => d.startsWith(monthPrefix))
-    .sort()
+  // Tous les jours du mois → axe X complet du 01 au dernier jour
+  const monthPrefix    = `${periode.annee}-${String(periode.mois).padStart(2, '0')}-`
+  const daysInMonth    = new Date(periode.annee, periode.mois, 0).getDate()
+  const allPrixDates   = Array.from({ length: daysInMonth }, (_, i) =>
+    `${monthPrefix}${String(i + 1).padStart(2, '0')}`
+  )
   const prixDailyLabels  = allPrixDates.map(d => d.slice(8, 10))
   const prixDailyCPO     = allPrixDates.map(d => {
     const j = cpoJoursMap[d]
@@ -352,23 +354,30 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     const j = achatJoursMap[d]
     return j && j.poidsSum > 0 ? +(j.prixSum / j.poidsSum).toFixed(0) : null
   })
+  const teRatioFallback = te / 100
   const margeDailyKg = allPrixDates.map((d, i) => {
     const pCPO = prixDailyCPO[i]
     const pReg = prixDailyRegimes[i]
-    const teJour = teJourMap[d] || (te / 100)
+    const teJour = teJourMap[d] || teRatioFallback
     if (pCPO === null || pReg === null) return null
     return +(pCPO * teJour - pReg).toFixed(1)
   })
-  // Prix CPO en F/T et Marge Brute en F/T huile (pour le graphique Revenu/Tonne)
+  // En F/T huile pour le graphique Revenu & Rentabilité/Tonne
   const prixCPOTDaily = allPrixDates.map((_, i) =>
     prixDailyCPO[i] !== null ? Math.round(prixDailyCPO[i] * 1000) : null
   )
+  const coutMPTDaily = allPrixDates.map((d, i) => {
+    const pReg  = prixDailyRegimes[i]
+    const teJour = teJourMap[d] || teRatioFallback
+    if (pReg === null || teJour <= 0) return null
+    // Coût régimes pour produire 1T huile = prixRégime/kg ÷ TE × 1000
+    return Math.round(pReg / teJour * 1000)
+  })
   const margeTDaily = allPrixDates.map((d, i) => {
-    const pCPO = prixDailyCPO[i]
-    const pReg = prixDailyRegimes[i]
-    const teJour = teJourMap[d] || (te / 100)
+    const pCPO  = prixDailyCPO[i]
+    const pReg  = prixDailyRegimes[i]
+    const teJour = teJourMap[d] || teRatioFallback
     if (pCPO === null || pReg === null || teJour <= 0) return null
-    // Marge brute/T huile = (Prix CPO - Prix régimes / TE) × 1000
     return Math.round((pCPO - pReg / teJour) * 1000)
   })
 
@@ -584,6 +593,7 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
       regimes:  prixDailyRegimes,
       marge:    margeDailyKg,
       prixCPOT: prixCPOTDaily,
+      coutMPT:  coutMPTDaily,
       margeT:   margeTDaily,
     },
     charges: { topDepenses, detailsParCat, decaissementsParJour, depensesParJour },
