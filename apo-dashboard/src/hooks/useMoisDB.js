@@ -339,7 +339,10 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
     const d = r.date_production || ''
     if (d) teJourMap[d] = r.taux_extraction || 0
   }
-  const allPrixDates = [...new Set([...Object.keys(achatJoursMap), ...Object.keys(cpoJoursMap)])].sort()
+  const monthPrefix  = `${periode.annee}-${String(periode.mois).padStart(2, '0')}-`
+  const allPrixDates = [...new Set([...Object.keys(achatJoursMap), ...Object.keys(cpoJoursMap)])]
+    .filter(d => d.startsWith(monthPrefix))
+    .sort()
   const prixDailyLabels  = allPrixDates.map(d => d.slice(8, 10))
   const prixDailyCPO     = allPrixDates.map(d => {
     const j = cpoJoursMap[d]
