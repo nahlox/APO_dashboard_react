@@ -1,7 +1,17 @@
 import { useDashboardStore } from '../../store/dashboardStore'
 
+const MODULE_NAMES = {
+  'vue-ensemble': "Vue d'Ensemble",
+  'production':   'Production & Graines',
+  'revenus':      'Revenus & Ventes',
+  'charges':      'Charges & Coûts',
+  'fournisseurs': 'Fournisseurs',
+}
+
 export default function Header() {
-  const { sidebarOpen, toggleMobileMenu } = useDashboardStore()
+  const { sidebarOpen, toggleMobileMenu, activeTab, activePnlMonth } = useDashboardStore()
+  const currentTab = activeTab['global'] ?? 'vue-ensemble'
+  const sectionName = activePnlMonth ? 'Compte de Résultat' : (MODULE_NAMES[currentTab] ?? "Vue d'Ensemble")
 
   return (
     <header>
@@ -14,10 +24,9 @@ export default function Header() {
           <span /><span /><span />
         </button>
 
-        <div className="logo-icon">🌴</div>
-        <div className="logo-text">
-          <h1>APO</h1>
-          <span>Agro Palm Oil — Tableau de Bord Global</span>
+        <div className="header-breadcrumb">
+          <div className="header-breadcrumb-top">Pilotage · Tableau de bord</div>
+          <div className="header-breadcrumb-section">{sectionName}</div>
         </div>
       </div>
       <div className="header-right" />

@@ -22,7 +22,7 @@ export const useDashboardStore = create((set) => ({
   // UI
   sidebarCollapsed: false,
   sidebarOpen: false,
-  theme: 'auto',   // 'light' | 'dark' | 'auto'
+  theme: 'light',  // 'light' | 'dark' | 'auto'
   currency: 'FCFA',
   eurRate: 655.957,        // taux live XOF→EUR (mis à jour au démarrage)
   eurRateDate: null,       // date du taux (ex: "2026-05-07")

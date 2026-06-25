@@ -17,11 +17,51 @@ function groupByYear(allMois) {
 }
 
 const MODULES = [
-  { id: 'vue-ensemble', label: "Vue d'Ensemble",       icon: '📊' },
-  { id: 'production',   label: 'Production & Graines', icon: '🌴' },
-  { id: 'revenus',      label: 'Revenus & Ventes',     icon: '💰' },
-  { id: 'charges',      label: 'Charges & Coûts',      icon: '💸' },
-  { id: 'fournisseurs', label: 'Fournisseurs',         icon: '🚚' },
+  {
+    id: 'vue-ensemble', label: "Vue d'Ensemble",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>
+        <rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'production', label: 'Production & Graines',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 20h10"/><path d="M12 20c0-7 0-9-3-12"/>
+        <path d="M12 12c0-3 2-6 8-7-1 5-4 7-8 7Z"/><path d="M12 14c0-3-2-5-7-5 1 4 4 6 7 5Z"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'revenus', label: 'Revenus & Ventes',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>
+        <path d="M6 12h.01M18 12h.01"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'charges', label: 'Charges & Coûts',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8" cy="8" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.3 18.1"/>
+        <path d="M7 6h1.5v4"/><path d="M16.7 13.9l.7.7-2.8 2.8"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'fournisseurs', label: 'Fournisseurs',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2"/>
+        <path d="M14 9h4l4 4v4a1 1 0 0 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function Sidebar({ allMois = [] }) {
@@ -82,6 +122,21 @@ export default function Sidebar({ allMois = [] }) {
       ].filter(Boolean).join(' ')}>
 
         <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22V11"/>
+                <path d="M12 11c0-4 2-7 8-8-1 5-4 7-8 8Z"/>
+                <path d="M12 11C12 7 10 4 4 3c1 5 4 7 8 8Z"/>
+                <path d="M12 11c2-3 5-4 8-3-2 3-5 4-8 3Z"/>
+                <path d="M12 11C10 8 7 7 4 8c2 3 5 4 8 3Z"/>
+              </svg>
+            </div>
+            <div className="sidebar-logo-text">
+              <div className="sidebar-brand">APO</div>
+              <div className="sidebar-brand-sub">Agro Palm Oil</div>
+            </div>
+          </div>
           <button
             className={`hamburger${sidebarCollapsed ? '' : ' open'}`}
             onClick={sidebarOpen ? closeMobileMenu : toggleSidebar}
@@ -89,7 +144,6 @@ export default function Sidebar({ allMois = [] }) {
           >
             <span /><span /><span />
           </button>
-          <span className="sidebar-brand">Menu</span>
         </div>
 
         {/* Modules — masqués sur mobile (la bottom-nav prend le relais) */}
@@ -190,13 +244,15 @@ export default function Sidebar({ allMois = [] }) {
           })()}
 
           <div className="sc-label" style={{ marginTop: 14 }}>Devise</div>
-          <div className="toggle-wrap">
-            <span className={`toggle-label${currency === 'FCFA' ? ' active' : ''}`}>FCFA</span>
-            <label className="toggle-switch">
-              <input type="checkbox" checked={currency === 'EUR'} onChange={toggleCurrency} />
-              <span className="toggle-slider" />
-            </label>
-            <span className={`toggle-label${currency === 'EUR' ? ' active' : ''}`}>EUR</span>
+          <div className="currency-pill">
+            <button
+              className={`currency-pill-btn${currency === 'FCFA' ? ' active' : ''}`}
+              onClick={() => currency !== 'FCFA' && toggleCurrency()}
+            >FCFA</button>
+            <button
+              className={`currency-pill-btn${currency === 'EUR' ? ' active' : ''}`}
+              onClick={() => currency !== 'EUR' && toggleCurrency()}
+            >EUR</button>
           </div>
           <div className="rate-info">
             1 € = <span>{eurRate.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} XOF</span>

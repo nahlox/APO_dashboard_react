@@ -29,35 +29,16 @@ Chart.register(
   ArcElement, DoughnutController,
   Tooltip, Legend, Filler,
 )
-Chart.defaults.color       = '#8A9A84'
-Chart.defaults.borderColor = 'rgba(242,140,40,0.1)'
+Chart.defaults.color       = '#9AA295'
+Chart.defaults.borderColor = 'rgba(235,230,219,0.6)'
 Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
 export default function App() {
   const { user } = useAuth()
+  const { theme } = useDashboardStore()
 
-  // user === undefined : session en cours de chargement → rien à afficher
-  if (user === undefined) return null
-  // user === null : non connecté → page de login
-  if (user === null) return <LoginPage />
-
-  return <AppDashboard />
-}
-
-function AppDashboard() {
-  const [splashDone, setSplashDone] = useState(false)
-  const handleSplashDone = useCallback(() => setSplashDone(true), [])
-
-  const { activeTab, theme, setMoisData, setEurRate, monthRange, activePnlMonth } = useDashboardStore()
-
-  const { moisData: moisSupp } = useMoisDB()
-
-  useEffect(() => {
-    setMoisData(moisSupp)
-  }, [moisSupp, setMoisData])
-
-  // Thème : light / dark / auto (jour 7h–19h = light, nuit = dark)
+  // Apply theme class at the root so it works on login page too
   useEffect(() => {
     if (theme !== 'auto') {
       document.body.classList.toggle('light', theme === 'light')
@@ -71,6 +52,26 @@ function AppDashboard() {
     const timer = setInterval(applyTimeTheme, 60_000)
     return () => clearInterval(timer)
   }, [theme])
+
+  // user === undefined : session en cours de chargement → rien à afficher
+  if (user === undefined) return null
+  // user === null : non connecté → page de login
+  if (user === null) return <LoginPage />
+
+  return <AppDashboard />
+}
+
+function AppDashboard() {
+  const [splashDone, setSplashDone] = useState(false)
+  const handleSplashDone = useCallback(() => setSplashDone(true), [])
+
+  const { activeTab, setMoisData, setEurRate, monthRange, activePnlMonth } = useDashboardStore()
+
+  const { moisData: moisSupp } = useMoisDB()
+
+  useEffect(() => {
+    setMoisData(moisSupp)
+  }, [moisSupp, setMoisData])
 
   // Taux EUR live — XOF est arrimé à 655,957 mais on vérifie via l'API
   useEffect(() => {
