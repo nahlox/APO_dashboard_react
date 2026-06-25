@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useAuth } from '../../contexts/AuthContext'
-import { monthLabel } from '../../lib/monthUtils'
+import { monthShort } from '../../lib/monthUtils'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
 import { supabase } from '../../db/supabase'
 
@@ -76,27 +76,9 @@ export default function Sidebar({ allMois = [] }) {
   const { user, role, signOut } = useAuth()
   const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase)
 
-  // État des dossiers — ouverts par défaut
-  const [pnlOpen, setPnlOpen]   = useState(true)
-  const [openYears, setOpenYears] = useState({})   // { '2026': true }
-
   const yearGroups = useMemo(() => groupByYear(allMois), [allMois])
 
-  // Initialise les années ouvertes dès qu'on a des données
-  useEffect(() => {
-    if (yearGroups.length) {
-      setOpenYears(prev => {
-        const next = { ...prev }
-        yearGroups.forEach(([y]) => { if (next[y] === undefined) next[y] = true })
-        return next
-      })
-    }
-  }, [yearGroups])
-
-  const toggleYear = (y) => setOpenYears(prev => ({ ...prev, [y]: !prev[y] }))
-
   const currentTab = activeTab['global'] ?? 'vue-ensemble'
-  // Quand on est sur un P&L, aucun module n'est actif
   const isPnlOpen  = !!activePnlMonth
 
   const handleNav = (id) => {
@@ -121,6 +103,7 @@ export default function Sidebar({ allMois = [] }) {
         sidebarOpen      ? 'open'      : '',
       ].filter(Boolean).join(' ')}>
 
+        {/* Header: logo + collapse button (hamburger only on mobile becomes close) */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <div className="sidebar-logo-icon">
@@ -137,18 +120,21 @@ export default function Sidebar({ allMois = [] }) {
               <div className="sidebar-brand-sub">Agro Palm Oil</div>
             </div>
           </div>
+          {/* Close button — only visible on mobile drawer */}
           <button
-            className={`hamburger${sidebarCollapsed ? '' : ' open'}`}
-            onClick={sidebarOpen ? closeMobileMenu : toggleSidebar}
-            aria-label={sidebarOpen ? 'Fermer le menu' : 'Réduire le menu'}
+            className="sidebar-close-btn"
+            onClick={closeMobileMenu}
+            aria-label="Fermer le menu"
           >
-            <span /><span /><span />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
           </button>
         </div>
 
         {/* Modules — masqués sur mobile (la bottom-nav prend le relais) */}
         <div className="sidebar-section sidebar-section-modules">
-          <div className="sidebar-label">Modules</div>
+          <div className="sidebar-label">Pilotage</div>
 
           {MODULES.map(m => (
             <div
@@ -162,60 +148,43 @@ export default function Sidebar({ allMois = [] }) {
           ))}
         </div>
 
+        {/* Documents — Compte de Résultat avec pills par mois */}
         {yearGroups.length > 0 && (
           <div className="sidebar-section">
             <div className="sidebar-label">Documents</div>
 
-            {/* Dossier racine : P&L */}
-            <div
-              className={`sidebar-folder${pnlOpen ? ' open' : ''}`}
-              onClick={() => setPnlOpen(o => !o)}
-            >
-              <span className="sf-chevron">{pnlOpen ? '▾' : '▸'}</span>
-              <span className="sf-icon">📁</span>
-              <span className="sf-label">P&amp;L</span>
+            <div className="sidebar-doc-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/><path d="M16 13H8M16 17H8"/>
+              </svg>
+              <span className="sidebar-doc-title">Compte de Résultat</span>
             </div>
 
-            {pnlOpen && (
-              <div className="sf-children">
-                {yearGroups.map(([year, months]) => (
-                  <div key={year}>
-                    {/* Dossier année */}
-                    <div
-                      className={`sidebar-folder sf-year${openYears[year] ? ' open' : ''}`}
-                      onClick={() => toggleYear(year)}
+            {yearGroups.map(([year, months]) => (
+              <div key={year} className="sidebar-doc-year-group">
+                <div className="sidebar-doc-year">{year}</div>
+                <div className="sidebar-month-pills">
+                  {months.map(({ key, data }) => (
+                    <button
+                      key={key}
+                      className={`sidebar-month-pill${activePnlMonth === key ? ' active' : ''}`}
+                      onClick={() => handlePnl(key)}
+                      title={`Compte de résultat ${monthShort(data)} ${data._etl.annee}`}
                     >
-                      <span className="sf-chevron">{openYears[year] ? '▾' : '▸'}</span>
-                      <span className="sf-icon">📁</span>
-                      <span className="sf-label">{year}</span>
-                    </div>
-
-                    {openYears[year] && (
-                      <div className="sf-children sf-months">
-                        {months.map(({ key, data }) => (
-                          <div
-                            key={key}
-                            className={`sf-doc${activePnlMonth === key ? ' active' : ''}`}
-                            onClick={() => handlePnl(key)}
-                            title={`Compte de résultat ${monthLabel(data)} ${data._etl.annee}`}
-                          >
-                            <span className="sf-doc-icon">📄</span>
-                            <span className="sf-doc-label">{monthLabel(data)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      {monthShort(data)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
+        {/* Bottom: Apparence + Devise + Notifications + User */}
         <div className="sidebar-currency">
           <div className="sc-label">Apparence</div>
 
-          {/* Slider thème : ☀️ Clair — ◑ Auto — 🌙 Sombre */}
           {(() => {
             const THEMES = ['light', 'auto', 'dark']
             const idx = THEMES.indexOf(theme)
@@ -226,10 +195,7 @@ export default function Sidebar({ allMois = [] }) {
             ]
             return (
               <div className="theme-flick">
-                <div
-                  className="theme-flick-pill"
-                  style={{ transform: `translateX(${idx * 100}%)` }}
-                />
+                <div className="theme-flick-pill" style={{ transform: `translateX(${idx * 100}%)` }} />
                 {options.map(({ value, icon }) => (
                   <button
                     key={value}
@@ -256,7 +222,7 @@ export default function Sidebar({ allMois = [] }) {
           </div>
           <div className="rate-info">
             1 € = <span>{eurRate.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} XOF</span>
-            <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCF'}
+            <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCEAO'}
           </div>
 
           {/* Notifications push quotidiennes */}
@@ -268,7 +234,7 @@ export default function Sidebar({ allMois = [] }) {
                 disabled={pushStatus === 'requesting' || pushStatus === 'denied'}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                  background: pushStatus === 'subscribed' ? 'rgba(63,163,77,0.12)' : 'rgba(242,140,40,0.1)',
+                  background: pushStatus === 'subscribed' ? 'rgba(46,125,64,0.1)' : 'rgba(200,106,16,0.08)',
                   border: `1px solid ${pushStatus === 'subscribed' ? 'var(--green)' : 'var(--gold)'}`,
                   borderRadius: 8, padding: '7px 10px', cursor: pushStatus === 'denied' ? 'not-allowed' : 'pointer',
                   color: pushStatus === 'subscribed' ? 'var(--green)' : pushStatus === 'denied' ? 'var(--text-dim)' : 'var(--gold)',
@@ -284,7 +250,6 @@ export default function Sidebar({ allMois = [] }) {
                                                'Activer les notifications'}
               </button>
 
-              {/* BOUTON TEST — à supprimer après validation */}
               {pushStatus === 'subscribed' && (
                 <button
                   onClick={async () => {
@@ -299,7 +264,7 @@ export default function Sidebar({ allMois = [] }) {
                   }}
                   style={{
                     marginTop: 6, width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'rgba(242,140,40,0.08)', border: '1px dashed var(--gold)',
+                    background: 'rgba(200,106,16,0.06)', border: '1px dashed var(--gold)',
                     borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
                     color: 'var(--gold)', fontSize: 12, fontWeight: 600,
                   }}
@@ -310,7 +275,7 @@ export default function Sidebar({ allMois = [] }) {
             </div>
           )}
 
-          {/* Avatar utilisateur en bas du menu */}
+          {/* Avatar utilisateur */}
           {user && (
             <div className="sidebar-user">
               <div className="sidebar-user-avatar">
@@ -320,11 +285,7 @@ export default function Sidebar({ allMois = [] }) {
                 <span className="sidebar-user-email">{user.email}</span>
                 <span className="sidebar-user-role">{role}</span>
               </div>
-              <button
-                className="sidebar-logout-btn"
-                onClick={signOut}
-                title="Se déconnecter"
-              >⎋</button>
+              <button className="sidebar-logout-btn" onClick={signOut} title="Se déconnecter">⎋</button>
             </div>
           )}
         </div>

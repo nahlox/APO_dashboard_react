@@ -116,10 +116,7 @@ function AppDashboard() {
       <div className="app-layout">
         <Sidebar allMois={allMois} />
         <div className="content-area">
-          <Header />
-
-          {/* Filtre de plage — masqué en mode P&L (un seul mois fixe) */}
-          {!activePnlMonth && <MonthRangeFilter allMois={allMois} />}
+          <Header allMois={allMois} />
 
           <main>
             {activePnlMonth ? (

@@ -128,7 +128,7 @@ body.light header { background: rgba(243,241,233,0.92); }
 }
 .logo-text span { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
 
-/* Header breadcrumb (replaces logo-text in new design) */
+/* Header breadcrumb */
 .header-breadcrumb-top {
   font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--label, #A8AE9F); font-weight: 600;
@@ -138,9 +138,78 @@ body:not(.light) .header-breadcrumb-top { color: var(--text-dim); }
   font-size: 15px; font-weight: 600; color: var(--text); margin-top: 2px;
 }
 
+/* Header right-side actions */
+.header-actions {
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* Period selector widget */
+.header-period {
+  display: flex; align-items: center; gap: 7px;
+  background: #FFFFFF; border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px 10px;
+}
+body:not(.light) .header-period { background: var(--dark2); }
+.header-period-label {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--label, #A8AE9F); font-weight: 600; white-space: nowrap;
+}
+.header-period-select {
+  border: none; background: transparent;
+  font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text);
+  cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
+}
+.header-period-arrow { color: var(--gold); font-size: 14px; }
+.header-period-count {
+  font-size: 12px; font-family: 'DM Mono', monospace;
+  color: var(--text-muted, #9AA295);
+  padding-left: 6px; border-left: 1px solid var(--border); margin-left: 2px;
+  white-space: nowrap;
+}
+
+/* Icon-only button (bell) */
+.header-icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: #FFFFFF; border: 1px solid var(--border);
+  cursor: pointer; color: var(--text-dim);
+  transition: color 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+}
+body:not(.light) .header-icon-btn { background: var(--dark2); }
+.header-icon-btn:hover { color: var(--text); border-color: var(--gold); }
+
+/* Export button */
+.header-export-btn {
+  display: flex; align-items: center; gap: 7px;
+  height: 38px; padding: 0 16px; border-radius: 10px;
+  background: var(--gold); border: none; cursor: pointer;
+  color: #FFFFFF; font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+  transition: opacity 0.18s, box-shadow 0.18s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.header-export-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(200,106,16,.35); }
+.header-export-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* User avatar */
+.header-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(140deg, #3FA34D, #1F5A2A);
+  display: flex; align-items: center; justify-content: center;
+  color: #FFFFFF; font-size: 13px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  flex-shrink: 0; cursor: default; user-select: none;
+}
+
+/* Hide old header-right on mobile */
 .header-right { text-align: right; }
-.header-right .period { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); letter-spacing: 1px; }
-.header-right .updated { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+@media (max-width: 900px) { .header-actions { gap: 6px; } }
+@media (max-width: 600px) {
+  .header-period { display: none; }
+  .header-export-btn span { display: none; }
+  .header-export-btn { padding: 0 12px; gap: 0; }
+}
 
 /* ===== SIDEBAR ===== */
 .sidebar {
@@ -219,7 +288,7 @@ body.light .sidebar-header { background: #FFFFFF; }
 }
 
 .sidebar.collapsed .sidebar-logo-text { opacity: 0; max-width: 0; }
-.sidebar.collapsed .sidebar-header { padding: 16px 9px 14px 9px; justify-content: center; }
+.sidebar.collapsed .sidebar-header { padding: 16px 14px 14px; justify-content: center; }
 
 .sidebar-section { padding: 20px 0 8px 0; }
 body.light .sidebar-section { padding: 6px 8px 0; }
@@ -462,6 +531,57 @@ body.light .sf-doc.active { border-left: none; background: rgba(200,106,16,0.09)
 body.light .sidebar-folder { border-left: none; border-radius: 8px; }
 body.light .sidebar-folder:hover { background: rgba(200,106,16,0.06); }
 body.light .sidebar-folder.open { color: var(--text); }
+
+/* ===== SIDEBAR DOCUMENT SECTION (new design) ===== */
+.sidebar-doc-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; margin: 0;
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+body.light .sidebar-doc-header { padding: 9px 10px; }
+
+.sidebar-doc-title { white-space: nowrap; }
+
+.sidebar-doc-year-group {
+  padding: 0 0 6px 18px;
+  border-left: 1px solid var(--border);
+  margin-left: 19px;
+}
+body.light .sidebar-doc-year-group { border-left-color: #EBE6DB; margin-left: 18px; }
+
+.sidebar-doc-year {
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--label, #A8AE9F); padding: 8px 10px 4px; font-weight: 600;
+}
+
+.sidebar-month-pills {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 8px 6px;
+}
+.sidebar-month-pill {
+  font-size: 12px; font-family: 'DM Mono', monospace;
+  color: var(--text-dim); padding: 4px 9px; border-radius: 7px;
+  background: var(--dark, #F3F1E9); border: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+body:not(.light) .sidebar-month-pill { background: rgba(255,255,255,0.05); }
+.sidebar-month-pill:hover { color: var(--gold); background: rgba(200,106,16,0.09); }
+.sidebar-month-pill.active {
+  background: rgba(200,106,16,0.15); color: var(--gold); font-weight: 600;
+}
+
+/* ===== SIDEBAR CLOSE BUTTON (mobile drawer only) ===== */
+.sidebar-close-btn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-dim); cursor: pointer; flex-shrink: 0;
+  transition: color 0.18s, border-color 0.18s;
+}
+.sidebar-close-btn:hover { color: var(--text); border-color: var(--gold); }
+@media (max-width: 900px) {
+  .sidebar-close-btn { display: flex; }
+}
 .sf-doc-icon  { font-size: 14px; flex-shrink: 0; }
 .sf-doc-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
