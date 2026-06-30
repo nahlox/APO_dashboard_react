@@ -95,8 +95,6 @@ export default function VueEnsemble({ data, month }) {
 
   return (
     <section>
-      <div className="section-title">Vue d'Ensemble</div>
-      <div className="section-subtitle">Synthèse stratégique — {monthFull(data)}</div>
 
       {/* KPIs */}
       <div className="kpi-grid">

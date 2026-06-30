@@ -84,7 +84,7 @@ body::before {
 main {
   position: relative;
   z-index: 1;
-  padding: clamp(16px, 2.5vw, 40px) clamp(16px, 3vw, 48px);
+  padding: clamp(12px, 1.8vw, 28px) clamp(16px, 3vw, 48px) clamp(16px, 2.5vw, 40px);
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;

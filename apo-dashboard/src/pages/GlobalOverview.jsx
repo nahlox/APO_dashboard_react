@@ -264,8 +264,6 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
 
   return (
     <div>
-      <div className="section-title">{filteredMois.length === 1 ? `Vue d'Ensemble — ${monthLabel(filteredMois[0].data)}` : 'Vue Globale — Performance'}</div>
-
       {/* KPIs */}
       <div className="kpi-grid">
         {(() => {

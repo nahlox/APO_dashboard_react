@@ -638,8 +638,6 @@ export function Charges({ data, month, allMois = [] }) {
 
   return (
     <section>
-      <div className="section-title">Charges & Coûts</div>
-      <div className="section-subtitle">Dépenses opérationnelles — {monthFull(data)}</div>
 
       {isCategorized && (
         <div className="chart-card">
@@ -815,8 +813,6 @@ export function Fournisseurs({ data, month, allMois = [] }) {
 
   return (
     <section>
-      <div className="section-title">Fournisseurs</div>
-      <div className="section-subtitle">Analyse multi-dimensionnelle — {monthFull(data)}</div>
 
       {/* ── Tableau principal avec sparklines ── */}
       <div className="chart-card">
@@ -983,8 +979,6 @@ export function Pepiniere({ data, month }) {
 
   return (
     <section>
-      <div className="section-title">Pépinière</div>
-      <div className="section-subtitle">Suivi des ventes de plants et encaissements — {monthFull(data)}</div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">

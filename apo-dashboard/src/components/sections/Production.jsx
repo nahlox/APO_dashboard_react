@@ -209,8 +209,6 @@ export default function Production({ data, month }) {
 
   return (
     <section>
-      <div className="section-title">Production & Approvisionnement</div>
-      <div className="section-subtitle">Collecte de régimes FFB et indicateurs de production — {monthFull(data)}</div>
 
       <div className="kpi-grid">
         <KPICard label="Régimes Reçus (FFB)"   value={fmt.tonnes(kpis.regimesRecusT   ?? 0)} valueColor="gold" />

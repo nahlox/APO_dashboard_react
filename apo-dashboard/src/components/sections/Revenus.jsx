@@ -105,8 +105,6 @@ export default function Revenus({ data, month }) {
 
   return (
     <section>
-      <div className="section-title">Revenus & Ventes</div>
-      <div className="section-subtitle">Analyse détaillée du chiffre d'affaires — {monthFull(data)}</div>
 
       <div className="kpi-grid">
         <KPICard label="CA Total"          value={fmt.kpiValue(kpis.caTotalFCFA, currency, eurRate)}        valueColor="green" accent="accent-green" />
