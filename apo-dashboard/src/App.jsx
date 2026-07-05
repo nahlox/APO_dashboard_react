@@ -118,6 +118,11 @@ function AppDashboard() {
         <div className="content-area">
           <Header allMois={allMois} />
 
+          {/* Période — barre compacte visible uniquement sur mobile */}
+          <div className="mobile-period-bar">
+            <MonthRangeFilter allMois={allMois} />
+          </div>
+
           <main>
             {activePnlMonth ? (
               <PnLView

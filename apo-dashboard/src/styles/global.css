@@ -238,6 +238,24 @@ body.light .header-avatar-dropdown { background: #fff; }
   .header-export-btn { padding: 0 12px; gap: 0; }
 }
 
+/* Barre période mobile — masquée sur desktop, visible sous le header sur mobile */
+.mobile-period-bar { display: none; }
+@media (max-width: 600px) {
+  .mobile-period-bar {
+    display: block;
+    padding: 0 12px 4px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-period-bar .month-range-filter {
+    padding: 8px 0;
+    border: none;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 /* ===== SIDEBAR ===== */
 .sidebar {
   width: 260px;
