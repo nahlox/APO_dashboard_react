@@ -222,11 +222,13 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   }
 
   // ── Décaissements par jour — heatmap (Feature 4) ──────────────────────────
+  const validMonthPrefix = `${periode.annee}-${String(periode.mois).padStart(2, '0')}-`
   const decaissementsParJour = {}
   const depensesParJour = {}
   for (const r of (caisseRows || [])) {
     if (!r.date_mouvement) continue
     const dk = r.date_mouvement.slice(0, 10)
+    if (!dk.startsWith(validMonthPrefix)) continue
     decaissementsParJour[dk] = (decaissementsParJour[dk] || 0) + (r.credit_fcfa || 0)
     if (!depensesParJour[dk]) depensesParJour[dk] = []
     depensesParJour[dk].push({
