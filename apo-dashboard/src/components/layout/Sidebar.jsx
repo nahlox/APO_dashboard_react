@@ -1,9 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { useAuth } from '../../contexts/AuthContext'
 import { monthShort } from '../../lib/monthUtils'
-import { usePushNotifications } from '../../hooks/usePushNotifications'
-import { supabase } from '../../db/supabase'
 
 /** Regroupe allMois par année → [['2026', [{key, data}, …]], …] */
 function groupByYear(allMois) {
@@ -73,9 +70,6 @@ export default function Sidebar({ allMois = [] }) {
     toggleSidebar, setTheme, toggleCurrency,
     closeMobileMenu,
   } = useDashboardStore()
-  const { user, role, signOut } = useAuth()
-  const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase)
-
   const yearGroups = useMemo(() => groupByYear(allMois), [allMois])
 
   const currentTab = activeTab['global'] ?? 'vue-ensemble'
@@ -225,69 +219,6 @@ export default function Sidebar({ allMois = [] }) {
             <br />{eurRateDate ? `Live · ${eurRateDate}` : 'Taux fixe BCEAO'}
           </div>
 
-          {/* Notifications push quotidiennes */}
-          {pushStatus !== 'unsupported' && (
-            <div style={{ marginTop: 14 }}>
-              <div className="sc-label">Notifications</div>
-              <button
-                onClick={pushStatus === 'subscribed' ? unsubscribe : subscribe}
-                disabled={pushStatus === 'requesting' || pushStatus === 'denied'}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                  background: pushStatus === 'subscribed' ? 'rgba(46,125,64,0.1)' : 'rgba(200,106,16,0.08)',
-                  border: `1px solid ${pushStatus === 'subscribed' ? 'var(--green)' : 'var(--gold)'}`,
-                  borderRadius: 8, padding: '7px 10px', cursor: pushStatus === 'denied' ? 'not-allowed' : 'pointer',
-                  color: pushStatus === 'subscribed' ? 'var(--green)' : pushStatus === 'denied' ? 'var(--text-dim)' : 'var(--gold)',
-                  fontSize: 12, fontWeight: 600,
-                }}
-              >
-                <span style={{ fontSize: 15 }}>
-                  {pushStatus === 'subscribed' ? '🔔' : pushStatus === 'requesting' ? '⏳' : pushStatus === 'denied' ? '🔕' : '🔔'}
-                </span>
-                {pushStatus === 'subscribed'  ? 'Notifications actives'  :
-                 pushStatus === 'requesting'  ? 'Activation…'           :
-                 pushStatus === 'denied'      ? 'Bloqué (navigateur)'   :
-                                               'Activer les notifications'}
-              </button>
-
-              {pushStatus === 'subscribed' && (
-                <button
-                  onClick={async () => {
-                    const SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3Zmd2aGVucXpkdXRqY3hodWlwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjI5ODk2MSwiZXhwIjoyMDkxODc0OTYxfQ.3_kNu864JFiKy1G7kWr5jZ04sLOUNW8ZPttuA1rhRUY'
-                    const r = await fetch('https://iwfgvhenqzdutjcxhuip.supabase.co/functions/v1/daily-push', {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ tenant_id: 'apo' }),
-                    })
-                    const d = await r.json()
-                    alert(r.ok ? `✓ Envoyé — ${d.body}` : `Erreur : ${JSON.stringify(d)}`)
-                  }}
-                  style={{
-                    marginTop: 6, width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'rgba(200,106,16,0.06)', border: '1px dashed var(--gold)',
-                    borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
-                    color: 'var(--gold)', fontSize: 12, fontWeight: 600,
-                  }}
-                >
-                  <span style={{ fontSize: 15 }}>🧪</span> Envoyer notif maintenant
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Avatar utilisateur */}
-          {user && (
-            <div className="sidebar-user">
-              <div className="sidebar-user-avatar">
-                {user.email?.[0]?.toUpperCase()}
-              </div>
-              <div className="sidebar-user-info">
-                <span className="sidebar-user-email">{user.email}</span>
-                <span className="sidebar-user-role">{role}</span>
-              </div>
-              <button className="sidebar-logout-btn" onClick={signOut} title="Se déconnecter">⎋</button>
-            </div>
-          )}
         </div>
       </aside>
     </>

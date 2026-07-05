@@ -1,6 +1,9 @@
+import { useState, useEffect, useRef } from 'react'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useAuth } from '../../contexts/AuthContext'
 import { generatePnlPdf } from '../../lib/generatePnlPdf'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
+import { supabase } from '../../db/supabase'
 
 const MOIS_LIST = [
   { num: 1,  label: 'Janvier' },  { num: 2,  label: 'Février' },
@@ -35,15 +38,27 @@ export default function Header({ allMois = [] }) {
   const {
     sidebarOpen, toggleMobileMenu,
     activeTab, activePnlMonth,
-    monthRange, setMonthRange, resetMonthRange,
+    monthRange, setMonthRange,
     currency, moisData,
   } = useDashboardStore()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase)
+
+  const [avatarOpen, setAvatarOpen] = useState(false)
+  const avatarRef = useRef(null)
+
+  useEffect(() => {
+    if (!avatarOpen) return
+    function handleOutside(e) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [avatarOpen])
 
   const currentTab  = activeTab['global'] ?? 'vue-ensemble'
   const sectionName = activePnlMonth ? 'Compte de Résultat' : (MODULE_NAMES[currentTab] ?? "Vue d'Ensemble")
 
-  // Period selector logic (mirrors MonthRangeFilter)
   const moisDispo = allMois
     .map(m => moisNum(m.data?._etl?.mois))
     .filter(n => n > 0)
@@ -64,13 +79,23 @@ export default function Header({ allMois = [] }) {
     setMonthRange(Math.min(from, v), v)
   }
 
-  // Export — PDF if in P&L view, else disabled
   const pnlData = activePnlMonth ? allMois.find(m => m.key === activePnlMonth)?.data : null
   const handleExport = () => {
     if (pnlData) generatePnlPdf(pnlData, currency)
   }
 
   const initials = getInitials(user?.email)
+
+  const handleBell = () => {
+    if (pushStatus === 'subscribed') unsubscribe()
+    else if (pushStatus !== 'denied' && pushStatus !== 'unsupported') subscribe()
+  }
+
+  const bellTitle = pushStatus === 'subscribed'
+    ? 'Désactiver les notifications'
+    : pushStatus === 'denied'
+      ? 'Notifications bloquées par le navigateur'
+      : 'Activer les notifications quotidiennes'
 
   return (
     <header>
@@ -119,13 +144,37 @@ export default function Header({ allMois = [] }) {
           </div>
         )}
 
-        {/* Bell notification */}
-        <button className="header-icon-btn" aria-label="Notifications">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-          </svg>
-        </button>
+        {/* Bell — toggle notifications */}
+        {pushStatus !== 'unsupported' && (
+          <button
+            className={`header-icon-btn${pushStatus === 'subscribed' ? ' bell-active' : ''}${pushStatus === 'denied' ? ' bell-denied' : ''}`}
+            onClick={handleBell}
+            disabled={pushStatus === 'requesting'}
+            aria-label={bellTitle}
+            title={bellTitle}
+          >
+            {pushStatus === 'subscribed' ? (
+              /* Bell filled — notifications ON */
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" fill="none" strokeWidth="1.6"/>
+              </svg>
+            ) : pushStatus === 'denied' ? (
+              /* Bell with slash — blocked */
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                <line x1="2" y1="2" x2="22" y2="22"/>
+              </svg>
+            ) : (
+              /* Bell outlined — notifications OFF */
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+            )}
+          </button>
+        )}
 
         {/* Export */}
         <button
@@ -140,9 +189,28 @@ export default function Header({ allMois = [] }) {
           Exporter
         </button>
 
-        {/* User avatar */}
-        <div className="header-avatar" title={user?.email}>
-          {initials}
+        {/* Avatar + dropdown */}
+        <div className="header-avatar-wrap" ref={avatarRef}>
+          <button
+            className="header-avatar"
+            onClick={() => setAvatarOpen(o => !o)}
+            title={user?.email}
+            aria-label="Mon compte"
+          >
+            {initials}
+          </button>
+          {avatarOpen && (
+            <div className="header-avatar-dropdown">
+              <div className="had-email">{user?.email}</div>
+              <button className="had-logout" onClick={signOut}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Se déconnecter
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

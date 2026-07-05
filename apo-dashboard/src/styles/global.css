@@ -178,6 +178,9 @@ body:not(.light) .header-period { background: var(--dark2); }
 }
 body:not(.light) .header-icon-btn { background: var(--dark2); }
 .header-icon-btn:hover { color: var(--text); border-color: var(--gold); }
+.header-icon-btn.bell-active { color: var(--gold); border-color: var(--gold); background: rgba(242,140,40,0.08); }
+.header-icon-btn.bell-denied { color: var(--text-dim); opacity: 0.45; cursor: not-allowed; }
+.header-icon-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* Export button */
 .header-export-btn {
@@ -193,14 +196,38 @@ body:not(.light) .header-icon-btn { background: var(--dark2); }
 .header-export-btn:disabled { opacity: 0.45; cursor: default; }
 
 /* User avatar */
+.header-avatar-wrap { position: relative; flex-shrink: 0; }
 .header-avatar {
   width: 38px; height: 38px; border-radius: 50%;
   background: linear-gradient(140deg, #3FA34D, #1F5A2A);
   display: flex; align-items: center; justify-content: center;
   color: #FFFFFF; font-size: 13px; font-weight: 700;
   font-family: 'DM Sans', sans-serif;
-  flex-shrink: 0; cursor: default; user-select: none;
+  border: none; cursor: pointer; user-select: none;
+  transition: box-shadow 0.18s;
 }
+.header-avatar:hover { box-shadow: 0 0 0 3px rgba(63,163,77,0.25); }
+.header-avatar-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 200px; background: var(--dark2, #fff);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px; z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+body.light .header-avatar-dropdown { background: #fff; }
+.had-email {
+  font-size: 12px; color: var(--text-dim); padding: 4px 6px 10px;
+  border-bottom: 1px solid var(--border); word-break: break-all;
+}
+.had-logout {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; margin-top: 8px; padding: 8px 10px;
+  background: none; border: none; border-radius: 8px;
+  color: var(--text-dim); font-size: 13px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif; cursor: pointer;
+  transition: background 0.15s, color 0.15s; text-align: left;
+}
+.had-logout:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
 
 /* Hide old header-right on mobile */
 .header-right { text-align: right; }
@@ -1312,6 +1339,7 @@ body.light .month-summary-card { background: #FFFFFF; box-shadow: 0 1px 4px rgba
   .mbn-icon {
     font-size: 22px;
     line-height: 1;
+    display: flex; align-items: center; justify-content: center;
     transition: transform 0.2s, filter 0.2s;
   }
   .mbn-label {
