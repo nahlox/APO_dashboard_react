@@ -160,17 +160,9 @@ Deno.serve(async (req) => {
       chartTitle = "Production d'huile (T) par jour"
       kind = 'hebdomadaire'
     } else {
-      // Quotidien : dernier jour de production ≤ aujourd'hui, vs veille de ce jour
-      const { data: lastProd } = await sb.from('production_journaliere')
-        .select('date_production').eq('tenant_id', tenant_id)
-        .lte('date_production', today).order('date_production', { ascending: false }).limit(1).single()
-
-      if (!lastProd) {
-        return new Response(JSON.stringify({ skipped: 'Aucune donnée de production' }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } })
-      }
-      const refDay = lastProd.date_production
-      const prevDay = iso(new Date(new Date(refDay + 'T00:00:00').getTime() - 86400000))
+      // Quotidien : toujours J-1 (hier), quelles que soient les données trouvées
+      const refDay = iso(new Date(new Date(today + 'T00:00:00').getTime() - 86400000))
+      const prevDay = iso(new Date(new Date(today + 'T00:00:00').getTime() - 2 * 86400000))
       wStart = refDay; wEnd = refDay
       pStart = prevDay; pEnd = prevDay
       periodLabel = `Journée du ${frDate(refDay)}`
@@ -184,7 +176,8 @@ Deno.serve(async (req) => {
       aggregate(sb, tenant_id, pStart, pEnd),
     ])
 
-    if (cur.nbJours === 0) {
+    // En hebdo, on saute s'il n'y a aucune donnée. En quotidien, on envoie toujours J-1.
+    if (period === 'weekly' && cur.nbJours === 0) {
       return new Response(JSON.stringify({ skipped: 'Aucune donnée sur la période', wStart, wEnd }),
         { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
@@ -193,9 +186,11 @@ Deno.serve(async (req) => {
 
     // ── 2. Alertes ──────────────────────────────────────────────────────────
     const alerts: Alert[] = []
-    if (cur.teAvg > 0 && cur.teAvg < 0.18)
+    // Pas d'alerte sur une journée sans aucune donnée (évite les faux "−100%")
+    const hasData = cur.nbJours > 0 && (cur.recus > 0 || cur.huile > 0)
+    if (hasData && cur.teAvg > 0 && cur.teAvg < 0.18)
       alerts.push({ emoji: '🔴', msg: `Taux d'extraction faible : ${pct(cur.teAvg)}% (cible 20%)` })
-    if (prev.recus > 0 && cur.recus < prev.recus * 0.60)
+    if (hasData && prev.recus > 0 && cur.recus < prev.recus * 0.60)
       alerts.push({ emoji: '📉', msg: `Régimes reçus en baisse de ${Math.round((1 - cur.recus / prev.recus) * 100)}% ${cmpLabel}` })
     if (period === 'weekly') {
       if (prev.charges > 0 && cur.charges > prev.charges * 1.20)
