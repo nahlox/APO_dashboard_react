@@ -258,11 +258,12 @@ def assurer_periodes() -> dict:
 def parse_production_tous_mois(content: bytes, periodes: dict):
     """Parse et insère toutes les données de production depuis le fichier de production."""
     if not DRY_RUN:
-        q = sb.table("production_journaliere").delete().gte("id", 0)
+        periode_ids = [pid for pid in periodes.values() if pid]
+        q = sb.table("production_journaliere").delete().in_("periode_id", periode_ids)
         if TENANT_ID:
             q = q.eq("tenant_id", TENANT_ID)
         q.execute()
-        log(f"  🗑  production_journaliere vidée (tenant: {TENANT_ID})")
+        log(f"  🗑  production_journaliere vidée pour {len(periode_ids)} période(s) (tenant: {TENANT_ID})")
 
     total = 0
     for mois, periode_id in periodes.items():
