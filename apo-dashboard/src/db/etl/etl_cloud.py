@@ -17,7 +17,7 @@ Prérequis (.env) :
   DROPBOX_TOKEN    = sl.xxx...  (token Dropbox App, voir README)
 """
 
-import os, hashlib, argparse, io, time, json, urllib.request
+import os, hashlib, argparse, io, time, json, urllib.request, re
 from datetime import datetime
 from pathlib import Path
 import openpyxl
@@ -604,9 +604,9 @@ def parse_pepiniere(content: bytes):
 # frais_relat, materiels, salaires, securite, taxes_fiscales, vehicules
 
 def categorize_banque(libelle: str) -> str:
-    l = (libelle or "").upper()
+    l = re.sub(r"\s+", " ", (libelle or "").upper())
     if any(k in l for k in ["PRÊT BANCAIRE", "PRET BANCAIRE", "ECHEANCE PRÊ", "ECHEANCE PRET",
-                              "AMORTISSEMENT PRET", "ECH PRET"]):
+                              "AMORTISSEMENT PRET", "ECH PRET", "ECHEANCE BANCAIRE"]):
         return "amortissement"
     if any(k in l for k in ["ASSURANCE", "SUNU ASSURANCE", "WAFA ASSURANCE"]):
         return "assurance"
