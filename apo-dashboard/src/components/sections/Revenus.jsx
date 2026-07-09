@@ -3,7 +3,6 @@ import { Chart, BarElement, BarController, LineElement, LineController, PointEle
 import KPICard from '../kpi/KPICard'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { monthFull } from '../../lib/monthUtils'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
@@ -144,7 +143,7 @@ export default function Revenus({ data, month }) {
       {/* Tableau produits */}
       <div className="chart-card">
         <div className="chart-title">Détail des Ventes par Produit</div>
-        <div className="chart-subtitle">Récapitulatif {monthFull(data)}</div>
+        <div className="chart-subtitle">Récapitulatif</div>
         <table className="data-table">
           <thead>
             <tr>

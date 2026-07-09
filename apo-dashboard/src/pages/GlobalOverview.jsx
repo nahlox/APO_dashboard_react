@@ -7,7 +7,7 @@ import {
 import KPICard from '../components/kpi/KPICard'
 import { fmt, buildGlobalKPIs, chartColors, defaultTooltip } from '../lib/kpiEngine'
 import { useDashboardStore } from '../store/dashboardStore'
-import { monthLabel, monthShort, rangeLabel, sumLabel } from '../lib/monthUtils'
+import { monthLabel } from '../lib/monthUtils'
 import { useCpoPrices } from '../hooks/useCpoPrices'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler, ArcElement, PieController, RadialLinearScale)
@@ -56,8 +56,6 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
   const charts    = useRef({})
 
   const shortLabels = filteredMois.map(m => monthLabel(m.data))
-  const range       = rangeLabel(filteredMois)
-  const sum         = sumLabel(filteredMois)
   const year        = filteredMois[0]?.data._etl.annee ?? ''
 
   useEffect(() => {
@@ -272,8 +270,8 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
           const margeNette   = global.caCumule > 0 ? (global.resultatCumule / global.caCumule * 100).toFixed(1) : '—'
           const revNetTonne  = global.huileProduiteTotal > 0 ? Math.round(global.resultatCumule / global.huileProduiteTotal) : 0
           const huileLabel   = isSingle ? 'Huile Produite' : 'Huile Produite Cumulée'
-          const caLabel      = isSingle ? `CA — ${range}` : `CA Cumulé ${range}`
-          const resultLabel  = isSingle ? `Résultat Net — ${range}` : `Résultat Cumulé ${range}`
+          const caLabel      = isSingle ? 'CA' : 'CA Cumulé'
+          const resultLabel  = isSingle ? 'Résultat Net' : 'Résultat Cumulé'
           return (<>
             <KPICard label={caLabel}      value={fmt.kpiValue(global.caCumule, currency, eurRate)}    valueColor="gold" />
             <KPICard label="Marge Brute"  value={margeBrute + '%'}                                    valueColor="green" accent="accent-green" />
@@ -289,14 +287,14 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">{filteredMois.length === 1 ? 'Chiffre d\'Affaires par Produit' : 'Évolution du CA'}</div>
-          <div className="chart-subtitle">CA par produit {range} {year} ({currency})</div>
+          <div className="chart-subtitle">CA par produit {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refCA} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">{filteredMois.length === 1 ? 'Résultat Net' : 'Évolution du Résultat'}</div>
-          <div className="chart-subtitle">Résultat net {range} {year} ({currency})</div>
+          <div className="chart-subtitle">Résultat net {year} ({currency})</div>
           <div className="chart-container" style={{ height: 300 }}>
             <canvas ref={refResult} />
           </div>
@@ -313,7 +311,7 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         </div>
         <div className="chart-card">
           <div className="chart-title">Structure des Dépenses</div>
-          <div className="chart-subtitle">{sum} {year} — hors matières premières</div>
+          <div className="chart-subtitle">{year} — hors matières premières</div>
           <div className="chart-container" style={{ height: 240 }}>
             <canvas ref={refCosts} />
           </div>
@@ -336,7 +334,7 @@ export default function GlobalOverview({ filteredMois, aggregatedData }) {
         <div className="chart-title">Revenu Net & Rentabilité / Tonne</div>
         <div className="chart-subtitle">
           {filteredMois.length === 1
-            ? `Vue journalière — ${monthLabel(filteredMois[0].data)} · Prix CPO/T · Coût MP/T · Marge Brute/T (FCFA/T)`
+            ? `Vue journalière · Prix CPO/T · Coût MP/T · Marge Brute/T (FCFA/T)`
             : 'Prix CPO/T · Coût MP/T · Marge Brute/T · Revenu Net/T (FCFA/T)'}
         </div>
         <div className="chart-container" style={{ height: 300 }}>

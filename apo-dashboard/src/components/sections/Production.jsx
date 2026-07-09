@@ -6,7 +6,7 @@ import {
 import KPICard from '../kpi/KPICard'
 import OilTank from '../OilTank'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
-import { monthFull, monthLabel, monthEndDate } from '../../lib/monthUtils'
+import { monthEndDate } from '../../lib/monthUtils'
 import { useDashboardStore } from '../../store/dashboardStore'
 
 Chart.register(BarElement, BarController, LineElement, LineController, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
@@ -240,7 +240,7 @@ export default function Production({ data, month }) {
         <div className="chart-subtitle">Calculé sur régimes traités</div>
         <div className="gauge-row" style={{ marginTop: 16 }}>
           <div className="gauge-item">
-            <div className="gauge-label">TE APO {monthLabel(data)}</div>
+            <div className="gauge-label">TE APO</div>
             <div className="gauge-value" style={{ color: teColor }}>{fmt.pct(te)}</div>
             <div className="gauge-unit">huile / régimes traités</div>
             <span className={`kpi-badge ${teBadge.cls}`} style={{ marginTop: 8 }}>{teBadge.txt}</span>
@@ -292,14 +292,14 @@ export default function Production({ data, month }) {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Taux d'Extraction Journalier</div>
-          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités) — {monthFull(data)}</div>
+          <div className="chart-subtitle">TE% par journée (huile produite ÷ régimes traités)</div>
           <div className="chart-container" style={{ height: 260 }}>
             <canvas ref={refTE} />
           </div>
         </div>
         <div className="chart-card">
           <div className="chart-title">Comparaison Annuelle — Volumes Clés</div>
-          <div className="chart-subtitle">Données historiques {monthLabel(data)}</div>
+          <div className="chart-subtitle">Données historiques</div>
           <div className="chart-container" style={{ height: 260 }}>
             <canvas ref={refCompar} />
           </div>

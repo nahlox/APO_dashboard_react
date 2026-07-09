@@ -4,7 +4,7 @@ import KPICard from '../kpi/KPICard'
 import AlertBox from '../kpi/AlertBox'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { monthFull, monthLabel } from '../../lib/monthUtils'
+import { monthLabel } from '../../lib/monthUtils'
 
 Chart.register(ArcElement, DoughnutController, PieController, Tooltip, Legend)
 
@@ -31,7 +31,7 @@ export default function VueEnsemble({ data, month }) {
 
   // Utilise directement les charges du mois (ou agrégées) plutôt que d'aller chercher ailleurs
   const combinedCharges = charts?.charges ?? { labels: [], values: [] }
-  const chargesSubtitle = `${monthFull(data)} — hors matières premières`
+  const chargesSubtitle = 'hors matières premières'
 
   const refCA      = useRef(null)
   const refCharges = useRef(null)
@@ -111,7 +111,7 @@ export default function VueEnsemble({ data, month }) {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-title">Répartition du Chiffre d'Affaires</div>
-          <div className="chart-subtitle">Par produit — {monthFull(data)}</div>
+          <div className="chart-subtitle">Par produit</div>
           <div className="chart-container" style={{ height: 260 }}>
             <canvas ref={refCA} />
           </div>

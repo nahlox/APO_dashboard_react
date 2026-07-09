@@ -6,7 +6,6 @@ import {
 } from 'chart.js'
 import { fmt, chartColors, defaultTooltip } from '../../lib/kpiEngine'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { monthFull } from '../../lib/monthUtils'
 
 Chart.register(
   BarElement, BarController,
