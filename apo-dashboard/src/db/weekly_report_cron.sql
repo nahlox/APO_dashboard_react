@@ -1,34 +1,36 @@
 -- ============================================================
--- MIGRATION : Rapport hebdomadaire par email — cron lundi 06h00 CI
+-- MIGRATION : Rapport APO par email — cron QUOTIDIEN 07h00 CI
 -- À exécuter dans Supabase > SQL Editor
--- Prérequis : edge function `weekly-report` déployée, extensions pg_cron + pg_net activées
+-- Prérequis :
+--   - edge function `weekly-report` déployée
+--   - extensions pg_cron + pg_net activées
+--   - domaine vérifié dans Resend + REPORT_FROM_EMAIL défini
 -- ============================================================
 
--- Cron lundi 06h00 CI (= 06h00 UTC, la Côte d'Ivoire est UTC+0)
+-- Cron quotidien 07h00 CI (= 07h00 UTC, la Côte d'Ivoire est UTC+0)
+-- period=daily → résume le dernier jour de production, comparé à la veille
 SELECT cron.schedule(
-  'apo-weekly-report',        -- nom du job
-  '0 6 * * 1',                -- chaque lundi à 06h00 UTC
+  'apo-daily-email',          -- nom du job
+  '0 7 * * *',                -- chaque jour à 07h00 UTC
   $$
     SELECT net.http_post(
       url    := 'https://iwfgvhenqzdutjcxhuip.supabase.co/functions/v1/weekly-report',
       headers := '{"Authorization": "Bearer <SERVICE_ROLE_KEY>", "Content-Type": "application/json"}'::jsonb,
-      body   := '{"tenant_id": "apo"}'::jsonb
+      body   := '{"tenant_id": "apo", "period": "daily"}'::jsonb
     );
   $$
 );
 
 -- Pour vérifier le job :
--- SELECT * FROM cron.job WHERE jobname = 'apo-weekly-report';
+-- SELECT * FROM cron.job WHERE jobname = 'apo-daily-email';
 
 -- Pour supprimer le job :
--- SELECT cron.unschedule('apo-weekly-report');
+-- SELECT cron.unschedule('apo-daily-email');
 
 -- ============================================================
--- CONFIG DESTINATAIRES (optionnel)
--- Par défaut : tous les users owner/manager du tenant reçoivent le rapport.
--- Pour forcer une liste explicite, ajoutez report_recipients dans tenant_config :
+-- Pour repasser en hebdomadaire plus tard : body period='weekly'
+-- et planning '0 6 * * 1' (lundi 06h00).
 --
--- UPDATE tenant_config
--- SET config = config || '{"report_recipients": ["directeur@apo-ci.com", "compta@apo-ci.com"]}'::jsonb
--- WHERE tenant_id = 'apo';
+-- DESTINATAIRES : définis dans tenant_config.config.report_recipients
+-- (rawad, ramy, rayan). Sinon fallback = tous les owner/manager du tenant.
 -- ============================================================

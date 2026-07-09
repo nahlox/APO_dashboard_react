@@ -1,11 +1,12 @@
-// Edge Function : Rapport hebdomadaire APO par email (résumé + graphique + insight IA)
-// Déclenchement : cron lundi matin — supabase functions deploy weekly-report
+// Edge Function : Rapport APO par email (résumé + graphique + insight IA)
+// Modes : quotidien (défaut) ou hebdomadaire — via body.period = 'daily' | 'weekly'
+// Déploiement : supabase functions deploy weekly-report
 //
 // Variables d'env requises :
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
 //   RESEND_API_KEY      — clé API Resend (https://resend.com)
-//   REPORT_FROM_EMAIL   — expéditeur vérifié dans Resend, ex "APO <rapport@apo-ci.com>"
-//   APP_URL             — URL du dashboard, ex "https://apo-dashboard.vercel.app"
+//   REPORT_FROM_EMAIL   — expéditeur vérifié dans Resend, ex "Palmeo <rapport@palmeo.co>"
+//   APP_URL             — URL du dashboard, ex "https://app.palmeo.co"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
@@ -15,7 +16,7 @@ const SUPABASE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANTHROPIC_KEY    = Deno.env.get('ANTHROPIC_API_KEY')!
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY')!
 const REPORT_FROM      = Deno.env.get('REPORT_FROM_EMAIL') || 'APO <onboarding@resend.dev>'
-const APP_URL          = Deno.env.get('APP_URL') || 'https://apo-dashboard.vercel.app'
+const APP_URL          = Deno.env.get('APP_URL') || 'https://app.palmeo.co'
 
 const ai = new Anthropic({ apiKey: ANTHROPIC_KEY })
 
@@ -69,6 +70,7 @@ async function aggregate(sb: any, tenant: string, start: string, end: string) {
   const recus   = sum(prod, 'regime_recu_kg')
   const traites = sum(prod, 'regime_traite_kg')
   const huile   = sum(prod, 'huile_produite_kg')
+  const citernes = sum(prod, 'livraison_citerne_kg')
   const teVals  = prod.map((r: any) => r.taux_extraction ?? 0).filter((v: number) => v > 0)
   const teAvg   = teVals.length ? teVals.reduce((s: number, v: number) => s + v, 0) / teVals.length : 0
 
@@ -76,17 +78,24 @@ async function aggregate(sb: any, tenant: string, start: string, end: string) {
                 + sum(vfRes.data ?? [], 'montant_fcfa') + sum(vbRes.data ?? [], 'montant_fcfa')
   const charges = sum(c1Res.data ?? [], 'credit_fcfa') + sum(c2Res.data ?? [], 'credit_fcfa')
 
-  // Production journalière d'huile pour le graphique (7 jours)
-  const dailyOil: { date: string; kg: number }[] = []
-  const d0 = new Date(start + 'T00:00:00')
-  for (let i = 0; i < 7; i++) {
-    const dk = iso(new Date(d0.getTime() + i * 86400000))
-    const row = prod.find((r: any) => r.date_production === dk)
-    dailyOil.push({ date: dk, kg: row?.huile_produite_kg ?? 0 })
-  }
+  return { recus, traites, huile, citernes, teAvg, revenue, charges, nbJours: prod.length }
+}
 
-  return { recus, traites, huile, teAvg, revenue, charges,
-           coutKg: huile > 0 ? charges / huile : 0, dailyOil, nbJours: prod.length }
+// ── Série d'huile produite : `days` jours se terminant à endDay (pour le graphe) ──
+async function oilSeries(sb: any, tenant: string, endDay: string, days = 7) {
+  const end = new Date(endDay + 'T00:00:00')
+  const start = new Date(end.getTime() - (days - 1) * 86400000)
+  const { data } = await sb.from('production_journaliere')
+    .select('date_production, huile_produite_kg')
+    .eq('tenant_id', tenant).gte('date_production', iso(start)).lte('date_production', endDay)
+  const rows = data ?? []
+  const out: { date: string; kg: number }[] = []
+  for (let i = 0; i < days; i++) {
+    const dk = iso(new Date(start.getTime() + i * 86400000))
+    const row = rows.find((r: any) => r.date_production === dk)
+    out.push({ date: dk, kg: row?.huile_produite_kg ?? 0 })
+  }
+  return out
 }
 
 // ── Graphique en barres HTML (compatible clients email — table + divs) ──────
@@ -111,13 +120,13 @@ function barChart(daily: { date: string; kg: number }[]): string {
 }
 
 // ── Carte KPI ───────────────────────────────────────────────────────────────
-function kpiCard(label: string, value: string, d: { txt: string; color: string }): string {
+function kpiCard(label: string, value: string, d: { txt: string; color: string }, cmpLabel: string): string {
   return `
     <td width="50%" style="padding:6px;">
       <div style="background:#faf8f5; border:1px solid #ece7df; border-radius:10px; padding:14px 16px;">
         <div style="font-size:11px; color:#8a8a8a; text-transform:uppercase; letter-spacing:.5px; font-family:Arial,sans-serif;">${label}</div>
         <div style="font-size:22px; font-weight:700; color:#2a2a2a; margin-top:4px; font-family:Arial,sans-serif;">${value}</div>
-        <div style="font-size:12px; color:${d.color}; margin-top:2px; font-family:Arial,sans-serif;">${d.txt} <span style="color:#b0b0b0;">vs sem. préc.</span></div>
+        <div style="font-size:12px; color:${d.color}; margin-top:2px; font-family:Arial,sans-serif;">${d.txt} <span style="color:#b0b0b0;">${cmpLabel}</span></div>
       </div>
     </td>`
 }
@@ -126,20 +135,49 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}))
     const tenant_id: string = body.tenant_id ?? 'apo'
+    const period: 'daily' | 'weekly' = body.period === 'weekly' ? 'weekly' : 'daily'
     const testEmail: string | undefined = body.test_email  // envoi test à une seule adresse
 
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
+    const today = iso(new Date())
 
-    // ── 1. Fenêtres de dates : semaine écoulée (lun→dim) vs semaine d'avant ──
-    const now = new Date()
-    const dow = (now.getDay() + 6) % 7                  // 0 = lundi
-    const lastMonday = new Date(now); lastMonday.setDate(now.getDate() - dow - 7)
-    const lastSunday = new Date(lastMonday); lastSunday.setDate(lastMonday.getDate() + 6)
-    const prevMonday = new Date(lastMonday); prevMonday.setDate(lastMonday.getDate() - 7)
-    const prevSunday = new Date(lastMonday); prevSunday.setDate(lastMonday.getDate() - 1)
+    // ── 1. Fenêtres de dates selon le mode ──────────────────────────────────
+    let wStart: string, wEnd: string, pStart: string, pEnd: string
+    let periodLabel: string, cmpLabel: string, chartTitle: string, kind: string
 
-    const wStart = iso(lastMonday), wEnd = iso(lastSunday)
-    const pStart = iso(prevMonday), pEnd = iso(prevSunday)
+    if (period === 'weekly') {
+      // Semaine écoulée (lun→dim) vs semaine d'avant
+      const now = new Date()
+      const dow = (now.getDay() + 6) % 7
+      const lastMonday = new Date(now); lastMonday.setDate(now.getDate() - dow - 7)
+      const lastSunday = new Date(lastMonday); lastSunday.setDate(lastMonday.getDate() + 6)
+      const prevMonday = new Date(lastMonday); prevMonday.setDate(lastMonday.getDate() - 7)
+      const prevSunday = new Date(lastMonday); prevSunday.setDate(lastMonday.getDate() - 1)
+      wStart = iso(lastMonday); wEnd = iso(lastSunday)
+      pStart = iso(prevMonday); pEnd = iso(prevSunday)
+      periodLabel = `Semaine du ${frDate(wStart)} au ${frDate(wEnd)}`
+      cmpLabel = 'vs sem. préc.'
+      chartTitle = "Production d'huile (T) par jour"
+      kind = 'hebdomadaire'
+    } else {
+      // Quotidien : dernier jour de production ≤ aujourd'hui, vs veille de ce jour
+      const { data: lastProd } = await sb.from('production_journaliere')
+        .select('date_production').eq('tenant_id', tenant_id)
+        .lte('date_production', today).order('date_production', { ascending: false }).limit(1).single()
+
+      if (!lastProd) {
+        return new Response(JSON.stringify({ skipped: 'Aucune donnée de production' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      const refDay = lastProd.date_production
+      const prevDay = iso(new Date(new Date(refDay + 'T00:00:00').getTime() - 86400000))
+      wStart = refDay; wEnd = refDay
+      pStart = prevDay; pEnd = prevDay
+      periodLabel = `Journée du ${frDate(refDay)}`
+      cmpLabel = 'vs veille'
+      chartTitle = "Production d'huile (T) — 7 derniers jours"
+      kind = 'quotidien'
+    }
 
     const [cur, prev] = await Promise.all([
       aggregate(sb, tenant_id, wStart, wEnd),
@@ -147,42 +185,45 @@ Deno.serve(async (req) => {
     ])
 
     if (cur.nbJours === 0) {
-      return new Response(JSON.stringify({ skipped: 'Aucune donnée pour la semaine écoulée', wStart, wEnd }),
+      return new Response(JSON.stringify({ skipped: 'Aucune donnée sur la période', wStart, wEnd }),
         { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
-    // ── 2. Alertes hebdomadaires ────────────────────────────────────────────
+    const chart = await oilSeries(sb, tenant_id, wEnd, 7)
+
+    // ── 2. Alertes ──────────────────────────────────────────────────────────
     const alerts: Alert[] = []
     if (cur.teAvg > 0 && cur.teAvg < 0.18)
-      alerts.push({ emoji: '🔴', msg: `Taux d'extraction moyen faible : ${pct(cur.teAvg)}% (cible 20%)` })
-    if (prev.recus > 0 && cur.recus < prev.recus * 0.75)
-      alerts.push({ emoji: '📉', msg: `Régimes reçus en baisse de ${Math.round((1 - cur.recus / prev.recus) * 100)}% vs semaine précédente` })
-    if (prev.charges > 0 && cur.charges > prev.charges * 1.20)
-      alerts.push({ emoji: '💸', msg: `Charges en hausse de ${Math.round((cur.charges / prev.charges - 1) * 100)}% vs semaine précédente` })
-    if (cur.revenue < cur.charges)
-      alerts.push({ emoji: '⚠️', msg: `Charges (${money(cur.charges)}) supérieures aux revenus (${money(cur.revenue)})` })
+      alerts.push({ emoji: '🔴', msg: `Taux d'extraction faible : ${pct(cur.teAvg)}% (cible 20%)` })
+    if (prev.recus > 0 && cur.recus < prev.recus * 0.60)
+      alerts.push({ emoji: '📉', msg: `Régimes reçus en baisse de ${Math.round((1 - cur.recus / prev.recus) * 100)}% ${cmpLabel}` })
+    if (period === 'weekly') {
+      if (prev.charges > 0 && cur.charges > prev.charges * 1.20)
+        alerts.push({ emoji: '💸', msg: `Charges en hausse de ${Math.round((cur.charges / prev.charges - 1) * 100)}% vs semaine précédente` })
+      if (cur.revenue < cur.charges)
+        alerts.push({ emoji: '⚠️', msg: `Charges (${money(cur.charges)}) supérieures aux revenus (${money(cur.revenue)})` })
+    }
 
     // ── 3. Synthèse IA (Claude Haiku) ───────────────────────────────────────
     const aiMsg = await ai.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 220,
+      max_tokens: 200,
       messages: [{
         role: 'user',
         content: `Tu es le directeur analytique d'APO, une huilerie de palme en Côte d'Ivoire.
-Rédige une synthèse exécutive de 2 à 3 phrases (français, ton professionnel et direct) pour le rapport hebdomadaire destiné à la direction.
+Rédige une synthèse de 2 phrases (français, professionnel et direct) pour le rapport ${kind} destiné à la direction.
 
-Semaine écoulée (${frDate(wStart)} → ${frDate(wEnd)}) :
-- Régimes reçus : ${T(cur.recus)}T (sem. préc. ${T(prev.recus)}T)
+${periodLabel} :
+- Régimes reçus : ${T(cur.recus)}T (${cmpLabel} ${T(prev.recus)}T)
 - Régimes traités : ${T(cur.traites)}T
-- Huile produite : ${T(cur.huile)}T (sem. préc. ${T(prev.huile)}T)
-- Taux d'extraction moyen : ${pct(cur.teAvg)}% (sem. préc. ${pct(prev.teAvg)}%)
-- Revenus ventes : ${money(cur.revenue)} (sem. préc. ${money(prev.revenue)})
-- Charges : ${money(cur.charges)} (sem. préc. ${money(prev.charges)})
-- Coût de revient : ${Math.round(cur.coutKg)} FCFA/kg d'huile
+- Huile produite : ${T(cur.huile)}T (${cmpLabel} ${T(prev.huile)}T)
+- Taux d'extraction : ${pct(cur.teAvg)}% (${cmpLabel} ${pct(prev.teAvg)}%)
+- Revenus ventes : ${money(cur.revenue)}
+- Charges : ${money(cur.charges)}
 
-${alerts.length ? 'Points de vigilance :\n' + alerts.map(a => '- ' + a.msg).join('\n') : 'Aucune alerte cette semaine.'}
+${alerts.length ? 'Points de vigilance :\n' + alerts.map(a => '- ' + a.msg).join('\n') : 'Aucune alerte.'}
 
-Règles : identifie la tendance dominante, mentionne le point le plus important (positif ou négatif), et suggère un axe d'attention si pertinent. Pas de liste à puces, pas d'emoji, pas de salutation.`
+Règles : identifie la tendance dominante et le point le plus important. Pas de liste, pas d'emoji, pas de salutation, pas de mention du coût de revient.`
       }]
     })
     const synthese = (aiMsg.content[0] as { text: string }).text.trim()
@@ -199,9 +240,9 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
 
         <!-- En-tête -->
         <tr><td style="background:linear-gradient(135deg,#1f5a2a,#2e7d40); padding:28px 32px;">
-          <div style="font-size:13px; color:#a9d9b3; font-family:Arial,sans-serif; letter-spacing:1px; text-transform:uppercase;">Rapport hebdomadaire</div>
+          <div style="font-size:13px; color:#a9d9b3; font-family:Arial,sans-serif; letter-spacing:1px; text-transform:uppercase;">Rapport ${kind}</div>
           <div style="font-size:24px; color:#ffffff; font-weight:700; font-family:Arial,sans-serif; margin-top:4px;">APO — Agro Palm Oil</div>
-          <div style="font-size:14px; color:#d4ecd9; font-family:Arial,sans-serif; margin-top:6px;">Semaine du ${frDate(wStart)} au ${frDate(wEnd)}</div>
+          <div style="font-size:14px; color:#d4ecd9; font-family:Arial,sans-serif; margin-top:6px;">${periodLabel}</div>
         </td></tr>
 
         <!-- Synthèse IA -->
@@ -215,24 +256,24 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
         <tr><td style="padding:12px 26px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
-              ${kpiCard('Huile produite', T(cur.huile) + ' T', delta(cur.huile, prev.huile, true))}
-              ${kpiCard('Taux extraction', pct(cur.teAvg) + ' %', delta(cur.teAvg, prev.teAvg, true))}
+              ${kpiCard('Huile produite', T(cur.huile) + ' T', delta(cur.huile, prev.huile, true), cmpLabel)}
+              ${kpiCard('Taux extraction', pct(cur.teAvg) + ' %', delta(cur.teAvg, prev.teAvg, true), cmpLabel)}
             </tr>
             <tr>
-              ${kpiCard('Revenus', money(cur.revenue), delta(cur.revenue, prev.revenue, true))}
-              ${kpiCard('Charges', money(cur.charges), delta(cur.charges, prev.charges, false))}
+              ${kpiCard('Régimes reçus', T(cur.recus) + ' T', delta(cur.recus, prev.recus, true), cmpLabel)}
+              ${kpiCard('Régimes traités', T(cur.traites) + ' T', delta(cur.traites, prev.traites, true), cmpLabel)}
             </tr>
             <tr>
-              ${kpiCard('Coût de revient', Math.round(cur.coutKg) + ' F/kg', delta(cur.coutKg, prev.coutKg, false))}
-              ${kpiCard('Marge brute', money(marge), delta(marge, prev.revenue - prev.charges, true))}
+              ${kpiCard('Revenus', money(cur.revenue), delta(cur.revenue, prev.revenue, true), cmpLabel)}
+              ${kpiCard('Charges', money(cur.charges), delta(cur.charges, prev.charges, false), cmpLabel)}
             </tr>
           </table>
         </td></tr>
 
         <!-- Graphique -->
         <tr><td style="padding:16px 32px 8px;">
-          <div style="font-size:13px; color:#8a8a8a; text-transform:uppercase; letter-spacing:.5px; font-family:Arial,sans-serif; margin-bottom:10px;">Production d'huile (T) par jour</div>
-          ${barChart(cur.dailyOil)}
+          <div style="font-size:13px; color:#8a8a8a; text-transform:uppercase; letter-spacing:.5px; font-family:Arial,sans-serif; margin-bottom:10px;">${chartTitle}</div>
+          ${barChart(chart)}
         </td></tr>
 
         ${alerts.length ? `
@@ -252,8 +293,8 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
         <!-- Pied -->
         <tr><td style="padding:16px 32px 28px; border-top:1px solid #eee;">
           <div style="font-size:12px; color:#a0a0a0; font-family:Arial,sans-serif; text-align:center;">
-            Rapport généré automatiquement chaque lundi · APO Dashboard<br>
-            Données du ${frDate(wStart)} au ${frDate(wEnd)} · ${cur.nbJours} jour(s) de production
+            Rapport ${kind} généré automatiquement · APO Dashboard<br>
+            ${periodLabel}
           </div>
         </td></tr>
 
@@ -268,14 +309,12 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
     if (testEmail) {
       recipients = [testEmail]
     } else {
-      // Config optionnelle : liste explicite dans tenant_config.config.report_recipients
       const { data: cfg } = await sb.from('tenant_config').select('config').eq('tenant_id', tenant_id).single()
       const override: string[] = cfg?.config?.report_recipients ?? []
 
       if (override.length) {
         recipients = override
       } else {
-        // Sinon : tous les users owner/manager du tenant → emails via admin API
         const { data: links } = await sb.from('user_tenants')
           .select('user_id, role').eq('tenant_id', tenant_id).in('role', ['owner', 'manager'])
         const ids = new Set((links ?? []).map((l: any) => l.user_id))
@@ -294,7 +333,8 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
     }
 
     // ── 6. Envoi via Resend ──────────────────────────────────────────────────
-    const subject = `APO — Rapport hebdo · ${T(cur.huile)}T huile · ${money(cur.revenue)}${alerts.length ? ` · ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}` : ''}`
+    const dateShort = new Date(wEnd + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    const subject = `APO ${dateShort} · ${T(cur.huile)}T huile · TE ${pct(cur.teAvg)}%${alerts.length ? ` · ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}` : ''}`
 
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -305,12 +345,12 @@ Règles : identifie la tendance dominante, mentionne le point le plus important 
     const resendData = await resendRes.json()
     if (!resendRes.ok) {
       console.error('Resend error:', resendData)
-      return new Response(JSON.stringify({ error: 'Envoi email échoué', detail: resendData }), { status: 502 })
+      return new Response(JSON.stringify({ error: 'Envoi email échoué', detail: resendData, recipients }), { status: 502 })
     }
 
     return new Response(JSON.stringify({
       sent: recipients.length, recipients, subject,
-      week: { wStart, wEnd }, alerts: alerts.map(a => a.msg), id: resendData.id,
+      period, window: { wStart, wEnd }, alerts: alerts.map(a => a.msg), id: resendData.id,
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 
   } catch (err) {
