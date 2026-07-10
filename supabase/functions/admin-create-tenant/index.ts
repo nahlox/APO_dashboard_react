@@ -16,10 +16,23 @@
 //   email_from: "Huilerie Bénin <rapport@domaine.com>",  // optionnel
 //   report_recipients: ["a@x.com"],         // optionnel, sinon owners/managers
 //   tank_capacite_kg: 500000,
-//   dropbox: { compta_dir: "/Client/Compta/2026", production_dir: "/Client/Production/2026" },
-//   sheets: { ... },                        // patterns de feuilles Excel, comme pour APO
+//   sources: [                              // description générique des sources de données du client
+//     {
+//       label: "Comptabilité",                // ce que la source alimente
+//       type: "excel_dropbox" | "google_sheets" | "logiciel_comptable" | "api" | "export_manuel" | "autre",
+//       emplacement: "/Client/Compta/2026",   // chemin, URL, lien Sheets...
+//       acces: "Token Dropbox partagé",       // référence de méthode d'accès (jamais de secret en clair)
+//       frequence: "quotidien" | "hebdomadaire" | "mensuel" | "ponctuel",
+//       notes: "détails utiles au développeur qui câblera l'import",
+//     },
+//   ],
 //   premier_utilisateur: { email: "proprietaire@client.com", role: "owner" }
 // }
+//
+// NB : `sources` documente l'organisation des données du client de façon générique (n'importe
+// quel type de source : Excel, logiciel de comptabilité, API...). Ça n'exécute rien tout seul —
+// l'import (ETL) reste à câbler par un développeur pour chaque source, en s'appuyant sur cette
+// config comme spécification. Voir ONBOARDING.md.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -65,7 +78,7 @@ Deno.serve(async (req) => {
       couleur_primaire = '#F28C28', couleur_secondaire = '#3FA34D',
       logo_url = null, email_from = null,
       report_recipients = [], tank_capacite_kg = null,
-      dropbox = {}, sheets = {}, fichiers = {}, skip_banque = [], skip_caisse = [],
+      sources = [],
       premier_utilisateur,
     } = body
 
@@ -96,7 +109,7 @@ Deno.serve(async (req) => {
     // ── 4. Créer la config ETL/rapports du tenant ────────────────────────────
     const { error: cfgErr } = await sb.from('tenant_config').upsert({
       tenant_id,
-      config: { report_recipients, tank_capacite_kg, dropbox, sheets, fichiers, skip_banque, skip_caisse },
+      config: { report_recipients, tank_capacite_kg, sources },
     })
     if (cfgErr) {
       await sb.from('tenants').delete().eq('id', tenant_id)

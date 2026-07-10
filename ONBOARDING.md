@@ -11,32 +11,50 @@ Checklist pour ajouter une nouvelle usine de transformation d'huile sur la plate
    - **Nom affiché**, pays, plan.
    - **Couleurs** de marque (primaire/secondaire) — appliquées automatiquement dans toute l'UI.
    - **Expéditeur email** (optionnel) — sinon expéditeur par défaut de la plateforme.
-   - **Destinataires des rapports**, capacité tank, dossiers Dropbox.
+   - **Destinataires des rapports**, capacité tank.
+   - **Sources de données** — une entrée par source (voir §2 ci-dessous), quel que soit le type :
+     Excel/Dropbox, logiciel de comptabilité, API, export manuel...
    - **Premier utilisateur** (email + rôle) — reçoit une invitation Supabase par email.
 4. Valider → crée `tenants`, `tenant_config`, invite l'utilisateur, l'associe dans `user_tenants`.
 
 Ça couvre : le schéma DB (`tenant_id` + RLS), l'auth, le branding dynamique de l'UI, et le
 destinataire/expéditeur des rapports email.
 
-## 2. Configurer l'ETL du client
+## 2. Sources de données — pas toujours Excel/Dropbox
 
-L'edge function ne configure que le strict nécessaire côté DB. Il reste à compléter
-`tenant_config.config` avec les détails propres au fichier source du client (patterns de
-feuilles Excel, noms de fichiers, filtres de libellés à exclure) — copier la structure de la
-config `apo` comme modèle (`SELECT config FROM tenant_config WHERE tenant_id = 'apo'`).
+Chaque huilerie cliente peut organiser ses données différemment : Excel/Dropbox comme APO, un
+logiciel de comptabilité (Sage, Odoo, QuickBooks...), une API existante, ou un simple export
+manuel envoyé par email. Le formulaire admin ne présuppose plus le format APO : pour chaque
+source, tu renseignes juste un **type**, un **emplacement**, un **moyen d'accès** (référence,
+jamais de mot de passe en clair) et des **notes** pour le développeur qui câblera l'import. Ça
+atterrit dans `tenant_config.config.sources` (tableau), consultable avec :
 
-Utiliser **`etl_cloud.py`** (pas `etl.py`, qui reste réservé au tenant historique `apo` sur Mac
-local) :
-
-```bash
-python etl_cloud.py --tenant huilerie_benin --dry   # simulation, vérifie le mapping
-python etl_cloud.py --tenant huilerie_benin         # import réel
+```sql
+SELECT config->'sources' FROM tenant_config WHERE tenant_id = 'huilerie_benin';
 ```
 
-Prérequis : un token Dropbox (`DROPBOX_TOKEN`/`DROPBOX_REFRESH_TOKEN`) avec accès au dossier du
-client. Programmer l'exécution récurrente (GitHub Actions, Railway, cron) — pas encore
-automatisé par défaut pour les nouveaux clients, à mettre en place au cas par cas selon le volume
-de clients onboardés.
+**Important : ce formulaire documente la source, il ne branche rien automatiquement.**
+Selon le type déclaré, le travail d'intégration diffère :
+
+- **Excel / Dropbox** : réutiliser directement `etl_cloud.py` (voir son docstring) — c'est le
+  même connecteur que celui d'APO, il suffit de renseigner les patterns de feuilles et noms de
+  fichiers dans `tenant_config.config` (comme pour `apo`, à copier comme modèle :
+  `SELECT config FROM tenant_config WHERE tenant_id = 'apo'`), puis :
+
+  ```bash
+  python etl_cloud.py --tenant huilerie_benin --dry   # simulation, vérifie le mapping
+  python etl_cloud.py --tenant huilerie_benin         # import réel
+  ```
+
+  Prérequis : un token Dropbox (`DROPBOX_TOKEN`/`DROPBOX_REFRESH_TOKEN`) avec accès au dossier du
+  client. Programmer l'exécution récurrente (GitHub Actions, Railway, cron) — pas encore
+  automatisé par défaut pour les nouveaux clients, à mettre en place au cas par cas.
+
+- **Logiciel de comptabilité / API / export manuel / autre** : il n'existe pas encore de
+  connecteur générique — écrire un script d'import dédié (Python, même structure que
+  `etl_cloud.py` : lire la source, écrire dans les tables avec le bon `tenant_id`). Les infos
+  saisies dans le formulaire (emplacement, accès, notes) servent de spécification de départ pour
+  ce script, pas d'automatisation prête à l'emploi.
 
 ## 3. Vérifications
 
