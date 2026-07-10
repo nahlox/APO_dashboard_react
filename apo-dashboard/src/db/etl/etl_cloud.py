@@ -6,6 +6,11 @@ Télécharge les fichiers Excel depuis l'API Dropbox → parse en mémoire → S
 Aucune dépendance au système local : tourne sur GitHub Actions, Railway, ou tout
 autre serveur — sans que le Mac soit allumé.
 
+>>> C'est LA voie à utiliser pour onboarder un nouveau client huilerie <<<
+etl.py (local, launchd) reste réservé au tenant 'apo' historique. Ce script n'a
+besoin que d'une ligne dans `tenant_config` (chemins Dropbox, patterns de feuilles,
+fichiers) par client — rien de plus à coder. Voir ONBOARDING.md à la racine du repo.
+
 Usage :
   python etl_cloud.py --tenant apo           # import complet pour le tenant 'apo'
   python etl_cloud.py --tenant apo --mois 4  # importe seulement avril

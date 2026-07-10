@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import logoApo from '../assets/logo_apo.png'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function SplashScreen({ onDone }) {
   const [phase, setPhase] = useState('in') // 'in' | 'hold' | 'out'
+  const { branding } = useAuth()
+  const nom = branding?.nom_affichage || 'APO'
+  const [tenantLabel, ...tenantRest] = nom.split(' — ')
+  const tenantSub = tenantRest.join(' — ') || 'Agro Palm Oil'
+  const logoSrc = branding?.logo_url || logoApo
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('hold'), 600)
@@ -60,21 +66,21 @@ export default function SplashScreen({ onDone }) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
       }}>
         <img
-          src={logoApo}
-          alt="APO"
+          src={logoSrc}
+          alt={tenantLabel}
           style={{ width: 52, height: 52, filter: 'drop-shadow(0 0 16px rgba(242,140,40,0.4))' }}
         />
         <div style={{
           fontFamily: "'Playfair Display', serif",
           fontSize: 18, fontWeight: 900, letterSpacing: '0.1em',
-          color: '#F28C28',
-        }}>A.P.O</div>
+          color: 'var(--gold, #F28C28)',
+        }}>{tenantLabel}</div>
         <div style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: 10, fontWeight: 400, letterSpacing: '0.22em',
           color: 'rgba(200,220,200,0.45)',
           textTransform: 'uppercase',
-        }}>Agro Palm Oil</div>
+        }}>{tenantSub}</div>
       </div>
 
       {/* Barre de chargement */}

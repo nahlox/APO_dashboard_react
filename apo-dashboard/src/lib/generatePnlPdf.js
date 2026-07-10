@@ -67,7 +67,10 @@ function hLine(doc, y, x1, x2, color = C.border, lw = 0.3) {
 }
 
 // ── Main export ───────────────────────────────────────────────
-export function generatePnlPdf(data, currency = 'FCFA') {
+export function generatePnlPdf(data, currency = 'FCFA', brandNom = 'APO — Agro Palm Oil') {
+  const [brandLabel, ...brandRest] = brandNom.split(' — ')
+  const brandSub  = brandRest.join(' — ') || 'Agro Palm Oil'
+  const brandSlug = brandLabel.replace(/[^A-Za-z0-9]+/g, '_')
   initFormatters(currency)
   const isUSD = currency === 'USD'
   const { pnl, kpis, _etl, alertes = [] } = data
@@ -97,16 +100,16 @@ export function generatePnlPdf(data, currency = 'FCFA') {
 
   // Nom société (texte sombre sur fond blanc)
   setFont(doc, 15, 'bold', C.dark)
-  doc.text('A.P.O', MARGIN + logoSize + 6, 14)
+  doc.text(brandLabel, MARGIN + logoSize + 6, 14)
   setFont(doc, 9, 'normal', C.textDim)
-  doc.text('Agro Palm Oil', MARGIN + logoSize + 6, 20.5)
+  doc.text(brandSub, MARGIN + logoSize + 6, 20.5)
   setFont(doc, 7.5, 'italic', [160, 160, 155])
   doc.text('Rapport financier confidentiel', MARGIN + logoSize + 6, 26)
 
   // Date (droite, texte sombre)
   setFont(doc, 7.5, 'normal', C.textDim)
   doc.text(`Genere le ${genDate} a ${genTime}`, W - MARGIN, 14, { align: 'right' })
-  doc.text('APO Dashboard 2026', W - MARGIN, 20.5, { align: 'right' })
+  doc.text(`${brandLabel} Dashboard ${annee}`, W - MARGIN, 20.5, { align: 'right' })
 
   // Ligne de séparation fine sous le header
   hLine(doc, 33, MARGIN, W - MARGIN, C.border, 0.4)
@@ -352,7 +355,7 @@ export function generatePnlPdf(data, currency = 'FCFA') {
     const pageY = doc.internal.pageSize.getHeight() - 7
     hLine(doc, pageY - 3, MARGIN, W - MARGIN, C.border, 0.25)
     setFont(doc, 6.5, 'normal', C.textDim)
-    doc.text(`APO Dashboard  |  Compte de resultat ${mois} ${annee}  |  Genere le ${genDate}`, MARGIN, pageY)
+    doc.text(`${brandLabel} Dashboard  |  Compte de resultat ${mois} ${annee}  |  Genere le ${genDate}`, MARGIN, pageY)
     doc.text(`Page ${p} / ${pageCount}`, W - MARGIN, pageY, { align: 'right' })
     if (partiel) {
       setFont(doc, 6.5, 'italic', C.red)
@@ -361,6 +364,6 @@ export function generatePnlPdf(data, currency = 'FCFA') {
   }
 
   // ── 7. Sauvegarde ────────────────────────────────────────────
-  const filename = `APO_PnL_${mois}_${annee}${isUSD ? '_USD' : ''}${partiel ? '_partiel' : ''}.pdf`
+  const filename = `${brandSlug}_PnL_${mois}_${annee}${isUSD ? '_USD' : ''}${partiel ? '_partiel' : ''}.pdf`
   doc.save(filename)
 }

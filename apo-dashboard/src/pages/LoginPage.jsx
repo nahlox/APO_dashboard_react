@@ -74,12 +74,12 @@ export default function LoginPage() {
             color: 'var(--gold)',
             fontSize: 26, fontWeight: 900,
             margin: 0, letterSpacing: 2,
-          }}>APO</h1>
+          }}>Palmeo</h1>
           <p style={{
             color: 'var(--text-dim)',
             fontSize: 11, margin: '6px 0 0',
             letterSpacing: '1.5px', textTransform: 'uppercase',
-          }}>Agro Palm Oil — Tableau de Bord</p>
+          }}>Tableau de Bord</p>
         </div>
 
         {/* Form */}

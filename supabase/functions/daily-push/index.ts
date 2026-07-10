@@ -28,6 +28,11 @@ Deno.serve(async (req) => {
     const { tenant_id = 'apo' } = await req.json().catch(() => ({}))
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
+    const { data: tenantRow } = await sb.from('tenants')
+      .select('nom_affichage').eq('id', tenant_id).single()
+    const brandNom     = tenantRow?.nom_affichage || 'APO — Agro Palm Oil'
+    const [brandLabel] = brandNom.split(' — ')
+
     const today = new Date().toISOString().slice(0, 10)
 
     // ── 1. Dernier jour de production ────────────────────────────────────────
@@ -158,7 +163,7 @@ Deno.serve(async (req) => {
       max_tokens: 100,
       messages: [{
         role: 'user',
-        content: `Tu es le système de reporting d'APO, une huilerie de palme en Côte d'Ivoire.
+        content: `Tu es le système de reporting de ${brandNom}, une huilerie de transformation d'huile de palme.
 Génère UNE SEULE ligne d'insight (max 100 caractères) sur les données du ${dateStr} :
 
 Aujourd'hui :
@@ -188,7 +193,7 @@ Règles :
 
     if (alerts.length > 0) {
       const alertLabel = hasUrgent ? '🚨' : '⚠️'
-      title = `${alertLabel} APO ${dateStr} — ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}`
+      title = `${alertLabel} ${brandLabel} ${dateStr} — ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}`
       bodyParts = [
         ...alerts.map(a => `${a.emoji} ${a.msg}`),
         `─`,
@@ -196,7 +201,7 @@ Règles :
         insight,
       ]
     } else {
-      title = `APO — ${dateStr}  ${teIcon} TE ${te}%`
+      title = `${brandLabel} — ${dateStr}  ${teIcon} TE ${te}%`
       bodyParts = [
         `Reçus ${recus}T • Traités ${traites}T • Huile ${huile}T`,
         `Citernes : ${citerneTxt}`,

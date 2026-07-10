@@ -10,6 +10,10 @@ export const useDashboardStore = create((set) => ({
   setActivePnlMonth: (key) => set({ activePnlMonth: key }),
   closePnlView:     ()    => set({ activePnlMonth: null }),
 
+  // Panneau admin (création de nouveaux tenants) — réservé aux super-admins
+  showAdmin: false,
+  setShowAdmin: (v) => set({ showAdmin: v }),
+
   // Plage de mois filtrée (null = tous les mois disponibles)
   monthRange: { from: null, to: null },
   setMonthRange: (from, to) => set({ monthRange: { from, to } }),

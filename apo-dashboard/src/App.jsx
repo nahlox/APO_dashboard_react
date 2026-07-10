@@ -11,6 +11,7 @@ import MonthRangeFilter from './components/layout/MonthRangeFilter'
 import MonthPanel from './pages/MonthPanel'
 import GlobalOverview from './pages/GlobalOverview'
 import PnLView from './pages/PnLView'
+import AdminPanel from './pages/AdminPanel'
 import { useMoisDB } from './hooks/useMoisDB'
 import { buildAggregateData, filterMonthsByRange } from './lib/aggregateData'
 import ChatBot from './components/chat/ChatBot'
@@ -65,7 +66,7 @@ function AppDashboard() {
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
 
-  const { activeTab, setMoisData, setEurRate, monthRange, activePnlMonth } = useDashboardStore()
+  const { activeTab, setMoisData, setEurRate, monthRange, activePnlMonth, showAdmin } = useDashboardStore()
 
   const { moisData: moisSupp } = useMoisDB()
 
@@ -124,7 +125,9 @@ function AppDashboard() {
           </div>
 
           <main>
-            {activePnlMonth ? (
+            {showAdmin ? (
+              <AdminPanel />
+            ) : activePnlMonth ? (
               <PnLView
                 key={activePnlMonth}
                 data={allMois.find(m => m.key === activePnlMonth)?.data}

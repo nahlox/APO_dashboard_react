@@ -4,6 +4,7 @@ import { generatePnlPdf } from '../lib/generatePnlPdf'
 import { useDashboardStore } from '../store/dashboardStore'
 import { monthFull } from '../lib/monthUtils'
 import { fmt } from '../lib/kpiEngine'
+import { useAuth } from '../contexts/AuthContext'
 
 /**
  * Vue dédiée au compte de résultat (P&L) d'un mois précis.
@@ -11,6 +12,8 @@ import { fmt } from '../lib/kpiEngine'
  */
 export default function PnLView({ data }) {
   const { currency, eurRate, closePnlView } = useDashboardStore()
+  const { branding } = useAuth()
+  const brandNom = branding?.nom_affichage || 'APO Agro Palm Oil'
   const printRef = useRef(null)
 
   // Scroll au top à l'ouverture
@@ -46,14 +49,14 @@ export default function PnLView({ data }) {
             Compte de Résultat — {titre}
           </h1>
           <div className="pnl-view-sub">
-            APO Agro Palm Oil · Présentation OHADA · {kpis.huileProduiteT} tonnes d'huile produites
+            {brandNom} · Présentation OHADA · {kpis.huileProduiteT} tonnes d'huile produites
           </div>
         </div>
 
         <div className="pnl-view-actions">
           <button
             className="pnl-view-download"
-            onClick={() => generatePnlPdf(data, currency)}
+            onClick={() => generatePnlPdf(data, currency, brandNom)}
             title="Télécharger le PDF"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

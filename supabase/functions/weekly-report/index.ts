@@ -141,6 +141,13 @@ Deno.serve(async (req) => {
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
     const today = iso(new Date())
 
+    // ── 0. Branding du tenant (nom, expéditeur email) ───────────────────────
+    const { data: tenantRow } = await sb.from('tenants')
+      .select('nom_affichage, email_from').eq('id', tenant_id).single()
+    const brandNom  = tenantRow?.nom_affichage || 'APO — Agro Palm Oil'
+    const [brandLabel] = brandNom.split(' — ')
+    const emailFrom = tenantRow?.email_from || REPORT_FROM
+
     // ── 1. Fenêtres de dates selon le mode ──────────────────────────────────
     let wStart: string, wEnd: string, pStart: string, pEnd: string
     let periodLabel: string, cmpLabel: string, chartTitle: string, kind: string
@@ -205,7 +212,7 @@ Deno.serve(async (req) => {
       max_tokens: 200,
       messages: [{
         role: 'user',
-        content: `Tu es le directeur analytique d'APO, une huilerie de palme en Côte d'Ivoire.
+        content: `Tu es le directeur analytique de ${brandNom}, une huilerie de transformation d'huile de palme.
 Rédige une synthèse de 2 phrases (français, professionnel et direct) pour le rapport ${kind} destiné à la direction.
 
 ${periodLabel} :
@@ -236,7 +243,7 @@ Règles : identifie la tendance dominante et le point le plus important. Pas de 
         <!-- En-tête -->
         <tr><td style="background:linear-gradient(135deg,#1f5a2a,#2e7d40); padding:28px 32px;">
           <div style="font-size:13px; color:#a9d9b3; font-family:Arial,sans-serif; letter-spacing:1px; text-transform:uppercase;">Rapport ${kind}</div>
-          <div style="font-size:24px; color:#ffffff; font-weight:700; font-family:Arial,sans-serif; margin-top:4px;">APO — Agro Palm Oil</div>
+          <div style="font-size:24px; color:#ffffff; font-weight:700; font-family:Arial,sans-serif; margin-top:4px;">${brandNom}</div>
           <div style="font-size:14px; color:#d4ecd9; font-family:Arial,sans-serif; margin-top:6px;">${periodLabel}</div>
         </td></tr>
 
@@ -288,7 +295,7 @@ Règles : identifie la tendance dominante et le point le plus important. Pas de 
         <!-- Pied -->
         <tr><td style="padding:16px 32px 28px; border-top:1px solid #eee;">
           <div style="font-size:12px; color:#a0a0a0; font-family:Arial,sans-serif; text-align:center;">
-            Rapport ${kind} généré automatiquement · APO Dashboard<br>
+            Rapport ${kind} généré automatiquement · ${brandLabel} Dashboard<br>
             ${periodLabel}
           </div>
         </td></tr>
@@ -329,12 +336,12 @@ Règles : identifie la tendance dominante et le point le plus important. Pas de 
 
     // ── 6. Envoi via Resend ──────────────────────────────────────────────────
     const dateShort = new Date(wEnd + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-    const subject = `APO ${dateShort} · ${T(cur.huile)}T huile · TE ${pct(cur.teAvg)}%${alerts.length ? ` · ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}` : ''}`
+    const subject = `${brandLabel} ${dateShort} · ${T(cur.huile)}T huile · TE ${pct(cur.teAvg)}%${alerts.length ? ` · ${alerts.length} alerte${alerts.length > 1 ? 's' : ''}` : ''}`
 
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: REPORT_FROM, to: recipients, subject, html }),
+      body: JSON.stringify({ from: emailFrom, to: recipients, subject, html }),
     })
 
     const resendData = await resendRes.json()

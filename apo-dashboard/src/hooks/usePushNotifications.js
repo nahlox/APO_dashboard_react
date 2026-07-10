@@ -9,7 +9,7 @@ function urlBase64ToUint8Array(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
 }
 
-export function usePushNotifications(supabase) {
+export function usePushNotifications(supabase, tenantId) {
   const sb = supabase
   // idle | requesting | subscribed | denied | unsupported
   const [status, setStatus] = useState('idle')
@@ -23,7 +23,7 @@ export function usePushNotifications(supabase) {
   }, [])
 
   const subscribe = async () => {
-    if (status === 'unsupported') return
+    if (status === 'unsupported' || !tenantId) return
     setStatus('requesting')
     try {
       const perm = await Notification.requestPermission()
@@ -39,7 +39,7 @@ export function usePushNotifications(supabase) {
       }
       const { endpoint, keys } = sub.toJSON()
       await sb.from('push_subscriptions').upsert(
-        { endpoint, p256dh: keys.p256dh, auth: keys.auth, tenant_id: 'apo' },
+        { endpoint, p256dh: keys.p256dh, auth: keys.auth, tenant_id: tenantId },
         { onConflict: 'endpoint' }
       )
       setStatus('subscribed')
