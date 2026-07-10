@@ -41,8 +41,8 @@ export default function Header({ allMois = [] }) {
     monthRange, setMonthRange,
     currency, moisData,
   } = useDashboardStore()
-  const { user, signOut } = useAuth()
-  const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase)
+  const { user, signOut, tenantId } = useAuth()
+  const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications(supabase, tenantId)
 
   const [avatarOpen, setAvatarOpen] = useState(false)
   const avatarRef = useRef(null)

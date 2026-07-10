@@ -12,19 +12,51 @@ const DB_URL        = Deno.env.get('SUPABASE_DB_URL')!
 
 const ai = new Anthropic({ apiKey: ANTHROPIC_KEY })
 
+// ── CORS : origines autorisées (défense en profondeur) ──────────
+// Configurer ALLOWED_ORIGINS (liste séparée par des virgules) dans les
+// secrets de la fonction. À défaut, on retombe sur '*' pour ne pas casser
+// les déploiements existants — mais la vraie protection reste le JWT.
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
+  .split(',').map(o => o.trim()).filter(Boolean)
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') || ''
+  const allow = ALLOWED_ORIGINS.length === 0
+    ? '*'
+    : (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+  return {
+    'Access-Control-Allow-Origin':  allow,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Vary':                         'Origin',
+  }
+}
+
 // ── Sécurité : tables/patterns interdits ────────────────────────
+// Défense en profondeur — la protection principale est l'exécution sous le
+// rôle `authenticated` avec RLS active (voir runQuery ci-dessous).
 const BLOCKED = [
   'user_tenants', 'auth.', 'pg_catalog', 'pg_stat', 'pg_class',
+  'pg_shadow', 'pg_authid', 'pg_roles', 'pg_user', 'pg_settings',
   'information_schema', 'storage.', 'vault.', 'pgsodium',
   'supabase_migrations', 'schema_migrations', 'secret', 'password',
-  'token', 'jwt', 'credential', 'private', 'key',
+  'passwd', 'token', 'jwt', 'credential', 'private', 'key',
 ]
 
+// Mots-clés d'écriture / de contrôle interdits (aucune requête de lecture
+// légitime n'en a besoin).
+const WRITE_KEYWORDS = /\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy|merge|call|do|vacuum|analyze|refresh|comment|reindex|cluster|lock|set|reset|prepare|execute|listen|notify|begin|commit|rollback|savepoint)\b/
+
 function validateSql(sql: string): string | null {
-  const lower = sql.toLowerCase().trim()
-  if (!lower.startsWith('select')) return 'Seules les requêtes SELECT sont autorisées.'
-  if (lower.includes(';') && lower.lastIndexOf(';') !== lower.trimEnd().length - 1)
-    return 'Une seule requête à la fois.'
+  let s = sql.trim()
+  // Retirer un unique point-virgule final éventuel
+  if (s.endsWith(';')) s = s.slice(0, -1).trim()
+  const lower = s.toLowerCase()
+
+  if (!/^(select|with)\b/.test(lower)) return 'Seules les requêtes SELECT sont autorisées.'
+  // Aucun point-virgule résiduel → interdit les requêtes empilées
+  if (s.includes(';')) return 'Une seule requête à la fois.'
+  if (WRITE_KEYWORDS.test(lower)) return 'Opération non autorisée : lecture seule.'
   for (const b of BLOCKED) {
     if (lower.includes(b)) return `Accès interdit : "${b}" est une ressource système.`
   }
@@ -153,29 +185,25 @@ Marge nette : excellent >25% | bon 15-25% | correct 5-15% | ⚠️ <5%
 
 // ── Handler ─────────────────────────────────────────────────────
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req)
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      },
-    })
+    return new Response(null, { headers: cors })
   }
 
   try {
     // 1. Auth JWT
     const auth = req.headers.get('Authorization')
-    if (!auth?.startsWith('Bearer ')) return json({ error: 'Non autorisé' }, 401)
+    if (!auth?.startsWith('Bearer ')) return json({ error: 'Non autorisé' }, 401, cors)
     const jwt = auth.slice(7)
 
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
     const { data: { user }, error: authErr } = await sb.auth.getUser(jwt)
-    if (authErr || !user) return json({ error: 'Token invalide' }, 401)
+    if (authErr || !user) return json({ error: 'Token invalide' }, 401, cors)
 
     // 2. Tenant (toujours depuis la DB)
     const { data: ut } = await sb.from('user_tenants').select('tenant_id').eq('user_id', user.id).single()
-    if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403)
+    if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403, cors)
     const tenantId = ut.tenant_id
 
     // 3. Périodes du tenant
@@ -186,18 +214,30 @@ Deno.serve(async (req) => {
       .order('annee').order('mois')
 
     const periodeIds = (periodes || []).map((p: any) => p.id)
-    if (!periodeIds.length) return json({ error: 'Aucune période disponible' }, 404)
+    if (!periodeIds.length) return json({ error: 'Aucune période disponible' }, 404, cors)
 
     // 4. Message
     const body = await req.json().catch(() => ({}))
     const message: string = (body.message || '').trim()
     const history: Array<{ role: string; content: string }> = body.history || []
-    if (!message) return json({ error: 'Message requis' }, 400)
+    if (!message) return json({ error: 'Message requis' }, 400, cors)
 
     const systemPrompt = buildSystemPrompt(tenantId, periodeIds, periodes || [])
 
     // 5. Boucle agentique (outil SQL + réponse finale)
     const sql = postgres(DB_URL, { max: 1, prepare: false, ssl: 'require' })
+
+    // Exécute la requête sous le rôle `authenticated` avec les claims JWT de
+    // l'utilisateur → les politiques RLS s'appliquent et l'isolation par tenant
+    // est garantie par la base, même si le modèle omet le filtre periode_id.
+    const jwtClaims = JSON.stringify({ sub: user.id, role: 'authenticated' })
+    const runQuery = (querySql: string) =>
+      sql.begin(async (tx) => {
+        await tx.unsafe('SET LOCAL ROLE authenticated')
+        await tx.unsafe("SELECT set_config('request.jwt.claims', $1, true)", [jwtClaims])
+        await tx.unsafe('SET LOCAL statement_timeout = 8000')
+        return await tx.unsafe(querySql)
+      })
 
     const messages: Anthropic.MessageParam[] = [
       ...history
@@ -247,11 +287,12 @@ Deno.serve(async (req) => {
               resultContent = `Erreur : ${valErr}`
             } else {
               try {
-                const rows = await sql.unsafe(querySql)
+                const rows = await runQuery(querySql)
                 const limited = Array.isArray(rows) ? rows.slice(0, 300) : rows
                 resultContent = JSON.stringify(limited)
               } catch (e) {
-                resultContent = `Erreur SQL : ${String(e)}`
+                console.error('chatbot sql error:', e)
+                resultContent = 'Erreur lors de l’exécution de la requête.'
               }
             }
 
@@ -289,22 +330,22 @@ Deno.serve(async (req) => {
 
     return new Response(readable, {
       headers: {
-        'Content-Type':                'text/event-stream',
-        'Cache-Control':               'no-cache',
-        'Access-Control-Allow-Origin': '*',
+        ...cors,
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
       },
     })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('chatbot error:', msg)
-    return json({ error: 'Erreur interne', detail: msg }, 500)
+    return json({ error: 'Erreur interne' }, 500, cors)
   }
 })
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
   })
 }

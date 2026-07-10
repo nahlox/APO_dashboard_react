@@ -8,6 +8,14 @@ const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const FRED_API_KEY     = Deno.env.get('FRED_API_KEY')!
 
+// Comparaison à temps constant (évite les attaques temporelles sur le secret)
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let r = 0
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return r === 0
+}
+
 Deno.serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,6 +25,16 @@ Deno.serve(async (req) => {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, content-type',
       },
+    })
+  }
+
+  // Autorisation : déclenchement interne (cron / admin) uniquement.
+  const authHeader = req.headers.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  if (!token || !safeEqual(token, SUPABASE_KEY)) {
+    return new Response(JSON.stringify({ ok: false, error: 'Non autorisé' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     })
   }
 

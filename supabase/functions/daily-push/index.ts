@@ -23,7 +23,26 @@ const fmt = (v: number) => v >= 1_000_000
 
 interface Alert { emoji: string; msg: string; level: 'urgent' | 'warn' | 'info' }
 
+// Comparaison à temps constant (évite les attaques temporelles sur le secret)
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let r = 0
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return r === 0
+}
+
 Deno.serve(async (req) => {
+  // Autorisation : fonction interne (cron). Seul un appelant détenant la clé
+  // service_role peut la déclencher. Sans ça, n'importe qui pourrait lire les
+  // données de production de n'importe quel tenant via le corps de la requête.
+  const authHeader = req.headers.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  if (!token || !safeEqual(token, SUPABASE_KEY)) {
+    return new Response(JSON.stringify({ error: 'Non autorisé' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
   try {
     const { tenant_id = 'apo' } = await req.json().catch(() => ({}))
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
