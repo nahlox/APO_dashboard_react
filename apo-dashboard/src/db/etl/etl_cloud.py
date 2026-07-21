@@ -91,6 +91,9 @@ LIBELLES_FR = {
 }
 
 def sheet_caisse_graine(mois):
+    overrides = CONFIG.get('caisse_graine_overrides', {})
+    if str(mois) in overrides:
+        return overrides[str(mois)]
     return CONFIG['sheet_patterns']['caisse_graine'].replace('{MOIS}', NOMS_MOIS_FR[mois])
 
 def sheet_production(mois):
