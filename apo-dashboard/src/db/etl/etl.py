@@ -119,9 +119,13 @@ def lire_sheet(path: Path, sheet_name: str):
 CHUNK_SIZE = 200  # max lignes par requête Supabase (évite les 502 sur grandes tables)
 
 def inserer(table: str, rows: list, periode_id: int | None = None, label: str = ""):
-    """Supprime les anciennes lignes du mois puis insère les nouvelles par blocs."""
+    """Supprime les anciennes lignes du mois puis insère les nouvelles par blocs.
+    Injecte tenant_id dans chaque ligne (les colonnes n'ont plus de DEFAULT 'apo')."""
     if not rows:
         return
+    if TENANT_ID:
+        for r in rows:
+            r.setdefault("tenant_id", TENANT_ID)
     if periode_id is not None:
         sb.table(table).delete().eq("periode_id", periode_id).execute()
     for i in range(0, len(rows), CHUNK_SIZE):
@@ -283,6 +287,9 @@ def parse_production_tous_mois(path: Path, periodes: dict):
 
         rows = list(rows_par_date.values())
         if rows:
+            if TENANT_ID:
+                for r in rows:
+                    r.setdefault("tenant_id", TENANT_ID)
             for i in range(0, len(rows), CHUNK_SIZE):
                 sb.table("production_journaliere").insert(rows[i:i + CHUNK_SIZE]).execute()
             log(f"  ✅ production_journaliere : {len(rows)} lignes insérées (mois {mois})")
@@ -497,7 +504,8 @@ def parse_achats_regimes(path: Path, mois: int, periode_id: int):
 
     for ref in refs_vues:
         sb.table("fournisseurs").upsert(
-            {"reference": ref, "nom": ref}, on_conflict="reference"
+            {"reference": ref, "nom": ref, "tenant_id": TENANT_ID},
+            on_conflict="reference,tenant_id"
         ).execute()
 
     # Map reference → id
@@ -569,14 +577,18 @@ def parse_pepiniere(path: Path):
 
     # Upsert clients
     for rc in rows_clients:
-        sb.table("clients").upsert(rc, on_conflict="reference").execute()
+        rc.setdefault("tenant_id", TENANT_ID)
+        sb.table("clients").upsert(rc, on_conflict="reference,tenant_id").execute()
 
-    # Récupère les ids clients et insère contrats
-    sb.table("contrats_pepiniere").delete().neq("id", 0).execute()  # vide la table
+    # Récupère les ids clients et insère contrats — UNIQUEMENT ceux du tenant
+    sb.table("contrats_pepiniere").delete().eq("tenant_id", TENANT_ID).execute()
     for rc in rows_contrats:
         nom_ref = rc.pop("_nom_client")
-        cl = sb.table("clients").select("id").eq("reference", nom_ref).single().execute()
+        cl = (sb.table("clients").select("id")
+                .eq("reference", nom_ref).eq("tenant_id", TENANT_ID)
+                .single().execute())
         rc["client_id"] = cl.data["id"] if cl.data else None
+        rc.setdefault("tenant_id", TENANT_ID)
         sb.table("contrats_pepiniere").insert(rc).execute()
 
     log(f"  ✅ contrats_pepiniere : {len(rows_contrats)} lignes insérées")
@@ -688,6 +700,7 @@ def recalculer_kpis(mois: int, periode_id: int):
         "pepiniere_encaisse_fcfa": pep_encaisse,
         "pepiniere_restant_fcfa":  pep_total - pep_encaisse,
         "mis_a_jour_le":           datetime.now().isoformat(),
+        **({"tenant_id": TENANT_ID} if TENANT_ID else {}),
     }
 
     sb.table("kpis_mensuels").upsert(payload, on_conflict="periode_id").execute()

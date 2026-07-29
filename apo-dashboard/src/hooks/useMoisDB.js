@@ -8,7 +8,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../db/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { STATIC_PROD_DAILY } from '../data/staticProdDaily'
 // ── Labels d'affichage (nomenclature OHADA — compte de résultat APO) ──────────
 export const CAT_LABELS = {
   fournitures_usine:   "Fournitures de l'usine et des bureaux",
@@ -124,8 +123,9 @@ const MOIS_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','
  * @param {array}    banqueRows        - banque_apo (SGCI + BDA, toutes catégories)
  * @param {number}   tankCapaciteKg
  * @param {array}    achatsRegimesRaw  - achats_regimes (date_achat, prix_kg, poids_kg)
+ * @param {object}   prodFallback      - production_fallback du tenant, indexé `annee-mois`
  */
-function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg = 1_300_000, achatsRegimesRaw = []) {
+export function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg = 1_300_000, achatsRegimesRaw = [], prodFallback = {}) {
   const huileProduiteT = Math.round((kpis.huile_produite_kg  || 0) / 1000)
   const huileVendueT   = Math.round((kpis.huile_vendue_kg    || 0) / 1000)
   const regRecusT      = Math.round((kpis.regimes_recus_kg   || 0) / 1000)
@@ -242,9 +242,10 @@ function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFourniss
   }
 
   // ── Graphiques journaliers ────────────────────────────────────────────────
-  // Fallback statique pour les mois antérieurs où production_journaliere est vide
+  // Fallback (table production_fallback, scopée tenant) pour les mois
+  // antérieurs où production_journaliere est vide
   const staticKey      = `${periode.annee}-${periode.mois}`
-  const staticFallback = STATIC_PROD_DAILY[staticKey]
+  const staticFallback = prodFallback[staticKey]
   const useFallback    = prodJour.length === 0 && staticFallback
 
   let grainesDailyLabels, grainesDailyKg, teDailyLabels, teDailyVals, stockHuileKg
@@ -633,6 +634,13 @@ export function useMoisDB() {
         const skipCaisse      = tenantConfig.skip_caisse      || ['TRANSFERT', 'VIREMENT', 'VERSEMENT', 'DEPOT', 'APPRO']
         const skipBanque      = tenantConfig.skip_banque      || ['APPRO CAISSE', 'COMPENSATION CHQ', 'VIREMENT', 'VERSEMENT', 'APPRO SARCI']
 
+        // Fallback production (graphiques journaliers + historique annuel) du tenant
+        const { data: fallbackRows } = await supabase
+          .from('production_fallback')
+          .select('annee, mois, payload')
+        const prodFallback = {}
+        for (const r of (fallbackRows || [])) prodFallback[`${r.annee}-${r.mois}`] = r.payload
+
         const { data: kpisRows, error: e1 } = await supabase
           .from('kpis_mensuels')
           .select('*, periodes(id, annee, mois, libelle)')
@@ -718,7 +726,7 @@ export function useMoisDB() {
           const idx = (periode.mois - 1) % 12
           return {
             key:    MOIS_KEYS[periode.mois - 1],
-            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg, achatsRegimesRaw),
+            data:   buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topFournisseurs, amortRows, banqueRows, tankCapaciteKg, achatsRegimesRaw, prodFallback),
             accent: ACCENTS[idx].accent,
             rgba:   ACCENTS[idx].rgba,
           }

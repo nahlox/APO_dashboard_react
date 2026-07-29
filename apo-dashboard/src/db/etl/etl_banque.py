@@ -356,10 +356,11 @@ if __name__ == '__main__':
 
         cur.execute("""
             INSERT INTO banque_apo
-                (periode_id, banque, date_operation, date_valeur, libelle, montant_fcfa, categorie)
-            VALUES (%s,%s,%s,%s,%s,%s,%s)
+                (periode_id, banque, date_operation, date_valeur, libelle, montant_fcfa, categorie, tenant_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         """, (pid, rec['banque'], rec['date_operation'], rec['date_valeur'],
-              rec['libelle'], rec['montant_fcfa'], rec['categorie']))
+              rec['libelle'], rec['montant_fcfa'], rec['categorie'],
+              os.environ.get('TENANT_ID', 'apo')))
         inserted += 1
 
         by_cat[rec['categorie']] = by_cat.get(rec['categorie'], 0) + rec['montant_fcfa']

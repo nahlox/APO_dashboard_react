@@ -31,7 +31,7 @@ self.addEventListener('push', event => {
   if (!event.data) return
   const { title, body, url } = event.data.json()
   event.waitUntil(
-    self.registration.showNotification(title ?? 'APO', {
+    self.registration.showNotification(title ?? 'Palmeo', {
       body:      body ?? '',
       icon:      '/icons/icon-192.png',
       badge:     '/icons/icon-192.png',
