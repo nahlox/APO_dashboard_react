@@ -167,6 +167,16 @@ Deno.serve(async (req) => {
     const [brandLabel] = brandNom.split(' — ')
     const emailFrom = tenantRow.email_from || REPORT_FROM
 
+    // Réglages par client (console admin → tenant_config)
+    const { data: cfgRow0 } = await sb.from('tenant_config')
+      .select('config').eq('tenant_id', tenant_id).maybeSingle()
+    const tCfg = cfgRow0?.config ?? {}
+    if (tCfg.rapport_email_actif === false && !testEmail) {
+      return new Response(JSON.stringify({ skipped: 'Rapport email désactivé pour ce client', tenant_id }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+    const SEUIL_TE_BAS = Number(tCfg.seuil_te_bas ?? 0.18)
+
     // ── 1. Fenêtres de dates selon le mode ──────────────────────────────────
     let wStart: string, wEnd: string, pStart: string, pEnd: string
     let periodLabel: string, cmpLabel: string, chartTitle: string, kind: string
@@ -214,8 +224,8 @@ Deno.serve(async (req) => {
     const alerts: Alert[] = []
     // Pas d'alerte sur une journée sans aucune donnée (évite les faux "−100%")
     const hasData = cur.nbJours > 0 && (cur.recus > 0 || cur.huile > 0)
-    if (hasData && cur.teAvg > 0 && cur.teAvg < 0.18)
-      alerts.push({ emoji: '🔴', msg: `Taux d'extraction faible : ${pct(cur.teAvg)}% (cible 20%)` })
+    if (hasData && cur.teAvg > 0 && cur.teAvg < SEUIL_TE_BAS)
+      alerts.push({ emoji: '🔴', msg: `Taux d'extraction faible : ${pct(cur.teAvg)}% (seuil ${pct(SEUIL_TE_BAS)}%)` })
     if (hasData && prev.recus > 0 && cur.recus < prev.recus * 0.60)
       alerts.push({ emoji: '📉', msg: `Régimes reçus en baisse de ${Math.round((1 - cur.recus / prev.recus) * 100)}% ${cmpLabel}` })
     if (period === 'weekly') {
@@ -330,8 +340,7 @@ Règles : identifie la tendance dominante et le point le plus important. Pas de 
     if (testEmail) {
       recipients = [testEmail]
     } else {
-      const { data: cfg } = await sb.from('tenant_config').select('config').eq('tenant_id', tenant_id).single()
-      const override: string[] = cfg?.config?.report_recipients ?? []
+      const override: string[] = tCfg.report_recipients ?? []
 
       if (override.length) {
         recipients = override

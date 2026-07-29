@@ -46,6 +46,15 @@ Deno.serve(async (req) => {
     const brandNom     = tenantRow.nom_affichage || tenant_id
     const [brandLabel] = brandNom.split(' — ')
 
+    // Réglages par client (console admin → tenant_config)
+    const { data: cfgRow } = await sb.from('tenant_config')
+      .select('config').eq('tenant_id', tenant_id).maybeSingle()
+    const cfg = cfgRow?.config ?? {}
+    if (cfg.push_actif === false) {
+      return new Response(JSON.stringify({ skipped: 'Push désactivé pour ce client', tenant_id }), { status: 200 })
+    }
+    const SEUIL_TE_CRITIQUE = Number(cfg.seuil_te_critique ?? 0.17)
+
     const today = new Date().toISOString().slice(0, 10)
 
     // ── 1. Dernier jour de production ────────────────────────────────────────
@@ -82,8 +91,8 @@ Deno.serve(async (req) => {
     const avgTE   = histRows.length
       ? histRows.reduce((s, r) => s + (r.taux_extraction ?? 0), 0) / histRows.length
       : teVal
-    if (teVal < 0.17) {
-      alerts.push({ emoji: '🔴', msg: `TE ${pct(teVal)}% sous seuil critique (17%)`, level: 'urgent' })
+    if (teVal < SEUIL_TE_CRITIQUE) {
+      alerts.push({ emoji: '🔴', msg: `TE ${pct(teVal)}% sous seuil critique (${pct(SEUIL_TE_CRITIQUE)}%)`, level: 'urgent' })
     } else if (teVal < avgTE * 0.90 && histRows.length >= 3) {
       alerts.push({ emoji: '🟡', msg: `TE ${pct(teVal)}% — chute vs moy. 7j (${pct(avgTE)}%)`, level: 'warn' })
     }
@@ -164,7 +173,7 @@ Deno.serve(async (req) => {
     const citerneTxt = citernes > 0 ? `${citernes}T sortis` : 'Aucune sortie'
 
     const hasUrgent = alerts.some(a => a.level === 'urgent')
-    const teIcon    = teVal >= 0.20 ? '✓' : teVal >= 0.17 ? '~' : '⚠'
+    const teIcon    = teVal >= SEUIL_TE_CRITIQUE * 1.18 ? '✓' : teVal >= SEUIL_TE_CRITIQUE ? '~' : '⚠'
 
     // ── 5. Insight IA (Claude Haiku) — contextuel selon alertes ─────────────
     const alertCtx = alerts.length > 0

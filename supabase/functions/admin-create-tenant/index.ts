@@ -42,17 +42,40 @@ const ANON_KEY      = Deno.env.get('SUPABASE_ANON_KEY')!
 
 const TENANT_ID_RE = /^[a-z0-9_]{2,32}$/
 
+// ── CORS (appelée depuis le navigateur : le préflight doit répondre) ────────
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
+  .split(',').map(s => s.trim()).filter(Boolean)
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allow = ALLOWED_ORIGINS.length === 0 ? '*'
+    : (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+  return {
+    'Access-Control-Allow-Origin':  allow,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+    'Vary': 'Origin',
+  }
+}
+function jsonCors(req: Request, data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+  })
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders(req) })
+  }
   try {
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Méthode non supportée' }), { status: 405 })
+      return jsonCors(req, { error: 'Méthode non supportée' }, 405)
     }
 
     // ── 1. Vérifier que l'appelant est authentifié et super-admin ───────────
     const authHeader = req.headers.get('Authorization') ?? ''
     const token = authHeader.replace('Bearer ', '')
     if (!token) {
-      return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
+      return jsonCors(req, { error: 'Non authentifié' }, 401)
     }
 
     const sbAsUser = createClient(SUPABASE_URL, ANON_KEY, {
@@ -60,7 +83,7 @@ Deno.serve(async (req) => {
     })
     const { data: { user }, error: userErr } = await sbAsUser.auth.getUser()
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Session invalide' }), { status: 401 })
+      return jsonCors(req, { error: 'Session invalide' }, 401)
     }
 
     const sb = createClient(SUPABASE_URL, SERVICE_KEY)
@@ -68,7 +91,7 @@ Deno.serve(async (req) => {
     const { data: superAdmin } = await sb
       .from('super_admins').select('user_id').eq('user_id', user.id).maybeSingle()
     if (!superAdmin) {
-      return new Response(JSON.stringify({ error: 'Réservé aux super-admins' }), { status: 403 })
+      return jsonCors(req, { error: 'Réservé aux super-admins' }, 403)
     }
 
     // ── 2. Valider le body ───────────────────────────────────────────────────
@@ -83,18 +106,18 @@ Deno.serve(async (req) => {
     } = body
 
     if (!tenant_id || !TENANT_ID_RE.test(tenant_id)) {
-      return new Response(JSON.stringify({ error: 'tenant_id invalide (minuscules, chiffres, underscore, 2-32 car.)' }), { status: 400 })
+      return jsonCors(req, { error: 'tenant_id invalide (minuscules, chiffres, underscore, 2-32 car.)' }, 400)
     }
     if (!nom_affichage) {
-      return new Response(JSON.stringify({ error: 'nom_affichage requis' }), { status: 400 })
+      return jsonCors(req, { error: 'nom_affichage requis' }, 400)
     }
     if (!premier_utilisateur?.email) {
-      return new Response(JSON.stringify({ error: 'premier_utilisateur.email requis' }), { status: 400 })
+      return jsonCors(req, { error: 'premier_utilisateur.email requis' }, 400)
     }
 
     const { data: existing } = await sb.from('tenants').select('id').eq('id', tenant_id).maybeSingle()
     if (existing) {
-      return new Response(JSON.stringify({ error: `Le tenant '${tenant_id}' existe déjà` }), { status: 409 })
+      return jsonCors(req, { error: `Le tenant '${tenant_id}' existe déjà` }, 409)
     }
 
     // ── 3. Créer le tenant ────────────────────────────────────────────────────
@@ -103,7 +126,7 @@ Deno.serve(async (req) => {
       couleur_primaire, couleur_secondaire, logo_url, email_from,
     })
     if (tenantErr) {
-      return new Response(JSON.stringify({ error: `Création tenant échouée: ${tenantErr.message}` }), { status: 500 })
+      return jsonCors(req, { error: `Création tenant échouée: ${tenantErr.message}` }, 500)
     }
 
     // ── 4. Créer la config ETL/rapports du tenant ────────────────────────────
@@ -113,7 +136,7 @@ Deno.serve(async (req) => {
     })
     if (cfgErr) {
       await sb.from('tenants').delete().eq('id', tenant_id)
-      return new Response(JSON.stringify({ error: `Création config échouée: ${cfgErr.message}` }), { status: 500 })
+      return jsonCors(req, { error: `Création config échouée: ${cfgErr.message}` }, 500)
     }
 
     // ── 5. Inviter le premier utilisateur (email d'invitation Supabase) ─────
@@ -121,7 +144,7 @@ Deno.serve(async (req) => {
     if (inviteErr) {
       await sb.from('tenant_config').delete().eq('tenant_id', tenant_id)
       await sb.from('tenants').delete().eq('id', tenant_id)
-      return new Response(JSON.stringify({ error: `Invitation échouée: ${inviteErr.message}` }), { status: 500 })
+      return jsonCors(req, { error: `Invitation échouée: ${inviteErr.message}` }, 500)
     }
 
     const { error: linkErr } = await sb.from('user_tenants').insert({
@@ -131,15 +154,13 @@ Deno.serve(async (req) => {
         ? premier_utilisateur.role : 'owner',
     })
     if (linkErr) {
-      return new Response(JSON.stringify({ error: `Association utilisateur échouée: ${linkErr.message}`, tenant_id }), { status: 500 })
+      return jsonCors(req, { error: `Association utilisateur échouée: ${linkErr.message}`, tenant_id }, 500)
     }
 
-    return new Response(JSON.stringify({ ok: true, tenant_id, invited_user: invited.user.email }), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonCors(req, { ok: true, tenant_id, invited_user: invited.user.email })
 
   } catch (err) {
     console.error('admin-create-tenant error:', err)
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
+    return jsonCors(req, { error: String(err) }, 500)
   }
 })

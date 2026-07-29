@@ -1,0 +1,213 @@
+/* ============================================================
+   Console opérateur Palmeo — design system autonome.
+   Volontairement différent du tableau de bord client : palette ardoise/indigo
+   neutre, jamais les couleurs de marque d'un tenant (qui sont injectées dans
+   --gold/--green par AuthContext). Tout est scopé sous .admin-root.
+   ============================================================ */
+
+.admin-root {
+  --a-bg:      #0E1116;
+  --a-panel:   #161A21;
+  --a-panel2:  #1D222B;
+  --a-border:  #2A303B;
+  --a-text:    #E7EAEE;
+  --a-dim:     #98A2B3;
+  --a-muted:   #6B7482;
+  --a-accent:  #6E8BFF;
+  --a-accent-soft: rgba(110, 139, 255, 0.14);
+  --a-ok:      #46C08A;
+  --a-warn:    #E0A33C;
+  --a-danger:  #E56B6B;
+  --a-radius:  10px;
+
+  min-height: 100vh;
+  background: var(--a-bg);
+  color: var(--a-text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-root {
+    --a-bg:     #F7F8FA;
+    --a-panel:  #FFFFFF;
+    --a-panel2: #F2F4F7;
+    --a-border: #E3E7ED;
+    --a-text:   #12161C;
+    --a-dim:    #5A6472;
+    --a-muted:  #8A93A0;
+    --a-accent: #3A5BD9;
+    --a-accent-soft: rgba(58, 91, 217, 0.10);
+    --a-ok:     #1E8A5C;
+    --a-warn:   #A9700F;
+    --a-danger: #C0453F;
+  }
+}
+
+.admin-root *, .admin-root *::before, .admin-root *::after { box-sizing: border-box; }
+
+/* global.css (dashboard client) est chargé dans le même bundle et centre `main`
+   en dessous de 900px. La console ne doit rien hériter de la feuille client. */
+.admin-root, .admin-root .admin-main, .admin-root main { text-align: left; }
+
+/* ── Structure ────────────────────────────────────────────── */
+.admin-shell { display: flex; min-height: 100vh; }
+
+.admin-side {
+  width: 232px; flex-shrink: 0; background: var(--a-panel);
+  border-right: 1px solid var(--a-border); padding: 20px 14px;
+  display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh;
+}
+.admin-brand { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+.admin-brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.admin-brand-sub  { font-size: 11px; color: var(--a-muted); text-transform: uppercase; letter-spacing: .08em; }
+
+.admin-nav { display: flex; flex-direction: column; gap: 2px; }
+.admin-nav-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--a-muted); padding: 0 8px; margin-bottom: 6px;
+}
+.admin-nav a {
+  display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+  border-radius: 8px; color: var(--a-dim); text-decoration: none; font-size: 13.5px;
+}
+.admin-nav a:hover { background: var(--a-panel2); color: var(--a-text); }
+.admin-nav a.active { background: var(--a-accent-soft); color: var(--a-accent); font-weight: 600; }
+
+.admin-side-footer { margin-top: auto; font-size: 12px; color: var(--a-muted); padding: 0 8px; }
+.admin-side-footer a { color: var(--a-dim); text-decoration: none; display: block; margin-top: 8px; }
+.admin-side-footer a:hover { color: var(--a-accent); }
+
+.admin-main { flex: 1; min-width: 0; padding: 26px 30px 80px; max-width: 1180px; }
+
+.admin-page-head { margin-bottom: 22px; }
+.admin-h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; }
+.admin-sub { font-size: 13px; color: var(--a-dim); margin: 0; }
+
+/* ── Cartes & grilles ─────────────────────────────────────── */
+.admin-card {
+  background: var(--a-panel); border: 1px solid var(--a-border);
+  border-radius: var(--a-radius); padding: 18px;
+}
+.admin-card + .admin-card { margin-top: 14px; }
+.admin-card-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--a-muted); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+.admin-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.admin-row  { display: flex; gap: 12px; flex-wrap: wrap; }
+.admin-row > * { flex: 1; min-width: 190px; }
+
+/* ── Stat ─────────────────────────────────────────────────── */
+.admin-stat { background: var(--a-panel2); border-radius: 8px; padding: 13px 15px; }
+.admin-stat-label { font-size: 11px; color: var(--a-muted); text-transform: uppercase; letter-spacing: .06em; }
+.admin-stat-value { font-size: 19px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.admin-stat-hint  { font-size: 11.5px; color: var(--a-dim); margin-top: 3px; }
+
+/* ── Formulaires ──────────────────────────────────────────── */
+.admin-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 2px; }
+.admin-label { font-size: 12.5px; color: var(--a-dim); font-weight: 500; }
+.admin-hint  { font-size: 11.5px; color: var(--a-muted); line-height: 1.45; }
+.admin-input, .admin-select, .admin-textarea {
+  background: var(--a-panel2); border: 1px solid var(--a-border); border-radius: 8px;
+  padding: 9px 11px; color: var(--a-text); font-size: 13.5px; width: 100%;
+  font-family: inherit; outline: none;
+}
+.admin-input:focus, .admin-select:focus, .admin-textarea:focus {
+  border-color: var(--a-accent); box-shadow: 0 0 0 3px var(--a-accent-soft);
+}
+.admin-input:disabled { opacity: .55; cursor: not-allowed; }
+.admin-textarea { resize: vertical; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12.5px; line-height: 1.55; }
+.admin-input[type="color"] { padding: 3px; height: 38px; cursor: pointer; }
+.admin-check { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--a-text); cursor: pointer; padding: 4px 0; }
+.admin-check input { width: 16px; height: 16px; accent-color: var(--a-accent); cursor: pointer; }
+
+/* ── Boutons ──────────────────────────────────────────────── */
+.admin-btn {
+  background: var(--a-accent); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  font-family: inherit; white-space: nowrap;
+}
+.admin-btn:disabled { opacity: .55; cursor: default; }
+.admin-btn-ghost {
+  background: transparent; color: var(--a-dim); border: 1px solid var(--a-border);
+}
+.admin-btn-ghost:hover { color: var(--a-text); border-color: var(--a-muted); }
+.admin-btn-danger { background: transparent; color: var(--a-danger); border: 1px solid transparent; padding: 6px 10px; font-size: 12.5px; }
+.admin-btn-danger:hover { border-color: var(--a-danger); }
+
+/* ── Badges ───────────────────────────────────────────────── */
+.admin-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600;
+  padding: 3px 9px; border-radius: 20px; background: var(--a-panel2); color: var(--a-dim);
+  white-space: nowrap;
+}
+.admin-badge.ok     { background: rgba(70,192,138,.14);  color: var(--a-ok); }
+.admin-badge.warn   { background: rgba(224,163,60,.14);  color: var(--a-warn); }
+.admin-badge.danger { background: rgba(229,107,107,.14); color: var(--a-danger); }
+.admin-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* ── Listes clients ───────────────────────────────────────── */
+.admin-client-card {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--a-panel); border: 1px solid var(--a-border);
+  border-radius: var(--a-radius); padding: 16px 18px; margin-bottom: 10px;
+}
+.admin-client-card:hover { border-color: var(--a-accent); }
+.admin-client-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.admin-client-avatar {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff;
+}
+.admin-client-name { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.admin-client-id { font-size: 11.5px; color: var(--a-muted); font-family: 'DM Mono', monospace; }
+.admin-client-metrics { display: flex; gap: 22px; flex-wrap: wrap; }
+.admin-metric-label { font-size: 10.5px; color: var(--a-muted); text-transform: uppercase; letter-spacing: .05em; }
+.admin-metric-value { font-size: 13.5px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* ── Onglets ──────────────────────────────────────────────── */
+.admin-tabs { display: flex; gap: 3px; border-bottom: 1px solid var(--a-border); margin-bottom: 22px; overflow-x: auto; }
+.admin-tabs a {
+  padding: 10px 15px; font-size: 13.5px; color: var(--a-dim); text-decoration: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.admin-tabs a:hover { color: var(--a-text); }
+.admin-tabs a.active { color: var(--a-accent); border-bottom-color: var(--a-accent); font-weight: 600; }
+
+/* ── Tableaux ─────────────────────────────────────────────── */
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--a-muted); font-weight: 600; padding: 0 12px 9px; white-space: nowrap;
+}
+.admin-table td { padding: 11px 12px; border-top: 1px solid var(--a-border); vertical-align: middle; }
+.admin-table tr:hover td { background: var(--a-panel2); }
+.admin-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12.5px; }
+.admin-num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ── Divers ───────────────────────────────────────────────── */
+.admin-banner { border-radius: 8px; padding: 12px 14px; font-size: 13px; margin: 12px 0; border: 1px solid; }
+.admin-banner.ok    { background: rgba(70,192,138,.10);  border-color: var(--a-ok);     color: var(--a-text); }
+.admin-banner.error { background: rgba(229,107,107,.10); border-color: var(--a-danger); color: var(--a-text); }
+.admin-banner.info  { background: var(--a-accent-soft);  border-color: var(--a-accent); color: var(--a-text); }
+
+.admin-empty { text-align: center; padding: 44px 20px; color: var(--a-muted); font-size: 13.5px; }
+.admin-loading { padding: 30px; color: var(--a-muted); font-size: 13.5px; }
+.admin-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.admin-secret {
+  font-family: 'DM Mono', monospace; font-size: 12.5px; background: var(--a-panel2);
+  border: 1px dashed var(--a-warn); border-radius: 8px; padding: 12px; word-break: break-all;
+  color: var(--a-text); margin-top: 8px;
+}
+
+@media (max-width: 860px) {
+  .admin-shell { flex-direction: column; }
+  .admin-side {
+    width: 100%; height: auto; position: static; flex-direction: row;
+    align-items: center; gap: 16px; padding: 12px 14px; overflow-x: auto;
+  }
+  .admin-nav { flex-direction: row; }
+  .admin-nav-label, .admin-side-footer { display: none; }
+  .admin-main { padding: 18px 14px 60px; }
+}
