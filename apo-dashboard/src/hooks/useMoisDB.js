@@ -182,7 +182,12 @@ export function buildData(kpis, periode, prodJour, ventesHuile, caisseRows, topF
   // BIC séparé (impôt sur bénéfices — après résultat d'exploitation)
   const BIC_LABEL = 'BIC (acompte trimestriel)'
   const bicMt     = taxByLabel[BIC_LABEL] || 0
-  const taxesExpl = Object.entries(taxByLabel).filter(([l]) => l !== BIC_LABEL)
+  // Tri par montant décroissant : sans ça l'ordre des lignes d'impôts suivait
+  // l'ordre de retour des lignes en base (non garanti) et le P&L pouvait
+  // réafficher ses taxes dans un ordre différent d'un chargement à l'autre.
+  const taxesExpl = Object.entries(taxByLabel)
+    .filter(([l]) => l !== BIC_LABEL)
+    .sort((a, b) => b[1] - a[1])
   const totalTaxesExpl = taxesExpl.reduce((s, [, v]) => s + v, 0)
 
   const charges = Object.values(parCat).reduce((s, v) => s + v, 0)
