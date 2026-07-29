@@ -7,17 +7,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const FRED_API_KEY     = Deno.env.get('FRED_API_KEY')!
+const CRON_SECRET      = Deno.env.get('CRON_SECRET') ?? ''
 
 Deno.serve(async (req) => {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      },
-    })
+  // Réservé au cron — jamais appelé depuis le navigateur (le front lit la table prix_cpo)
+  if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
+    return new Response(JSON.stringify({ error: 'Non autorisé' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } })
   }
 
   try {

@@ -12,6 +12,19 @@ const DB_URL        = Deno.env.get('SUPABASE_DB_URL')!
 
 const ai = new Anthropic({ apiKey: ANTHROPIC_KEY })
 
+// ── CORS : origines autorisées (ALLOWED_ORIGINS="https://app.palmeo.co,...") ──
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
+  .split(',').map(s => s.trim()).filter(Boolean)
+
+function corsOrigin(req: Request): string {
+  const origin = req.headers.get('origin') ?? ''
+  if (ALLOWED_ORIGINS.length === 0) return '*'          // non configuré → comportement historique
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+}
+
+// Quota PALMAI : messages max par utilisateur et par jour
+const DAILY_LIMIT = 60
+
 // ── Sécurité : tables/patterns interdits ────────────────────────
 const BLOCKED = [
   'user_tenants', 'auth.', 'pg_catalog', 'pg_stat', 'pg_class',
@@ -153,10 +166,12 @@ Marge nette : excellent >25% | bon 15-25% | correct 5-15% | ⚠️ <5%
 
 // ── Handler ─────────────────────────────────────────────────────
 Deno.serve(async (req) => {
+  const origin = corsOrigin(req)
+
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
-        'Access-Control-Allow-Origin':  '*',
+        'Access-Control-Allow-Origin':  origin,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, content-type',
       },
@@ -166,16 +181,26 @@ Deno.serve(async (req) => {
   try {
     // 1. Auth JWT
     const auth = req.headers.get('Authorization')
-    if (!auth?.startsWith('Bearer ')) return json({ error: 'Non autorisé' }, 401)
+    if (!auth?.startsWith('Bearer ')) return json({ error: 'Non autorisé' }, 401, origin)
     const jwt = auth.slice(7)
 
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
     const { data: { user }, error: authErr } = await sb.auth.getUser(jwt)
-    if (authErr || !user) return json({ error: 'Token invalide' }, 401)
+    if (authErr || !user) return json({ error: 'Token invalide' }, 401, origin)
+
+    // 1b. Quota journalier (protection coûts / abus)
+    const today = new Date().toISOString().slice(0, 10)
+    const { data: usage } = await sb.from('chatbot_usage')
+      .select('nb').eq('user_id', user.id).eq('jour', today).maybeSingle()
+    if ((usage?.nb ?? 0) >= DAILY_LIMIT) {
+      return json({ error: `Quota quotidien atteint (${DAILY_LIMIT} messages). Réessayez demain.` }, 429, origin)
+    }
+    await sb.from('chatbot_usage')
+      .upsert({ user_id: user.id, jour: today, nb: (usage?.nb ?? 0) + 1 })
 
     // 2. Tenant (toujours depuis la DB)
     const { data: ut } = await sb.from('user_tenants').select('tenant_id').eq('user_id', user.id).single()
-    if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403)
+    if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403, origin)
     const tenantId = ut.tenant_id
 
     // 3. Périodes du tenant
@@ -186,13 +211,13 @@ Deno.serve(async (req) => {
       .order('annee').order('mois')
 
     const periodeIds = (periodes || []).map((p: any) => p.id)
-    if (!periodeIds.length) return json({ error: 'Aucune période disponible' }, 404)
+    if (!periodeIds.length) return json({ error: 'Aucune période disponible' }, 404, origin)
 
     // 4. Message
     const body = await req.json().catch(() => ({}))
     const message: string = (body.message || '').trim()
     const history: Array<{ role: string; content: string }> = body.history || []
-    if (!message) return json({ error: 'Message requis' }, 400)
+    if (!message) return json({ error: 'Message requis' }, 400, origin)
 
     const systemPrompt = buildSystemPrompt(tenantId, periodeIds, periodes || [])
 
@@ -247,7 +272,18 @@ Deno.serve(async (req) => {
               resultContent = `Erreur : ${valErr}`
             } else {
               try {
-                const rows = await sql.unsafe(querySql)
+                // ── Exécution sous RLS ─────────────────────────────────────
+                // La requête tourne avec le rôle `authenticated` et les claims
+                // JWT de l'utilisateur : les policies RLS (tenant_id =
+                // get_tenant_id()) s'appliquent au niveau Postgres. L'isolation
+                // tenant ne dépend plus du prompt ni du SQL généré par le modèle.
+                const claims = JSON.stringify({ sub: user.id, role: 'authenticated' })
+                const rows = await sql.begin(async (tx) => {
+                  await tx.unsafe(`SELECT set_config('request.jwt.claims', '${claims.replace(/'/g, "''")}', true)`)
+                  await tx.unsafe(`SET LOCAL ROLE authenticated`)
+                  await tx.unsafe(`SET LOCAL statement_timeout = '5s'`)
+                  return await tx.unsafe(querySql)
+                })
                 const limited = Array.isArray(rows) ? rows.slice(0, 300) : rows
                 resultContent = JSON.stringify(limited)
               } catch (e) {
@@ -291,20 +327,21 @@ Deno.serve(async (req) => {
       headers: {
         'Content-Type':                'text/event-stream',
         'Cache-Control':               'no-cache',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': origin,
       },
     })
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('chatbot error:', msg)
-    return json({ error: 'Erreur interne', detail: msg }, 500)
+    // Ne jamais renvoyer le détail interne au client
+    return json({ error: 'Erreur interne' }, 500, corsOrigin(req))
   }
 })
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, origin = '*') {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
   })
 }

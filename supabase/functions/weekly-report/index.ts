@@ -131,12 +131,27 @@ function kpiCard(label: string, value: string, d: { txt: string; color: string }
     </td>`
 }
 
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+
 Deno.serve(async (req) => {
   try {
+    // ── Auth : réservé au cron (header x-cron-secret) ───────────────────────
+    // Sans ça, n'importe qui avec la clé anon publique pouvait faire envoyer
+    // le rapport financier de n'importe quel tenant à n'importe quelle adresse.
+    if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
+      return new Response(JSON.stringify({ error: 'Non autorisé' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } })
+    }
+
     const body = await req.json().catch(() => ({}))
-    const tenant_id: string = body.tenant_id ?? 'apo'
+    const tenant_id: string | undefined = body.tenant_id
     const period: 'daily' | 'weekly' = body.period === 'weekly' ? 'weekly' : 'daily'
     const testEmail: string | undefined = body.test_email  // envoi test à une seule adresse
+
+    if (!tenant_id) {
+      return new Response(JSON.stringify({ error: 'tenant_id requis' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } })
+    }
 
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
     const today = iso(new Date())
@@ -144,9 +159,13 @@ Deno.serve(async (req) => {
     // ── 0. Branding du tenant (nom, expéditeur email) ───────────────────────
     const { data: tenantRow } = await sb.from('tenants')
       .select('nom_affichage, email_from').eq('id', tenant_id).single()
-    const brandNom  = tenantRow?.nom_affichage || 'APO — Agro Palm Oil'
+    if (!tenantRow) {
+      return new Response(JSON.stringify({ error: `Tenant '${tenant_id}' introuvable` }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } })
+    }
+    const brandNom  = tenantRow.nom_affichage || tenant_id
     const [brandLabel] = brandNom.split(' — ')
-    const emailFrom = tenantRow?.email_from || REPORT_FROM
+    const emailFrom = tenantRow.email_from || REPORT_FROM
 
     // ── 1. Fenêtres de dates selon le mode ──────────────────────────────────
     let wStart: string, wEnd: string, pStart: string, pEnd: string

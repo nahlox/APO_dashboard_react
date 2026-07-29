@@ -23,14 +23,27 @@ const fmt = (v: number) => v >= 1_000_000
 
 interface Alert { emoji: string; msg: string; level: 'urgent' | 'warn' | 'info' }
 
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+
 Deno.serve(async (req) => {
   try {
-    const { tenant_id = 'apo' } = await req.json().catch(() => ({}))
+    // ── Auth : réservé au cron (header x-cron-secret) ────────────────────────
+    if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
+      return new Response(JSON.stringify({ error: 'Non autorisé' }), { status: 401 })
+    }
+
+    const { tenant_id } = await req.json().catch(() => ({}))
+    if (!tenant_id) {
+      return new Response(JSON.stringify({ error: 'tenant_id requis' }), { status: 400 })
+    }
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
     const { data: tenantRow } = await sb.from('tenants')
       .select('nom_affichage').eq('id', tenant_id).single()
-    const brandNom     = tenantRow?.nom_affichage || 'APO — Agro Palm Oil'
+    if (!tenantRow) {
+      return new Response(JSON.stringify({ error: `Tenant '${tenant_id}' introuvable` }), { status: 404 })
+    }
+    const brandNom     = tenantRow.nom_affichage || tenant_id
     const [brandLabel] = brandNom.split(' — ')
 
     const today = new Date().toISOString().slice(0, 10)

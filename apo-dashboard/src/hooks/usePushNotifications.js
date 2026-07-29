@@ -38,8 +38,9 @@ export function usePushNotifications(supabase, tenantId) {
         })
       }
       const { endpoint, keys } = sub.toJSON()
+      const { data: { user } } = await sb.auth.getUser()
       await sb.from('push_subscriptions').upsert(
-        { endpoint, p256dh: keys.p256dh, auth: keys.auth, tenant_id: tenantId },
+        { endpoint, p256dh: keys.p256dh, auth: keys.auth, tenant_id: tenantId, user_id: user?.id },
         { onConflict: 'endpoint' }
       )
       setStatus('subscribed')
