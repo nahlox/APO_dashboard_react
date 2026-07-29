@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
@@ -37,6 +38,16 @@ Chart.defaults.font.size   = 13
 export default function App() {
   const { user } = useAuth()
   const { theme } = useDashboardStore()
+  const navigate = useNavigate()
+
+  // Un lien d'invitation ouvre une session à lui seul (comme un lien de
+  // réinitialisation). Tant que l'utilisateur n'a pas choisi de mot de passe,
+  // on le renvoie sur la page d'activation : sinon il pourrait utiliser
+  // l'application indéfiniment sans identifiant propre.
+  const mdpDefini = user?.user_metadata?.mdp_defini === true
+  useEffect(() => {
+    if (user && !mdpDefini) navigate('/bienvenue', { replace: true })
+  }, [user, mdpDefini, navigate])
 
   // Apply theme class at the root so it works on login page too
   useEffect(() => {

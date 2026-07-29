@@ -60,7 +60,14 @@ export default function SetPassword() {
     if (pwd !== pwd2)   return setErreur('Les deux mots de passe ne correspondent pas.')
 
     setBusy(true)
-    const { error } = await supabase.auth.updateUser({ password: pwd })
+    // `mdp_defini` marque que l'utilisateur a bien choisi son mot de passe :
+    // tant qu'il est absent, l'accès au tableau de bord renvoie ici. Sans ce
+    // marqueur, un simple clic sur le lien d'invitation suffisait à utiliser
+    // l'application sans jamais définir de mot de passe.
+    const { error } = await supabase.auth.updateUser({
+      password: pwd,
+      data: { mdp_defini: true },
+    })
     setBusy(false)
     if (error) return setErreur(error.message)
 

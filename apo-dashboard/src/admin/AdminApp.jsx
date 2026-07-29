@@ -18,18 +18,34 @@ export default function AdminApp() {
   if (user === undefined) return null
   if (user === null) return <LoginPage />
 
+  // Le statut super-admin est chargé de façon asynchrone : tant qu'on ne l'a pas,
+  // on n'affiche pas « accès refusé » (sinon l'écran clignote à chaque ouverture).
+  if (isSuperAdmin === null || isSuperAdmin === undefined) {
+    return <div className="admin-root"><div className="admin-loading">Chargement…</div></div>
+  }
+
   if (!isSuperAdmin) {
     return (
       <div className="admin-root">
         <div className="admin-main" style={{ maxWidth: 520, margin: '10vh auto' }}>
           <div className="admin-card">
             <h1 className="admin-h1">Accès réservé</h1>
-            <p className="admin-sub" style={{ marginBottom: 18 }}>
+            <p className="admin-sub" style={{ marginBottom: 6 }}>
               Cette console est réservée aux administrateurs de la plateforme.
             </p>
-            <Link to="/" className="admin-btn" style={{ textDecoration: 'none' }}>
-              Aller au tableau de bord
-            </Link>
+            {/* Indiquer le compte connecté : cliquer un lien d'invitation
+                remplace la session courante, ce qui prête facilement à confusion. */}
+            <p className="admin-sub" style={{ marginBottom: 18 }}>
+              Vous êtes connecté en tant que <strong>{user.email}</strong>.
+              Si ce n'est pas votre compte administrateur, déconnectez-vous puis
+              reconnectez-vous avec celui-ci.
+            </p>
+            <div className="admin-actions" style={{ marginTop: 0 }}>
+              <button className="admin-btn" onClick={signOut}>Se déconnecter</button>
+              <Link to="/" className="admin-btn admin-btn-ghost" style={{ textDecoration: 'none' }}>
+                Aller au tableau de bord
+              </Link>
+            </div>
           </div>
         </div>
       </div>
