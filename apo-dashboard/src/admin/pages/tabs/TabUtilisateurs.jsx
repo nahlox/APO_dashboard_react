@@ -27,23 +27,46 @@ export default function TabUtilisateurs({ tenantId }) {
 
   useEffect(() => { setUsers(null); loadUsers() }, [tenantId])
 
+  /** Envoie (ou renvoie) l'email d'invitation Palmeo via Resend. */
+  async function envoyerInvitation({ destinataire, roleChoisi, renvoyer }) {
+    const { data: { session } } = await supabase.auth.getSession()
+    const { data, error } = await supabase.functions.invoke('admin-invite-user', {
+      body: { tenant_id: tenantId, email: destinataire, role: roleChoisi, renvoyer },
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    })
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
+    return data
+  }
+
   async function invite(e) {
     e.preventDefault()
     setBusy(true); setBanner(null)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const { data, error } = await supabase.functions.invoke('admin-invite-user', {
-        body: { tenant_id: tenantId, email: email.trim(), role },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
+      const data = await envoyerInvitation({ destinataire: email.trim(), roleChoisi: role })
       await logAction('user_invite', tenantId, { email: data.email, role, invited: data.invited })
-      setBanner({ ok: data.invited
-        ? `Invitation envoyée à ${data.email}. Le client définit son mot de passe depuis l'email.`
-        : `${data.email} a été rattaché à ce client (compte déjà existant).` })
+      if (data.email_erreur) {
+        setBanner({ error: `${data.email} a bien été rattaché, mais l'email n'a pas pu être envoyé : ${data.email_erreur}` })
+      } else if (data.lien_envoye) {
+        setBanner({ ok: `Invitation envoyée à ${data.email}. Il ou elle crée son mot de passe depuis l'email, puis peut se connecter.` })
+      } else {
+        setBanner({ ok: `${data.email} a déjà un compte actif : un email l'informe de son nouvel accès.` })
+      }
       setEmail('')
       await loadUsers()
+    } catch (err) {
+      setBanner({ error: err.message })
+    } finally { setBusy(false) }
+  }
+
+  async function renvoyer(u) {
+    setBusy(true); setBanner(null)
+    try {
+      const data = await envoyerInvitation({ destinataire: u.email, roleChoisi: u.role, renvoyer: true })
+      await logAction('user_invite_resend', tenantId, { email: u.email })
+      setBanner(data.email_erreur
+        ? { error: `Envoi échoué : ${data.email_erreur}` }
+        : { ok: `Nouveau lien d'activation envoyé à ${u.email} (valable 24 h).` })
     } catch (err) {
       setBanner({ error: err.message })
     } finally { setBusy(false) }
@@ -97,7 +120,12 @@ export default function TabUtilisateurs({ tenantId }) {
                     <td style={{ color: 'var(--a-dim)' }}>
                       {u.last_sign_in_at ? dateFR(u.last_sign_in_at) : 'Jamais'}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {!u.last_sign_in_at && (
+                        <button className="admin-btn admin-btn-ghost" disabled={busy}
+                                style={{ padding: '5px 10px', fontSize: 12.5, marginRight: 6 }}
+                                onClick={() => renvoyer(u)}>Renvoyer</button>
+                      )}
                       <button className="admin-btn admin-btn-danger"
                               onClick={() => removeUser(u.user_id, u.email)}>Retirer</button>
                     </td>
@@ -127,8 +155,9 @@ export default function TabUtilisateurs({ tenantId }) {
               {busy ? 'Envoi…' : "Envoyer l'invitation"}
             </button>
             <span className="admin-hint">
-              L'utilisateur reçoit un email pour définir son mot de passe. S'il a déjà un compte,
-              il est simplement rattaché à ce client.
+              L'utilisateur reçoit un email Palmeo (via Resend) l'invitant à créer son mot de
+              passe, puis se connecte normalement. S'il possède déjà un compte actif, il est
+              rattaché à ce client et simplement informé par email.
             </span>
           </div>
         </form>

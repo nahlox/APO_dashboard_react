@@ -139,25 +139,33 @@ Deno.serve(async (req) => {
       return jsonCors(req, { error: `Création config échouée: ${cfgErr.message}` }, 500)
     }
 
-    // ── 5. Inviter le premier utilisateur (email d'invitation Supabase) ─────
-    const { data: invited, error: inviteErr } = await sb.auth.admin.inviteUserByEmail(premier_utilisateur.email)
-    if (inviteErr) {
+    // ── 5. Inviter le premier utilisateur ────────────────────────────────────
+    // Délégué à admin-invite-user : un seul endroit gère la génération du lien
+    // et l'email Palmeo (Resend). On relaie le JWT de l'appelant, qui y est
+    // revalidé comme super-admin.
+    const inviteRes = await fetch(`${SUPABASE_URL}/functions/v1/admin-invite-user`, {
+      method: 'POST',
+      headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id,
+        email: premier_utilisateur.email,
+        role: premier_utilisateur.role === 'manager' || premier_utilisateur.role === 'viewer'
+          ? premier_utilisateur.role : 'owner',
+      }),
+    })
+    const inviteData = await inviteRes.json().catch(() => ({}))
+    if (!inviteRes.ok || inviteData?.error) {
+      // Le tenant n'a aucun utilisateur : on annule pour ne pas laisser d'orphelin.
       await sb.from('tenant_config').delete().eq('tenant_id', tenant_id)
       await sb.from('tenants').delete().eq('id', tenant_id)
-      return jsonCors(req, { error: `Invitation échouée: ${inviteErr.message}` }, 500)
+      return jsonCors(req, { error: `Invitation échouée: ${inviteData?.error ?? inviteRes.status}` }, 500)
     }
 
-    const { error: linkErr } = await sb.from('user_tenants').insert({
-      user_id: invited.user.id,
-      tenant_id,
-      role: premier_utilisateur.role === 'manager' || premier_utilisateur.role === 'viewer'
-        ? premier_utilisateur.role : 'owner',
+    return jsonCors(req, {
+      ok: true, tenant_id,
+      invited_user: premier_utilisateur.email,
+      email_erreur: inviteData?.email_erreur,
     })
-    if (linkErr) {
-      return jsonCors(req, { error: `Association utilisateur échouée: ${linkErr.message}`, tenant_id }, 500)
-    }
-
-    return jsonCors(req, { ok: true, tenant_id, invited_user: invited.user.email })
 
   } catch (err) {
     console.error('admin-create-tenant error:', err)
