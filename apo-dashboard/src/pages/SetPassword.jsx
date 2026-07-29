@@ -17,10 +17,19 @@ export default function SetPassword() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Lien porteur d'une erreur explicite (expiré, déjà consommé…)
+    // Lien porteur d'une erreur explicite (expiré, déjà consommé…).
+    // Supabase renvoie un message en anglais : on le traduit pour l'utilisateur.
     const hash = new URLSearchParams(window.location.hash.slice(1))
     if (hash.get('error')) {
-      setErreur(hash.get('error_description')?.replace(/\+/g, ' ') || 'Lien invalide ou expiré.')
+      const code = hash.get('error_code') || ''
+      const brut = (hash.get('error_description') || '').replace(/\+/g, ' ')
+      const messages = {
+        otp_expired:    "Ce lien d'activation a expiré. Ils sont valables 24 heures.",
+        access_denied:  "Ce lien a déjà été utilisé, ou le compte associé n'existe plus.",
+      }
+      setErreur(messages[code] || (/expired/i.test(brut)
+        ? "Ce lien d'activation a expiré ou a déjà été utilisé."
+        : brut || 'Lien invalide.'))
       setEtat('invalide')
       return
     }
@@ -120,8 +129,8 @@ export default function SetPassword() {
               {erreur || "Ce lien n'est plus valide."}
             </div>
             <p style={{ color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-              Les liens d'activation expirent après 24&nbsp;heures. Demandez à votre
-              administrateur de vous en renvoyer un.
+              Demandez à votre administrateur de vous renvoyer une invitation : il dispose
+              d'un bouton « Renvoyer » qui génère un nouveau lien, valable 24&nbsp;heures.
             </p>
             <button onClick={() => navigate('/', { replace: true })} style={{
               background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 10,
