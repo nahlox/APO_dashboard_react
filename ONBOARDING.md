@@ -76,6 +76,25 @@ tenant `apo`. Pour chaque nouveau client, ajouter un job `cron.schedule` équiva
 `tenant_id`, ou faire évoluer le cron existant pour boucler sur tous les tenants actifs
 (`SELECT id FROM tenants WHERE actif`) — recommandé dès qu'il y a 3+ clients actifs.
 
+## 5. Connecteur Sage / agent on-site (clé d'ingestion par tenant)
+
+Pour un client sous Sage (ou tout connecteur qui pousse des données depuis chez le client) :
+
+1. Générer une clé scopée au tenant : `python3 scripts/generate_ingest_key.py <tenant_id> <label>`
+   (la clé n'est affichée qu'une fois — seul son hash est stocké dans `tenant_api_keys`).
+2. L'agent appelle l'edge function **`ingest`** avec le header `x-api-key` :
+   - `{"action":"heartbeat", ...}` → trace dans `etl_runs` (surveillance : un agent
+     silencieux depuis 3 jours = problème chez le client) ;
+   - `{"action":"upsert_rows","table":"transactions","on_conflict":"tenant_id,source,ref_externe","rows":[...]}`
+     → import idempotent (ref_externe = n° de pièce Sage) ;
+   - `{"action":"delete_periode","table":"transactions","periode_id":N,"source":"sage"}`
+     → purge avant ré-import complet d'un mois.
+3. Le `tenant_id` est **forcé côté serveur** : une clé volée chez le client A ne peut
+   jamais écrire chez le client B. Les `periode_id` sont vérifiés comme appartenant au tenant.
+4. Le mapping plan comptable → catégories P&L vit dans la table **`compte_mappings`**
+   (défauts SYSCOHADA pour tenant_id NULL, surcharges par tenant). C'est la seule chose
+   à ajuster par client Sage — plus aucun dict en dur dans le code.
+
 ## Limites connues (à garder en tête)
 
 - L'ETL cloud est fonctionnel mais pas encore branché à un scheduler out-of-the-box pour un
