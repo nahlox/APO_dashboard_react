@@ -729,14 +729,38 @@ def assurer_periodes() -> dict:
     return periodes
 
 
+RUN_ID = None  # id de la ligne etl_runs du run en cours
+
+def etl_run_start(source: str = "etl_local"):
+    """Trace le démarrage d'un run dans etl_runs. Jamais bloquant."""
+    try:
+        r = sb.table("etl_runs").insert({"tenant_id": TENANT_ID, "source": source}).execute()
+        return r.data[0]["id"]
+    except Exception:
+        return None
+
+def etl_run_end(run_id, statut: str, message: str | None = None):
+    if run_id is None:
+        return
+    try:
+        sb.table("etl_runs").update({
+            "statut": statut,
+            "termine_le": datetime.now().isoformat(),
+            "message": (message or "")[:500],
+        }).eq("id", run_id).execute()
+    except Exception:
+        pass
+
+
 def run(force: bool = False):
-    global CONFIG, FICHIERS, SHEETS_PAR_MOIS
+    global CONFIG, FICHIERS, SHEETS_PAR_MOIS, RUN_ID
 
     log("=" * 50)
 
     # 0. Charger la configuration du tenant depuis Supabase
     log(f"⚙️  Chargement config tenant '{TENANT_ID}'...")
     CONFIG = load_tenant_config()
+    RUN_ID = etl_run_start("etl_local")
 
     # Construire les chemins locaux Dropbox depuis la config
     local_conf    = CONFIG.get('local_dropbox', {})
@@ -847,4 +871,9 @@ if __name__ == "__main__":
     parser.add_argument("--force",  action="store_true", help="Réimporte tout sans vérifier les dates")
     args = parser.parse_args()
     TENANT_ID = args.tenant
-    run(force=args.force)
+    try:
+        run(force=args.force)
+        etl_run_end(RUN_ID, "ok")
+    except Exception as e:
+        etl_run_end(RUN_ID, "erreur", str(e))
+        raise

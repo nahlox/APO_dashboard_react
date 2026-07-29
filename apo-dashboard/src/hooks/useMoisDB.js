@@ -1,6 +1,6 @@
 /**
  * useMoisDB — charge dynamiquement les mois disponibles depuis Supabase.
- * Sources de coûts : caisse_apo + caisse_apo2 + banque_apo
+ * Sources de coûts : table canonique `transactions` (source: caisse | caisse2 | banque | sage)
  * Section III (charges exploitation)  : caisse + banque opérationnels
  * Section IV  (amort. & chgs fin.)    : banque amortissement + frais_bancaires
  */
@@ -657,10 +657,12 @@ export function useMoisDB() {
           const periodeId = periode.id
 
           // Construction dynamique des filtres caisse depuis config
-          const buildCaisseQuery = (table) => {
-            let q = supabase.from(table)
+          // Source canonique : table `transactions` (source='caisse'|'caisse2')
+          const buildCaisseQuery = (source) => {
+            let q = supabase.from('transactions')
               .select('libelle, credit_fcfa, categorie, date_mouvement')
               .eq('periode_id', periodeId)
+              .eq('source', source)
               .gt('credit_fcfa', 0)
             for (const pattern of skipCaisse) {
               q = q.not('libelle', 'ilike', `${pattern}%`)
@@ -669,10 +671,12 @@ export function useMoisDB() {
           }
 
           // Construction dynamique des filtres banque depuis config
+          // Convention : montant banque (débits) = credit_fcfa dans transactions
           const buildBanqueQuery = () => {
-            let q = supabase.from('banque_apo')
-              .select('libelle, montant_fcfa, categorie')
+            let q = supabase.from('transactions')
+              .select('libelle, montant_fcfa:credit_fcfa, categorie')
               .eq('periode_id', periodeId)
+              .eq('source', 'banque')
             for (const pattern of skipBanque) {
               q = q.not('libelle', 'ilike', `%${pattern}%`)
             }
@@ -696,8 +700,8 @@ export function useMoisDB() {
 
               // Caisse 1 + Caisse 2 — filtres depuis tenant_config
               Promise.all([
-                buildCaisseQuery('caisse_apo'),
-                buildCaisseQuery('caisse_apo2'),
+                buildCaisseQuery('caisse'),
+                buildCaisseQuery('caisse2'),
               ]).then(([c1, c2]) => [...c1, ...c2]),
 
               supabase.from('vue_top_fournisseurs')

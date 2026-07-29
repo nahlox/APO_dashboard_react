@@ -78,6 +78,31 @@ def load_tenant_config() -> dict:
         raise RuntimeError(f"Aucune config trouvée pour le tenant '{TENANT_ID}' dans tenant_config")
     return r.data["config"]
 
+
+# ── OBSERVABILITÉ (table etl_runs) ────────────────────────────
+
+def etl_run_start(source: str = "etl_cloud"):
+    """Trace le démarrage d'un run dans etl_runs. Jamais bloquant."""
+    if DRY_RUN:
+        return None
+    try:
+        r = sb.table("etl_runs").insert({"tenant_id": TENANT_ID, "source": source}).execute()
+        return r.data[0]["id"]
+    except Exception:
+        return None
+
+def etl_run_end(run_id, statut: str, message: str | None = None):
+    if run_id is None:
+        return
+    try:
+        sb.table("etl_runs").update({
+            "statut": statut,
+            "termine_le": datetime.now().isoformat(),
+            "message": (message or "")[:500],
+        }).eq("id", run_id).execute()
+    except Exception:
+        pass
+
 # ── NOMS D'ONGLETS ────────────────────────────────────────────
 NOMS_MOIS_FR = {
     1: 'JANVIER', 2: 'FEVRIER', 3: 'MARS',   4: 'AVRIL',
@@ -116,6 +141,7 @@ def sheet_vente_bassin(mois):
 
 DRY_RUN   = False  # modifié par argparse
 TENANT_ID = None   # modifié par argparse (obligatoire)
+RUN_ID    = None   # id de la ligne etl_runs du run en cours
 
 def log(msg: str):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
@@ -945,6 +971,9 @@ def run(mois_cible: int | None = None):
     CONFIG = load_tenant_config()
     log(f"   Config chargée : {list(CONFIG.keys())}")
 
+    global RUN_ID
+    RUN_ID = etl_run_start("etl_cloud")
+
     # Construire les chemins Dropbox depuis la config
     compta_dir     = CONFIG['dropbox']['compta_dir']
     production_dir = CONFIG['dropbox']['production_dir']
@@ -1041,6 +1070,7 @@ def run(mois_cible: int | None = None):
     # 7. Prix CPO international (IMF — indépendant du filtre mois)
     fetch_cpo_prices()
 
+    etl_run_end(RUN_ID, "ok")
     log("=" * 56)
     log("ETL Cloud terminé ✅")
     log("=" * 56)
@@ -1059,4 +1089,8 @@ if __name__ == "__main__":
     if args.mois and args.mois in MOIS_STATIQUES:
         print(f"❌ Mois {args.mois} ({LIBELLES_FR[args.mois]}) est géré par les fichiers statiques JS — ETL non nécessaire.")
         exit(1)
-    run(mois_cible=args.mois)
+    try:
+        run(mois_cible=args.mois)
+    except Exception as e:
+        etl_run_end(globals().get("RUN_ID"), "erreur", str(e))
+        raise
