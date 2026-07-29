@@ -24,20 +24,33 @@ export default function SetPassword() {
       const code = hash.get('error_code') || ''
       const brut = (hash.get('error_description') || '').replace(/\+/g, ' ')
       const messages = {
-        otp_expired:    "Ce lien d'activation a expiré. Ils sont valables 24 heures.",
-        access_denied:  "Ce lien a déjà été utilisé, ou le compte associé n'existe plus.",
+        otp_expired:   "Ce lien d'activation a expiré. Les liens sont valables 24 heures et à usage unique.",
+        access_denied: "Ce lien a déjà été utilisé. Chaque lien d'activation ne fonctionne qu'une fois.",
       }
-      setErreur(messages[code] || (/expired/i.test(brut)
+      setErreur(messages[code] || (/expired|invalid/i.test(brut)
         ? "Ce lien d'activation a expiré ou a déjà été utilisé."
         : brut || 'Lien invalide.'))
+      // Un lien mort ne doit jamais laisser la session précédente en place :
+      // sinon on reste connecté sous le compte qui utilisait ce navigateur
+      // (typiquement l'administrateur qui teste l'invitation), ce qui donne
+      // l'illusion que l'invité s'est connecté sous une autre identité.
+      supabase.auth.signOut().catch(() => {})
       setEtat('invalide')
       return
     }
+
+    const avecJetons = window.location.hash.includes('access_token')
 
     let fini = false
     const valider = (session) => {
       if (fini || !session) return
       fini = true
+      // Compte déjà activé qui arrive ici sans lien : rien à faire, on renvoie
+      // vers le tableau de bord.
+      if (!avecJetons && session.user?.user_metadata?.mdp_defini === true) {
+        navigate('/', { replace: true })
+        return
+      }
       setEtat('pret')
     }
 
@@ -51,7 +64,7 @@ export default function SetPassword() {
     const t = setTimeout(() => { if (!fini) { fini = true; setEtat('invalide') } }, 6000)
 
     return () => { clearTimeout(t); subscription.unsubscribe() }
-  }, [])
+  }, [navigate])
 
   async function submit(e) {
     e.preventDefault()
