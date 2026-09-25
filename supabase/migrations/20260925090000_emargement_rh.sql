@@ -19,7 +19,18 @@
 -- ============================================================
 
 -- ── 1. Rôle rh ───────────────────────────────────────────────
-ALTER TABLE user_tenants DROP CONSTRAINT IF EXISTS user_tenants_role_check;
+-- Supprime toute contrainte CHECK existante sur `role`, quel que soit son nom.
+DO $$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.user_tenants'::regclass AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%role%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.user_tenants DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
 ALTER TABLE user_tenants ADD CONSTRAINT user_tenants_role_check
   CHECK (role IN ('owner', 'manager', 'viewer', 'rh'));
 
