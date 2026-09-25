@@ -3,7 +3,7 @@
 // Deploy : python3 scripts/deploy_functions.py admin-invite-user
 //
 // Body :
-//   { tenant_id, email, role: 'owner'|'manager'|'viewer', renvoyer?: boolean }
+//   { tenant_id, email, role: 'owner'|'manager'|'viewer'|'rh', renvoyer?: boolean }
 //
 // L'email d'invitation est envoyé par NOUS via Resend (identité Palmeo), pas par
 // le mailer Supabase : on génère le lien d'action avec generateLink() (qui
@@ -28,11 +28,12 @@ const INVITE_FROM    = Deno.env.get('INVITE_FROM_EMAIL')
                     || Deno.env.get('REPORT_FROM_EMAIL')
                     || 'Palmeo <onboarding@resend.dev>'
 
-const ROLES = ['owner', 'manager', 'viewer']
+const ROLES = ['owner', 'manager', 'viewer', 'rh']
 const ROLE_LABEL: Record<string, string> = {
   owner:   'Propriétaire',
   manager: 'Gestionnaire',
   viewer:  'Lecteur',
+  rh:      'Ressources humaines (émargement uniquement)',
 }
 
 // ── CORS ────────────────────────────────────────────────────────────────────

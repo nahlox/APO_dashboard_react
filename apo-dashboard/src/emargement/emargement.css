@@ -1,0 +1,146 @@
+/* ============================================================
+   Module Émargement des heures (/emargement)
+   Reprend les variables du tableau de bord (--dark*, --text, --gold…),
+   donc les couleurs de marque du client et le thème clair/sombre.
+   Tout est scopé sous .rh-root.
+   ============================================================ */
+
+.rh-root {
+  min-height: 100vh;
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  text-align: left;
+}
+.rh-root *, .rh-root *::before, .rh-root *::after { box-sizing: border-box; }
+/* global.css (tableau de bord) cible `header`/`main` directement et centre
+   `main` sur mobile : on neutralise ce qui ne concerne pas ce module. */
+.rh-root main.rh-main { text-align: left; position: relative; z-index: 1; }
+
+/* ── En-tête ─────────────────────────────────────────────── */
+.rh-root .rh-header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 24px; background: var(--dark2); border-bottom: 1px solid var(--border);
+}
+.rh-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rh-logo {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  background: linear-gradient(140deg, var(--gold-light, #E8924A), var(--gold));
+  display: flex; align-items: center; justify-content: center;
+}
+.rh-brand-name { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 17px; color: var(--gold); }
+.rh-brand-sub  { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
+.rh-header-right { display: flex; align-items: center; gap: 10px; }
+.rh-user { color: var(--text-dim); font-size: 12.5px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rh-root .rh-main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+/* ── Onglets ─────────────────────────────────────────────── */
+.rh-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; overflow-x: auto; }
+.rh-tabs button {
+  background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 10px 16px; font: inherit; font-size: 14px; color: var(--text-dim); cursor: pointer; white-space: nowrap;
+}
+.rh-tabs button:hover { color: var(--text); }
+.rh-tabs button.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+
+/* ── Cartes, barres d'outils ─────────────────────────────── */
+.rh-card {
+  background: var(--dark2); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+}
+.rh-center { max-width: 480px; margin: 12vh auto; display: flex; flex-direction: column; gap: 14px; }
+.rh-h1 { margin: 0; font-size: 20px; }
+.rh-dim { color: var(--text-dim); }
+.rh-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; }
+.rh-grow { flex: 1; min-width: 180px; }
+.rh-field { display: flex; flex-direction: column; gap: 5px; }
+.rh-field > span { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; }
+.rh-check { display: flex; align-items: center; gap: 8px; color: var(--text-dim); cursor: pointer; }
+
+.rh-stats { display: flex; gap: 18px; margin-left: auto; }
+.rh-stats > div { display: flex; flex-direction: column; align-items: flex-end; }
+.rh-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.rh-stats span { font-size: 11px; color: var(--text-dim); }
+.rh-statut { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
+
+/* ── Champs & boutons ────────────────────────────────────── */
+.rh-input {
+  background: var(--dark); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 10px; color: var(--text); font: inherit; font-size: 13.5px; outline: none; width: 100%;
+  min-width: 0;
+}
+.rh-input:focus { border-color: var(--gold); }
+.rh-input:disabled { opacity: .55; }
+.rh-input-sm { max-width: 80px; }
+.rh-table input[type="time"].rh-input { min-width: 96px; }
+.rh-table select.rh-input { min-width: 128px; }
+
+.rh-btn {
+  background: var(--gold); color: #fff; border: 1px solid transparent; border-radius: 9px;
+  padding: 8px 16px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center;
+}
+.rh-btn:disabled { opacity: .5; cursor: default; }
+.rh-btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.rh-btn-ghost:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.rh-link { background: none; border: none; color: var(--gold); cursor: pointer; font: inherit; font-size: 13px; padding: 2px 6px; }
+.rh-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+/* ── Tableaux ────────────────────────────────────────────── */
+.rh-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.rh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rh-table th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-dim); font-weight: 600; padding: 10px; white-space: nowrap; background: var(--dark3);
+}
+.rh-table td { padding: 8px 10px; border-top: 1px solid var(--border); vertical-align: middle; }
+.rh-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rh-row-vide td { opacity: .7; }
+.rh-row-actions { white-space: nowrap; text-align: right; }
+.rh-emp { font-weight: 600; white-space: nowrap; }
+.rh-emp-sub { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+.rh-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12.5px; }
+
+/* Grille mensuelle */
+.rh-grille th, .rh-grille td.c { text-align: center; padding: 6px 4px; min-width: 30px; }
+.rh-grille td.c { font-variant-numeric: tabular-nums; font-size: 12px; }
+.rh-grille .we { background: var(--dark3); }
+.rh-grille .rh-jsem { font-size: 9px; opacity: .7; }
+.rh-grille .rh-sticky { position: sticky; left: 0; z-index: 1; background: var(--dark2); min-width: 170px; }
+.rh-grille th.rh-sticky { background: var(--dark3); text-align: left; }
+.rh-grille td.s-absent  { color: var(--red); font-weight: 700; }
+.rh-grille td.s-conge, .rh-grille td.s-maladie { color: var(--gold); font-weight: 700; }
+.rh-grille td.s-repos, .rh-grille td.s-ferie   { color: var(--text-dim); }
+.rh-legende { font-size: 12px; color: var(--text-dim); margin: 10px 2px 0; }
+
+/* ── Formulaire employé ──────────────────────────────────── */
+.rh-form { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; background: var(--dark); }
+.rh-form-title { font-weight: 700; margin-bottom: 12px; }
+.rh-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+
+/* ── Badges, bannières, états ────────────────────────────── */
+.rh-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--dark3); color: var(--text-dim);
+}
+.rh-badge.ok   { background: rgba(63,163,77,.15); color: var(--green); }
+.rh-badge.warn { background: rgba(242,140,40,.15); color: var(--gold); }
+.rh-banner { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin: 0 0 14px; border: 1px solid; }
+.rh-banner.ok    { background: rgba(63,163,77,.10); border-color: var(--green); }
+.rh-banner.error { background: rgba(224,92,92,.10); border-color: var(--red); }
+.rh-banner.info  { background: rgba(242,140,40,.08); border-color: var(--gold); }
+.rh-loading, .rh-empty { padding: 36px; text-align: center; color: var(--text-dim); }
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .rh-root .rh-header { padding: 10px 14px; flex-wrap: wrap; }
+  .rh-user { display: none; }
+  .rh-root .rh-main { padding: 14px 12px 40px; }
+  .rh-card { padding: 12px; }
+  .rh-stats { margin-left: 0; width: 100%; justify-content: space-between; }
+  .rh-stats > div { align-items: flex-start; }
+  .rh-actions { justify-content: stretch; }
+  .rh-actions .rh-btn { flex: 1; justify-content: center; }
+}

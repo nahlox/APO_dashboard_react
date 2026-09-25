@@ -7,6 +7,9 @@ export function AuthProvider({ children }) {
   const [user,         setUser]         = useState(undefined) // undefined = chargement en cours
   const [tenantId,     setTenantId]     = useState(null)
   const [role,         setRole]         = useState(null)
+  // false tant que user_tenants n'a pas répondu : évite d'afficher le tableau
+  // de bord une fraction de seconde à un compte RH avant sa redirection.
+  const [accesCharge,  setAccesCharge]  = useState(false)
   // null = statut pas encore chargé (à distinguer de « pas super-admin »)
   const [isSuperAdmin, setIsSuperAdmin] = useState(null)
   const [branding,     setBranding]     = useState(null) // { nom_affichage, logo_url, couleur_primaire, couleur_secondaire }
@@ -22,6 +25,7 @@ export function AuthProvider({ children }) {
       setRole(data.role)
       loadBranding(data.tenant_id)
     }
+    setAccesCharge(true)
   }
 
   async function loadBranding(tid) {
@@ -52,7 +56,7 @@ export function AuthProvider({ children }) {
       const u = session?.user ?? null
       setUser(u)
       if (u) { loadTenant(u.id); loadSuperAdmin(u.id) }
-      else { setTenantId(null); setRole(null); setIsSuperAdmin(null); setBranding(null) }
+      else { setTenantId(null); setRole(null); setIsSuperAdmin(null); setBranding(null); setAccesCharge(false) }
     })
 
     // Écoute les changements de session (login, logout, refresh)
@@ -60,7 +64,7 @@ export function AuthProvider({ children }) {
       const u = session?.user ?? null
       setUser(u)
       if (u) { loadTenant(u.id); loadSuperAdmin(u.id) }
-      else { setTenantId(null); setRole(null); setIsSuperAdmin(null); setBranding(null) }
+      else { setTenantId(null); setRole(null); setIsSuperAdmin(null); setBranding(null); setAccesCharge(false) }
     })
 
     return () => subscription.unsubscribe()
@@ -71,7 +75,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenantId, role, isSuperAdmin, branding, signOut }}>
+    <AuthContext.Provider value={{ user, tenantId, role, accesCharge, isSuperAdmin, branding, signOut }}>
       {children}
     </AuthContext.Provider>
   )
