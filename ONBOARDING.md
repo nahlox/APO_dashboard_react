@@ -105,10 +105,16 @@ Pour un client sous Sage (ou tout connecteur qui pousse des données depuis chez
 
 ## 6. Émargement des heures (module RH)
 
-Page dédiée **`/emargement`** : saisie journalière des présences/horaires, bordereau mensuel
-(grille employés × jours, heures sup au-delà de 8 h/jour, export CSV/PDF, validation qui
-verrouille le mois) et fiche des employés. Tables : `employes`, `emargements`,
-`bordereaux_heures`, vue `vue_bordereau_mensuel` (migration `20260926145014_emargement_rh.sql`).
+Page dédiée **`/emargement`**, deux vues :
+
+- **Émargement** — le « Bordereau des Heures » (repris de l'artefact d'origine) : pointage
+  ENTRÉE/SORTIE en un clic par quart (07h / 15h / 23h / journée), récap du jour à copier,
+  grille semaine, suivi & congés sur 4 semaines, gestion de l'effectif et des quarts par équipe.
+  Code : `apo-dashboard/src/emargement/bordereau/` (rendu dans un Shadow DOM).
+- **Bordereau mensuel · export** — grille du mois, heures sup au-delà de 8 h/jour, export
+  CSV/PDF, validation qui verrouille le mois. Tables : `employes` (matricule, nom, poste = fonction,
+type_contrat = CDI/CDD, service = équipe A/B/C/CP/CHAUF/MECA/MAINT/MEN/ADM), `emargements`,
+`bordereaux_heures`, `rh_config` (quart par équipe), vue `vue_bordereau_mensuel` (migration `20260926145014_emargement_rh.sql`).
 
 **Donner l'accès à une responsable RH sans ouvrir le tableau de bord :**
 

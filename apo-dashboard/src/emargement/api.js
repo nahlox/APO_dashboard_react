@@ -13,29 +13,11 @@ export async function listerEmployes({ inclureInactifs = false } = {}) {
   return check(await q)
 }
 
-export async function enregistrerEmploye(employe) {
-  const { id, cree_le, modifie_le, ...champs } = employe
-  if (id) return check(await supabase.from('employes').update(champs).eq('id', id).select().single())
-  return check(await supabase.from('employes').insert(champs).select().single())
-}
-
 export async function emargementsEntre(debut, fin) {
   return check(await supabase.from('emargements')
     .select('id, employe_id, date_jour, statut, heure_arrivee, heure_depart, pause_minutes, heures_travaillees, observation')
     .gte('date_jour', debut).lte('date_jour', fin)
     .order('date_jour'))
-}
-
-export async function enregistrerEmargements(lignes) {
-  if (!lignes.length) return []
-  return check(await supabase.from('emargements')
-    .upsert(lignes, { onConflict: 'tenant_id,employe_id,date_jour' })
-    .select())
-}
-
-export async function supprimerEmargements(ids) {
-  if (!ids.length) return
-  check(await supabase.from('emargements').delete().in('id', ids))
 }
 
 export async function lireBordereau(annee, mois) {
