@@ -181,6 +181,25 @@ export default function Sidebar({ allMois = [] }) {
           </div>
         )}
 
+        {/* Ressources humaines — bordereau d'émargement des heures */}
+        <div className="sidebar-section">
+          <div className="sidebar-label">Ressources humaines</div>
+          <Link
+            to="/emargement"
+            className="sidebar-module-btn"
+            style={{ textDecoration: 'none' }}
+            onClick={closeMobileMenu}
+          >
+            <span className="sidebar-module-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="3" width="16" height="18" rx="2"/>
+                <path d="M8 8h8M8 12h8M8 16h4"/><path d="m15 16 1.5 1.5L19 15"/>
+              </svg>
+            </span>
+            <span className="sidebar-module-label">Émargement des heures</span>
+          </Link>
+        </div>
+
         {/* Admin — visible uniquement pour les super-admins de la plateforme */}
         {isSuperAdmin && (
           <div className="sidebar-section">

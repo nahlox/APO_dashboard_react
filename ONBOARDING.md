@@ -102,3 +102,29 @@ Pour un client sous Sage (ou tout connecteur qui pousse des données depuis chez
 - Le logo du tenant (`tenants.logo_url`) doit être une URL publique (pas d'upload de fichier
   intégré) — héberger l'image (ex: Supabase Storage) puis coller l'URL dans le formulaire admin.
 - Un seul domaine Vercel sert tous les tenants — pas de sous-domaine par client pour l'instant.
+
+## 6. Émargement des heures (module RH)
+
+Page dédiée **`/emargement`** : saisie journalière des présences/horaires, bordereau mensuel
+(grille employés × jours, heures sup au-delà de 8 h/jour, export CSV/PDF, validation qui
+verrouille le mois) et fiche des employés. Tables : `employes`, `emargements`,
+`bordereaux_heures`, vue `vue_bordereau_mensuel` (migration `20260925090000_emargement_rh.sql`).
+
+**Donner l'accès à une responsable RH sans ouvrir le tableau de bord :**
+
+1. Console admin → client → onglet **Utilisateurs** → inviter son email avec le rôle **RH**.
+2. Elle reçoit l'invitation, crée son mot de passe, et à chaque connexion elle est envoyée
+   directement sur `/emargement`. Si elle tape `/`, elle y est redirigée.
+3. Le verrou est **en base**, pas seulement dans l'interface : pour un compte `rh`,
+   `get_tenant_id()` renvoie NULL, donc toutes les policies du tableau de bord (KPIs, ventes,
+   caisse, banque…), le chatbot et les push lui sont fermés.
+
+| Rôle      | Tableau de bord | Émargement            |
+|-----------|-----------------|-----------------------|
+| owner     | oui             | lecture + saisie      |
+| manager   | oui             | lecture + saisie      |
+| viewer    | oui             | lecture seule         |
+| rh        | **non**         | lecture + saisie      |
+
+Les autres rôles accèdent à l'émargement via la sidebar (« Ressources humaines ») ou
+directement par l'URL `https://app.palmeo.co/emargement`.

@@ -199,8 +199,10 @@ Deno.serve(async (req) => {
       .upsert({ user_id: user.id, jour: today, nb: (usage?.nb ?? 0) + 1 })
 
     // 2. Tenant (toujours depuis la DB)
-    const { data: ut } = await sb.from('user_tenants').select('tenant_id').eq('user_id', user.id).single()
+    const { data: ut } = await sb.from('user_tenants').select('tenant_id, role').eq('user_id', user.id).single()
     if (!ut) return json({ error: 'Accès refusé — aucun tenant associé' }, 403, origin)
+    // Compte RH : accès limité au module émargement, jamais aux données du tableau de bord.
+    if (ut.role === 'rh') return json({ error: 'Accès refusé' }, 403, origin)
     const tenantId = ut.tenant_id
 
     // 3. Périodes du tenant

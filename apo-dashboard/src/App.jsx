@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import SplashScreen from './components/SplashScreen'
 import './styles/global.css'
 import { useDashboardStore } from './store/dashboardStore'
@@ -36,7 +36,7 @@ Chart.defaults.font.family = "'DM Sans', sans-serif"
 Chart.defaults.font.size   = 13
 
 export default function App() {
-  const { user } = useAuth()
+  const { user, role, accesCharge } = useAuth()
   const { theme } = useDashboardStore()
   const navigate = useNavigate()
 
@@ -68,6 +68,10 @@ export default function App() {
   if (user === undefined) return null
   // user === null : non connecté → page de login
   if (user === null) return <LoginPage />
+  // Rôle pas encore connu : on attend avant d'afficher quoi que ce soit.
+  if (!accesCharge) return null
+  // Compte RH : pas d'accès au tableau de bord, uniquement à l'émargement.
+  if (role === 'rh') return <Navigate to="/emargement" replace />
 
   return <AppDashboard />
 }

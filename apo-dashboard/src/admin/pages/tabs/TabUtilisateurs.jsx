@@ -6,6 +6,7 @@ const ROLES = [
   { value: 'owner',   label: 'Propriétaire', hint: 'accès complet aux données du client' },
   { value: 'manager', label: 'Gestionnaire', hint: 'consultation + destinataire des rapports' },
   { value: 'viewer',  label: 'Lecteur',      hint: 'consultation seule' },
+  { value: 'rh',      label: 'RH',           hint: "émargement des heures uniquement — n'a pas accès au tableau de bord" },
 ]
 
 export default function TabUtilisateurs({ tenantId }) {
