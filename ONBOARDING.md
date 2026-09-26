@@ -108,7 +108,7 @@ Pour un client sous Sage (ou tout connecteur qui pousse des données depuis chez
 Page dédiée **`/emargement`** : saisie journalière des présences/horaires, bordereau mensuel
 (grille employés × jours, heures sup au-delà de 8 h/jour, export CSV/PDF, validation qui
 verrouille le mois) et fiche des employés. Tables : `employes`, `emargements`,
-`bordereaux_heures`, vue `vue_bordereau_mensuel` (migration `20260925090000_emargement_rh.sql`).
+`bordereaux_heures`, vue `vue_bordereau_mensuel` (migration `20260926145014_emargement_rh.sql`).
 
 **Donner l'accès à une responsable RH sans ouvrir le tableau de bord :**
 

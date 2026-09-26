@@ -149,7 +149,7 @@ CREATE TRIGGER trg_emargement_check_tenant
   FOR EACH ROW EXECUTE FUNCTION public.emargement_check_tenant();
 
 CREATE OR REPLACE FUNCTION public.touch_modifie_le()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN NEW.modifie_le := NOW(); RETURN NEW; END $$;
 DROP TRIGGER IF EXISTS trg_employes_touch ON employes;
 CREATE TRIGGER trg_employes_touch BEFORE UPDATE ON employes
