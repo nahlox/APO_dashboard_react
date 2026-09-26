@@ -3,6 +3,13 @@ import { registerRoute } from 'workbox-routing'
 import { NetworkFirst, CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
+// Nouvelle version déployée → prise de contrôle immédiate. Sans ça, le nouveau
+// service worker reste « en attente » tant qu'un onglet ou l'app installée est
+// ouvert, et l'utilisateur continue de voir l'ancienne version (registerType
+// 'autoUpdate' recharge ensuite la page automatiquement).
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()))
+
 // Précache tous les assets buildés (Workbox injecte la liste ici)
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
