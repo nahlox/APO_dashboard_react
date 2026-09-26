@@ -1,0 +1,221 @@
+<div class="bdh">
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brandrow">
+      <div class="mark" aria-hidden="true">BH</div>
+      <div class="brandtxt">
+        <b>Bordereau des heures</b>
+        <span>Huilerie APO — émargement tenu par le chef d'usine</span>
+      </div>
+      <div class="brandrow-end"><span class="pill" id="modePill"><i></i><span id="modeTxt">Connexion…</span></span></div>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-poste" aria-selected="true" aria-controls="v-poste">Émargement</button>
+      <button class="tab" role="tab" id="tab-recap" aria-selected="false" aria-controls="v-recap">Récap du jour</button>
+      <button class="tab" role="tab" id="tab-semaine" aria-selected="false" aria-controls="v-semaine">Semaine</button>
+      <button class="tab" role="tab" id="tab-suivi" aria-selected="false" aria-controls="v-suivi">Suivi &amp; congés</button>
+      <button class="tab" role="tab" id="tab-employes" aria-selected="false" aria-controls="v-employes">Effectif</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section id="v-poste" role="tabpanel" aria-labelledby="tab-poste">
+    <div class="deskhead">
+      <div>
+        <div class="eyebrow">Registre du jour</div>
+        <h1 id="dayTitle">—</h1>
+      </div>
+      <div class="clockbox">
+        <div class="t mono" id="clock"><span id="clockHM">--:--</span><small id="clockSec">:--</small></div>
+        <div class="lbl">Heure du poste</div>
+      </div>
+    </div>
+
+    <div class="counters" id="counters"></div>
+    <div class="grpbar" id="grpbar" role="group" aria-label="Filtrer par équipe"></div>
+
+    <div style="position:relative;margin-bottom:16px">
+      <input type="text" id="q" placeholder="Chercher un nom, un matricule, une fonction…" autocomplete="off"
+        aria-label="Chercher un employé"
+        style="width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:13px 42px 13px 14px;font-size:16px;box-shadow:var(--shadow)">
+      <button id="qClear" hidden aria-label="Effacer la recherche"
+        style="position:absolute;right:8px;top:50%;transform:translateY(-50%);appearance:none;background:var(--surface-2);border:0;border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1">×</button>
+    </div>
+
+    <div id="desk"></div>
+    <p class="footnote" id="deskNote"></p>
+  </section>
+
+  <section id="v-recap" role="tabpanel" aria-labelledby="tab-recap" hidden>
+    <div class="deskhead">
+      <div>
+        <div class="eyebrow">Message de fin de quart</div>
+        <h1 id="recapTitle">—</h1>
+        <div class="hint" style="margin-top:4px">Le message est écrit à partir des émargements du jour. Copiez-le, envoyez-le.</div>
+      </div>
+      <div class="clockbox"><button class="btn btn-ghost btn-sm" id="recapRefresh">Recalculer</button></div>
+    </div>
+    <div class="recapwrap">
+      <div class="panel" style="padding:16px">
+        <div id="recapWarn"></div>
+        <label class="flab" for="recapTa">Message à envoyer</label>
+        <textarea id="recapTa" readonly spellcheck="false" aria-label="Message de pointage à copier"></textarea>
+        <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px">
+          <button class="btn btn-primary" id="copyBtn">Copier le message</button>
+          <button class="btn btn-ghost" id="selectBtn">Tout sélectionner</button>
+          <span class="copied" id="copiedMsg">Copié</span>
+        </div>
+        <p class="hint" style="margin-top:11px">
+          Sur téléphone, si le bouton ne fait rien : appuyez sur « Tout sélectionner », puis maintenez le doigt sur le texte et choisissez Copier.
+        </p>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Effectif du jour</h2><span class="sub" id="recapSub">—</span></div>
+        <div class="scroller"><table class="grp" id="grpTable"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-semaine" role="tabpanel" aria-labelledby="tab-semaine" hidden>
+    <div class="deskhead">
+      <div>
+        <div class="eyebrow">Bordereau hebdomadaire</div>
+        <h1 id="weekTitle">—</h1>
+        <div class="hint" style="margin-top:4px">Le total d'une journée, c'est l'heure de sortie moins l'heure d'entrée.</div>
+      </div>
+      <div class="clockbox">
+        <div class="weeknav">
+          <button class="navbtn" id="wPrev" aria-label="Semaine précédente">‹</button>
+          <button class="btn btn-ghost btn-sm" id="wToday">Cette semaine</button>
+          <button class="navbtn" id="wNext" aria-label="Semaine suivante">›</button>
+        </div>
+      </div>
+    </div>
+    <div id="weekNotice"></div>
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Heures par employé</h2>
+        <span class="sub">Cliquez sur une case pour corriger la journée.</span>
+      </div>
+      <div class="scroller"><table class="grid" id="weekTable"></table></div>
+      <div class="legend" id="weekLegend"></div>
+    </div>
+  </section>
+
+  <section id="v-suivi" role="tabpanel" aria-labelledby="tab-suivi" hidden>
+    <div class="deskhead">
+      <div>
+        <div class="eyebrow">4 dernières semaines</div>
+        <h1 id="suiviTitle">—</h1>
+        <div class="hint" style="margin-top:4px">Assiduité, heures travaillées et congés sur la période glissante.</div>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div id="suiviNotice"></div>
+    <div class="charts" id="suiviCharts">
+      <div class="panel chartbox">
+        <div class="eyebrow" style="margin-bottom:2px">Taux de présence par équipe</div>
+        <div class="hint" style="margin-bottom:9px">Part des journées attendues où la personne était au poste.</div>
+        <svg class="viz" id="chartGrp" role="img" aria-label="Taux de présence par équipe"></svg>
+      </div>
+      <div class="panel chartbox">
+        <div class="eyebrow" style="margin-bottom:2px">Effectif présent, jour par jour</div>
+        <div class="hint" style="margin-bottom:10px">Employés au poste sur les 14 derniers jours (effectif : <span id="effTot">0</span>).</div>
+        <svg class="viz" id="chartPresence" role="img" aria-label="Effectif présent par jour"></svg>
+      </div>
+    </div>
+    <div class="panel" id="recapPanel">
+      <div class="panel-h">
+        <h2>Récapitulatif par employé</h2>
+        <span class="sub">Les mêmes chiffres que les graphiques, en toutes lettres.</span>
+      </div>
+      <div class="scroller"><table class="recap" id="recapTable"></table></div>
+    </div>
+  </section>
+
+  <section id="v-employes" role="tabpanel" aria-labelledby="tab-employes" hidden>
+    <div class="deskhead">
+      <div>
+        <div class="eyebrow">Effectif de l'usine</div>
+        <h1 id="empTitle">—</h1>
+        <div class="hint" style="margin-top:4px">Repris de POINTAGE_PERSONNEL_APO.xlsx — modifiable ici, à tout moment.</div>
+      </div>
+    </div>
+    <div id="empNotice"></div>
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-h"><h2>Équipes et services</h2><span class="sub" id="empCount">—</span></div>
+      <div id="grpList"></div>
+
+      <div class="addgrid">
+        <div class="field"><label for="nNom">Nom</label><input type="text" id="nNom" placeholder="Ex. : KOUASSI FERDINAND"></div>
+        <div class="field"><label for="nFonc">Fonction</label><input type="text" id="nFonc" placeholder="Ex. : Ouv. chaudière"></div>
+        <div class="field"><label for="nGrp">Équipe / service</label><select id="nGrp"></select></div>
+        <div class="field"><label for="nStat">Statut</label>
+          <select id="nStat"><option value="CDD" selected>CDD</option><option value="CDI">CDI</option></select>
+        </div>
+        <button class="btn btn-primary" id="nAdd">Ajouter</button>
+      </div>
+
+      <div class="pastebox">
+        <label class="flab" for="pasteTa">Coller une feuille entière</label>
+        <p class="hint" style="margin:-3px 0 8px">
+          Un employé par ligne : <b>Nom ; Fonction ; Statut</b>. Les numéros en début de ligne sont ignorés.
+        </p>
+        <textarea id="pasteTa" rows="5" spellcheck="false" placeholder="1  KOUASSI FERDINAND ; Ouv. chaudière ; CDD
+2  YELIBI AHMED ; Ouv. chaudière ; CDD"></textarea>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;align-items:center">
+          <select id="pasteGrp" style="width:auto"></select>
+          <button class="btn btn-primary" id="pasteAdd">Importer dans cette équipe</button>
+          <span class="hint" id="pasteMsg"></span>
+        </div>
+      </div>
+
+      <div class="emptools">
+        <button class="btn btn-ghost btn-sm" id="reseed">Recharger l'effectif du fichier Excel</button>
+      </div>
+    </div>
+
+    <p class="footnote" id="empFoot"></p>
+  </section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dName">
+  <div class="dlg">
+    <div class="dlg-head">
+      <span class="av av-lg" id="dAv">—</span>
+      <div style="min-width:0"><b id="dName">—</b><span id="dMeta">—</span></div>
+    </div>
+    <div class="dlg-body">
+      <div class="fgroup">
+        <span class="flab">Situation</span>
+        <div class="seg" id="dStatut" role="group" aria-label="Situation"></div>
+      </div>
+      <div class="fgroup" id="dTimesWrap">
+        <span class="flab">Émargement</span>
+        <div class="times">
+          <div class="field"><label for="dIn">Entrée</label><input type="time" id="dIn"></div>
+          <div class="field"><label for="dOut">Sortie</label><input type="time" id="dOut"></div>
+        </div>
+        <div class="calcline" id="dCalc">—</div>
+      </div>
+      <div class="fgroup">
+        <label class="flab" for="dNote">Observation (facultatif)</label>
+        <textarea id="dNote" placeholder="Ex. : remplace un absent sur la presse"></textarea>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn btn-danger btn-sm" id="dDelete">Effacer</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" id="dCancel">Annuler</button>
+      <button class="btn btn-primary" id="dOk">Enregistrer</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" hidden role="status" aria-live="polite">
+  <span id="toastTxt"></span>
+  <button id="toastUndo" type="button">Annuler</button>
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+</div>

@@ -19,32 +19,22 @@
 .rh-root main.rh-main { text-align: left; position: relative; z-index: 1; }
 
 /* ── En-tête ─────────────────────────────────────────────── */
+/* Non collant : la barre d'onglets du Bordereau des Heures l'est déjà. */
 .rh-root .rh-header {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 24px; background: var(--dark2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; background: var(--dark2); border-bottom: 1px solid var(--border);
 }
-.rh-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.rh-logo {
-  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
-  background: linear-gradient(140deg, var(--gold-light, #E8924A), var(--gold));
-  display: flex; align-items: center; justify-content: center;
-}
-.rh-brand-name { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 17px; color: var(--gold); }
-.rh-brand-sub  { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
-.rh-header-right { display: flex; align-items: center; gap: 10px; }
+.rh-header-left, .rh-header-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .rh-user { color: var(--text-dim); font-size: 12.5px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rh-switch { display: flex; gap: 2px; background: var(--dark); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.rh-switch button {
+  background: none; border: none; border-radius: 7px; padding: 6px 12px; font: inherit; font-size: 13px;
+  color: var(--text-dim); cursor: pointer; white-space: nowrap;
+}
+.rh-switch button:hover { color: var(--text); }
+.rh-switch button.active { background: var(--gold); color: #fff; font-weight: 600; }
 
 .rh-root .rh-main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
-
-/* ── Onglets ─────────────────────────────────────────────── */
-.rh-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; overflow-x: auto; }
-.rh-tabs button {
-  background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
-  padding: 10px 16px; font: inherit; font-size: 14px; color: var(--text-dim); cursor: pointer; white-space: nowrap;
-}
-.rh-tabs button:hover { color: var(--text); }
-.rh-tabs button.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
 
 /* ── Cartes, barres d'outils ─────────────────────────────── */
 .rh-card {
@@ -135,7 +125,6 @@
 
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 720px) {
-  .rh-root .rh-header { padding: 10px 14px; flex-wrap: wrap; }
   .rh-user { display: none; }
   .rh-root .rh-main { padding: 14px 12px 40px; }
   .rh-card { padding: 12px; }

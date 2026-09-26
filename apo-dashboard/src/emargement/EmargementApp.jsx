@@ -3,29 +3,30 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDashboardStore } from '../store/dashboardStore'
 import LoginPage from '../pages/LoginPage'
-import SaisieJour from './SaisieJour'
+import BordereauHeures from './bordereau/BordereauHeures'
 import BordereauMensuel from './BordereauMensuel'
-import Employes from './Employes'
 import './emargement.css'
 
-const ONGLETS = [
-  { id: 'saisie',    label: 'Saisie du jour' },
-  { id: 'bordereau', label: 'Bordereau mensuel' },
-  { id: 'employes',  label: 'Employés' },
+const VUES = [
+  { id: 'emargement', label: 'Émargement' },
+  { id: 'mensuel',    label: 'Bordereau mensuel · export' },
 ]
 
 /**
- * Bordereau d'émargement des heures (/emargement).
+ * Émargement des heures (/emargement).
  *
- * - Compte « rh » : c'est sa seule page (redirigé ici depuis « / », et le RLS
- *   lui ferme les données du tableau de bord).
- * - owner / manager / viewer : accessible depuis la sidebar du tableau de bord,
- *   avec un lien retour. Le viewer consulte sans pouvoir modifier.
+ * - « Émargement » : le Bordereau des Heures (pointage par quart, récap du jour,
+ *   semaine, suivi & congés, effectif) — repris de l'artefact d'origine.
+ * - « Bordereau mensuel » : grille du mois, validation (verrouillage), export CSV/PDF.
+ *
+ * Compte « rh » : c'est sa seule page (redirigé ici depuis « / », et le RLS lui
+ * ferme les données du tableau de bord). owner / manager / viewer y accèdent
+ * depuis la sidebar ; le viewer consulte sans pouvoir modifier.
  */
 export default function EmargementApp() {
   const { user, role, tenantId, accesCharge, branding, signOut } = useAuth()
   const { theme } = useDashboardStore()
-  const [onglet, setOnglet] = useState('saisie')
+  const [vue, setVue] = useState('emargement')
 
   // Même gestion du thème que le tableau de bord (cette page n'y passe pas).
   useEffect(() => {
@@ -60,42 +61,28 @@ export default function EmargementApp() {
   return (
     <div className="rh-root">
       <header className="rh-header">
-        <div className="rh-brand">
-          <div className="rh-logo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="3" width="16" height="18" rx="2"/>
-              <path d="M8 8h8M8 12h8M8 16h4"/><path d="m15 16 1.5 1.5L19 15"/>
-            </svg>
-          </div>
-          <div>
-            <div className="rh-brand-name">{marque}</div>
-            <div className="rh-brand-sub">Émargement des heures</div>
-          </div>
+        <div className="rh-header-left">
+          {!estRH && <Link to="/" className="rh-btn rh-btn-ghost">← Tableau de bord</Link>}
+          <nav className="rh-switch">
+            {VUES.map(v => (
+              <button key={v.id} className={vue === v.id ? 'active' : ''} onClick={() => setVue(v.id)}>
+                {v.label}
+              </button>
+            ))}
+          </nav>
         </div>
         <div className="rh-header-right">
-          {!estRH && <Link to="/" className="rh-btn rh-btn-ghost">← Tableau de bord</Link>}
           <span className="rh-user" title={user.email}>{user.email}</span>
           <button className="rh-btn rh-btn-ghost" onClick={signOut}>Déconnexion</button>
         </div>
       </header>
 
-      <main className="rh-main">
-        <nav className="rh-tabs">
-          {ONGLETS.map(o => (
-            <button key={o.id} className={onglet === o.id ? 'active' : ''} onClick={() => setOnglet(o.id)}>
-              {o.label}
-            </button>
-          ))}
-        </nav>
-
-        {!peutSaisir && (
-          <div className="rh-banner info">Consultation seule : votre rôle ne permet pas de modifier l'émargement.</div>
-        )}
-
-        {onglet === 'saisie'    && <SaisieJour peutSaisir={peutSaisir} tenantId={tenantId} />}
-        {onglet === 'bordereau' && <BordereauMensuel peutSaisir={peutSaisir} tenantId={tenantId} user={user} marque={marque} />}
-        {onglet === 'employes'  && <Employes peutSaisir={peutSaisir} />}
-      </main>
+      {vue === 'emargement' && <BordereauHeures tenantId={tenantId} peutSaisir={peutSaisir} />}
+      {vue === 'mensuel' && (
+        <main className="rh-main">
+          <BordereauMensuel peutSaisir={peutSaisir} tenantId={tenantId} user={user} marque={marque} />
+        </main>
+      )}
     </div>
   )
 }
