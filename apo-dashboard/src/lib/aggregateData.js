@@ -365,10 +365,14 @@ export function buildAggregateData(monthArr) {
  * Filtre les mois selon une plage {from, to} (mois inclus).
  * from/to = numéro de mois (1-12) ou null = pas de borne.
  */
+/** « Mars » → 3 (0 si libellé inconnu). */
+export const moisIndex = (libelle) => ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].indexOf((libelle || '').toLowerCase()) + 1
+
+/** range = { year, from, to } — chaque borne est facultative (null = pas de filtre). */
 export function filterMonthsByRange(monthArr, range) {
-  if (!range || (range.from == null && range.to == null)) return monthArr
-  const moisIndex = (libelle) => ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].indexOf((libelle || '').toLowerCase()) + 1
+  if (!range || (range.year == null && range.from == null && range.to == null)) return monthArr
   return monthArr.filter(({ data }) => {
+    if (range.year != null && data._etl.annee !== range.year) return false
     const mi = moisIndex(data._etl.mois)
     if (range.from != null && mi < range.from) return false
     if (range.to   != null && mi > range.to)   return false

@@ -4,19 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { generatePnlPdf } from '../../lib/generatePnlPdf'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
 import { supabase } from '../../db/supabase'
-
-const MOIS_LIST = [
-  { num: 1,  label: 'Janvier' },  { num: 2,  label: 'Février' },
-  { num: 3,  label: 'Mars' },     { num: 4,  label: 'Avril' },
-  { num: 5,  label: 'Mai' },      { num: 6,  label: 'Juin' },
-  { num: 7,  label: 'Juillet' },  { num: 8,  label: 'Août' },
-  { num: 9,  label: 'Septembre' },{ num: 10, label: 'Octobre' },
-  { num: 11, label: 'Novembre' }, { num: 12, label: 'Décembre' },
-]
-
-function moisNum(libelle) {
-  return MOIS_LIST.findIndex(m => m.label.toLowerCase() === (libelle || '').toLowerCase()) + 1
-}
+import { usePeriode, MOIS_LABELS } from '../../hooks/usePeriode'
 
 function getInitials(email) {
   if (!email) return '?'
@@ -38,7 +26,6 @@ export default function Header({ allMois = [] }) {
   const {
     sidebarOpen, toggleMobileMenu,
     activeTab, activePnlMonth,
-    monthRange, setMonthRange,
     currency, moisData,
   } = useDashboardStore()
   const { user, tenantId, signOut } = useAuth()
@@ -59,25 +46,7 @@ export default function Header({ allMois = [] }) {
   const currentTab  = activeTab['global'] ?? 'vue-ensemble'
   const sectionName = activePnlMonth ? 'Compte de Résultat' : (MODULE_NAMES[currentTab] ?? "Vue d'Ensemble")
 
-  const moisDispo = allMois
-    .map(m => moisNum(m.data?._etl?.mois))
-    .filter(n => n > 0)
-    .sort((a, b) => a - b)
-
-  const minDispo = moisDispo[0]
-  const maxDispo = moisDispo[moisDispo.length - 1]
-  const from  = monthRange.from ?? minDispo
-  const to    = monthRange.to   ?? maxDispo
-  const nbMois = (from && to) ? to - from + 1 : 0
-
-  const handleFrom = (e) => {
-    const v = parseInt(e.target.value, 10)
-    setMonthRange(v, Math.max(v, to))
-  }
-  const handleTo = (e) => {
-    const v = parseInt(e.target.value, 10)
-    setMonthRange(Math.min(from, v), v)
-  }
+  const { annees, year, moisDispo, from, to, nbMois, handleYear, handleFrom, handleTo } = usePeriode(allMois)
 
   const pnlData = activePnlMonth ? allMois.find(m => m.key === activePnlMonth)?.data : null
   const handleExport = () => {
@@ -121,13 +90,20 @@ export default function Header({ allMois = [] }) {
         {!activePnlMonth && moisDispo.length > 0 && (
           <div className="header-period">
             <span className="header-period-label">Période</span>
+            {annees.length > 0 && (
+              <select className="header-period-select" value={year ?? ''} onChange={handleYear} aria-label="Année">
+                <option value="">Toutes années</option>
+                {annees.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            )}
             <select
               className="header-period-select"
               value={from}
               onChange={handleFrom}
+              aria-label="Mois de début"
             >
               {moisDispo.map(n => (
-                <option key={n} value={n}>{MOIS_LIST[n - 1].label}</option>
+                <option key={n} value={n}>{MOIS_LABELS[n - 1]}</option>
               ))}
             </select>
             <span className="header-period-arrow">→</span>
@@ -135,9 +111,10 @@ export default function Header({ allMois = [] }) {
               className="header-period-select"
               value={to}
               onChange={handleTo}
+              aria-label="Mois de fin"
             >
               {moisDispo.map(n => (
-                <option key={n} value={n}>{MOIS_LIST[n - 1].label}</option>
+                <option key={n} value={n}>{MOIS_LABELS[n - 1]}</option>
               ))}
             </select>
             <span className="header-period-count">{nbMois} mois</span>

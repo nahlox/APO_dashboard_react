@@ -254,6 +254,10 @@ body.light .header-avatar-dropdown { background: #fff; }
     border-radius: 0;
     box-shadow: none;
   }
+  /* Année + mois début + mois fin : les trois menus se partagent la largeur */
+  .mobile-period-bar .mrf-controls { width: 100%; }
+  .mobile-period-bar .mrf-select { flex: 1 1 0; min-width: 0; padding: 6px; }
+  .mobile-period-bar .mrf-reset { flex: none; }
 }
 
 /* ===== SIDEBAR ===== */

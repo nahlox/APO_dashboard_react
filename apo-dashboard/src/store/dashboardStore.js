@@ -14,10 +14,12 @@ export const useDashboardStore = create((set) => ({
   showAdmin: false,
   setShowAdmin: (v) => set({ showAdmin: v }),
 
-  // Plage de mois filtrée (null = tous les mois disponibles)
-  monthRange: { from: null, to: null },
-  setMonthRange: (from, to) => set({ monthRange: { from, to } }),
-  resetMonthRange:           () => set({ monthRange: { from: null, to: null } }),
+  // Période filtrée : année + plage de mois (null = pas de filtre)
+  monthRange: { year: null, from: null, to: null },
+  setMonthRange: (from, to) => set((s) => ({ monthRange: { ...s.monthRange, from, to } })),
+  // Changer d'année repart sur tous les mois disponibles de cette année
+  setYear:       (year)     => set({ monthRange: { year, from: null, to: null } }),
+  resetMonthRange:           () => set({ monthRange: { year: null, from: null, to: null } }),
 
   // Données dynamiques depuis Supabase (alimenté par useMoisDB dans App.jsx)
   moisData: [],
