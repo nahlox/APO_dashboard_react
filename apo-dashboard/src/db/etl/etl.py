@@ -100,8 +100,8 @@ def get_periode_id(annee: int, mois: int) -> int | None:
     q = sb.table("periodes").select("id").eq("annee", annee).eq("mois", mois)
     if TENANT_ID:
         q = q.eq("tenant_id", TENANT_ID)
-    r = q.single().execute()
-    return r.data["id"] if r.data else None
+    r = q.execute()
+    return r.data[0]["id"] if r.data else None
 
 def log(msg: str):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")

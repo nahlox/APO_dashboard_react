@@ -20,7 +20,7 @@ echo "===== $(date '+%Y-%m-%d %H:%M:%S') — APO ETL démarré =====" >> "$LOG_F
 BANK_FILE="$HOME/Dropbox/APO/Compta/2026/BANK APO/BANK APO 2026.xlsx"
 
 cd "$ETL_DIR"
-"$PYTHON" etl.py >> "$LOG_FILE" 2>&1
+"$PYTHON" etl.py --tenant apo >> "$LOG_FILE" 2>&1
 
 echo "--- $(date '+%Y-%m-%d %H:%M:%S') — ETL Banque ---" >> "$LOG_FILE"
 if [ -f "$BANK_FILE" ]; then
